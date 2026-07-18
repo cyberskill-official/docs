@@ -1,7 +1,7 @@
 ---
-title: 'CUO: Persona-Aware Workflow Orchestration'
+title: 'CUO: CyberOS Workflow Orchestration and Persona Routing'
 sidebarTitle: 'CUO'
-description: 'CUO is the CyberOS workflow engine. It drives every task through a governed lifecycle with human-in-the-loop gates, C-suite persona routing, and audit-chained evidence.'
+description: 'CUO is the CyberOS workflow engine — it drives every task through a governed lifecycle with persona routing, human-in-the-loop gates, and audit evidence.'
 ---
 
 CUO is the CyberOS workflow engine — the layer that transforms a task file into a shipped, audited change. It drives work through a single governed lifecycle, routing each task to the right C-suite persona, running agent steps between two mandatory human-acceptance gates, and recording every transition in an audit chain. Whether you are building a new feature or hardening an existing one, all work moves through the same machinery.
@@ -15,9 +15,11 @@ The `ship-tasks` workflow (v2.3.x) picks the first eligible task from `docs/task
 ```
 draft → ready_to_implement → implementing → ready_to_review
       → reviewing → ready_to_test → testing → done
+                                                    ↕ on_hold  (paused by operator)
+                                                    ↕ closed   (cancelled)
 ```
 
-Off-ramps at any phase: `on_hold` (paused by operator), `closed` (cancelled).
+Off-ramps `on_hold` and `closed` are available at any phase. Together with the eight main progression states, that is **ten states** in total — defined in `.cyberos/cuo/STATUS-REFERENCE.md`.
 
 The task file's `status` frontmatter field is the **record of truth**. `BACKLOG.md` is the index kept in lockstep — it never diverges from the individual task files.
 
@@ -76,6 +78,24 @@ Example personas in the CUO catalog:
 | `chief-legal-officer` | Chief Legal Officer | Contracts, compliance, risk |
 
 When no persona scores above the confidence threshold, CUO escalates to you with the top-three candidates and their applicability rationales. When a workflow references a skill that has not yet shipped, CUO emits a `MISSING_SKILL_REQUEST` block and halts at that step.
+
+## CLI Commands
+
+The `cyberos-cuo` CLI exposes the following commands for inspecting and operating the workflow engine:
+
+```bash
+# List all personas in the CUO catalog — shows shipped, planned, and extinct entries
+cyberos-cuo list-personas
+
+# Include extinct and planned personas in the listing
+cyberos-cuo list-personas --show-extinct --show-planned
+
+# List available workflows for a specific persona
+cyberos-cuo list-workflows chief-technology-officer
+
+# Dry-run a skill chain for a persona/workflow without invoking skills
+cyberos-cuo dry-run chief-technology-officer/ship-tasks
+```
 
 ## Triggering CUO
 

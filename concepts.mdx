@@ -1,7 +1,7 @@
 ---
-title: 'Core Concepts: How CyberOS Works'
+title: 'CyberOS Core Concepts: Memory, Skills, and Workflows'
 sidebarTitle: 'Concepts'
-description: 'Understand the CyberOS model: BRAIN memory, Skills, CUO workflows, tasks, human-in-the-loop gates, and the .cyberos/ module tree.'
+description: 'Understand BRAIN memory, Skills, CUO workflows, task states, human-in-the-loop gates, and the .cyberos/ folder structure in CyberOS.'
 ---
 
 CyberOS is built on five interlocking ideas: a BRAIN that remembers everything with cryptographic provenance, a Skills system that packages what agents can do into auditable capabilities, a CUO workflow engine that governs how work moves from idea to done, a task format that makes every unit of work legible to both agents and humans, and a human-in-the-loop model that ensures agents never make final decisions on their own. Understanding how these five concepts fit together will help you use every part of the platform confidently.
@@ -27,15 +27,15 @@ Every mutation is one of four canonical operations:
 
 Rows chain by hash into monthly binary log segments (`audit/current.binlog`) with a Merkle Mountain Range cross-check, so any byte of history can be replayed or cryptographically proved. The store also carries a `HEAD` counter (an 8-byte little-endian `u64` sequence number written atomically) and a `.lock` file for coordination.
 
-Run `python -m cyberos doctor` at any time to walk the full invariant set and confirm store health. Run `cyberos export` to produce a deterministic, portable zip of the entire store.
+Run `python -m cyberos doctor` at any time to walk the full invariant set and confirm store health. Run `python -m cyberos export` to produce a deterministic, portable zip of the entire store.
 
 ### Layer 2 — the brain service
 
-`services/memory` is a Rust service that reads Layer 1 and derives higher-level structure from it:
+The Layer-2 brain service reads Layer 1 and derives higher-level structure from it:
 
-- **Per-event embeddings** stored in pgvector for semantic similarity search.
+- **Per-event embeddings** for semantic similarity search.
 - **Rolling summaries** that compress long histories into retrievable snapshots.
-- **Hot/warm/cold tiering** keyed on each interaction's `occurred_at` timestamp — recent memories are fast to retrieve; older memories are tiered but still provable.
+- **Hot/warm/cold tiering** keyed on recency — recent memories are fast to retrieve; older memories are tiered but still provable.
 
 Recall queries answer over the hot index with provenance pointers back to the exact Layer-1 rows. Access is consent-gated and tenant-scoped with fail-closed row-level security.
 

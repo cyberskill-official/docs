@@ -1,7 +1,7 @@
 ---
-title: 'BRAIN Memory: Audit-Chained Knowledge Store'
+title: 'BRAIN Memory: CyberOS Audit-Chained Knowledge Store'
 sidebarTitle: 'Memory (BRAIN)'
-description: 'CyberOS BRAIN is an append-only, cryptographically chained memory store. Every write is verifiable; every fact is traceable back to the exact operation that created it.'
+description: 'CyberOS BRAIN is an append-only, audit-chained memory store. Every write is verifiable and traceable back to the exact operation that created it.'
 ---
 
 CyberOS BRAIN is the platform's remembering faculty — **BRAIN** is the name you speak, `memory` is the name you write in code. Under the hood it is two cooperating layers sharing one source of truth: a tamper-evident Layer 1 store on local disk, and a Layer 2 service that derives searchable, tiered structure from it. Everything any agent or human records — decisions, facts, people, projects — flows through this store and is chained together so that no byte can change without breaking the chain.
@@ -27,14 +27,14 @@ Every store is a self-contained, zippable artefact with a predictable structure:
 │   ├── *.binlog             # binary-framed audit log segments (one per month)
 │   ├── checkpoints/         # signed tree-head anchors per consolidation
 │   └── current.binlog       # the active segment
-└── memories/
-    ├── decisions/           # architectural and product decisions
-    ├── facts/               # grounded facts about the world
-    ├── people/              # team members, contacts
-    ├── projects/            # project-scoped context
-    ├── preferences/         # user and agent preferences
-    ├── drift/               # detected drift signals
-    └── refinements/         # proposed refinements awaiting review
+├── memories/
+│   └── <kind>/              # decisions | facts | people | projects |
+│                            # preferences | drift | refinements
+├── meta/                    # company, module, member, client, project, persona context
+├── conflicts/               # soft-tombstone bodies
+├── exports/                 # deterministic export targets
+└── index/
+    └── manifest.json        # rebuild marker for the derived index
 ```
 
 ### The Four Canonical Operations
@@ -60,11 +60,11 @@ Monthly binlog segments are binary-framed (`[u32 length][u32 crc32c][u64 seq][u6
 
 ## Layer 2 — The Brain Service
 
-Layer 2 is a Rust service (`services/memory`) that reads Layer 1 and builds derived structure on top of it:
+Layer 2 reads the Layer 1 store and builds derived structure on top of it:
 
 <CardGroup cols={3}>
   <Card title="Embeddings" icon="vector-square">
-    Per-event embeddings stored in pgvector, enabling semantic recall over every memory the store has ever recorded.
+    Per-event embeddings enabling semantic recall over every memory the store has ever recorded.
   </Card>
   <Card title="Summaries" icon="file-lines">
     Rolling summaries computed over recent audit rows so agents can load context-efficient snapshots rather than raw ledger data.
@@ -74,7 +74,7 @@ Layer 2 is a Rust service (`services/memory`) that reads Layer 1 and builds deri
   </Card>
 </CardGroup>
 
-Access to the Layer 2 service is consent-gated and tenant-scoped with fail-closed row-level security. The DB-backed test suite runs via `scripts/local_verify.sh`.
+Access to the Layer 2 service is consent-gated and tenant-scoped with fail-closed row-level security.
 
 ## Day-to-Day Usage
 

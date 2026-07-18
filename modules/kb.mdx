@@ -1,10 +1,14 @@
 ---
-title: 'KB: Documentation, Search, and AI Grounding'
+title: 'KB: Markdown Knowledge Base, Search, and AI Grounding'
 sidebarTitle: 'Knowledge Base'
 description: 'CyberOS KB is a versioned markdown knowledge base with three-layer search (lexical, semantic, reranker) and AI Q&A grounded in your own documents.'
 ---
 
-KB is CyberOS's documentation surface and the canonical source for AI-grounded retrieval. It plays three roles simultaneously: it is the RAG corpus that gives CUO (Genie) something credible to cite, the memory companion where curated long-form documents live alongside the audit-chained memory store, and the runbook catalogue that the OBS auto-runbook router consults during alert triage. Strip KB out and CUO has nothing to ground answers in — "ask the docs" becomes "make things up." Every document you write in KB is a first-class memory Layer 2 citation source, every AI answer cites span-level back to KB, and every "Promote to canonical" elevates a document to a high-authority source for cross-tenant AI synthesis. KB is where institutional knowledge becomes a system property, not a person property.
+KB is CyberOS's documentation surface and the canonical source for AI-grounded retrieval. It plays three roles simultaneously: it is the RAG corpus that gives CUO (Genie) something credible to cite, the memory companion where curated long-form documents live alongside the audit-chained memory store, and the runbook catalogue that the OBS auto-runbook router consults during alert triage. Strip KB out and CUO has nothing to ground answers in — "ask the docs" becomes "make things up." Every document you write in KB is a first-class citation source, every AI answer cites span-level back to KB, and every "Promote to canonical" elevates a document to a high-authority source for cross-tenant AI synthesis. KB is where institutional knowledge becomes a system property, not a person property.
+
+<Note>
+  KB is a P1 module currently in the design phase. This page describes the planned functionality from the user perspective. Refer to the platform roadmap for GA availability details.
+</Note>
 
 ---
 
@@ -29,10 +33,10 @@ Every KB document is a structured artefact, not a free-form wiki page.
 
 ### Versioning
 
-Every save produces a new **immutable version**. The document row's `current_version_id` pointer advances to the new version; prior versions are never modified. Version rows are chained in the memory audit chain — you can always reconstruct exactly what a document said at any point in time.
+Every save produces a new **immutable version**. The document's current version pointer advances to the new version; prior versions are never modified. Versions are retained in the audit history — you can always reconstruct exactly what a document said at any point in time.
 
 <Note>
-  There is no "edit in place" in KB. Every keystroke that results in a save produces a new version row. This is intentional: KB documents are cited by AI answers and referenced by PROJ Issues. If the underlying content could change silently, those citations would become untrustworthy.
+  There is no "edit in place" in KB. Every keystroke that results in a save produces a new version. This is intentional: KB documents are cited by AI answers and referenced by PROJ Issues. If the underlying content could change silently, those citations would become untrustworthy.
 </Note>
 
 ---
@@ -44,13 +48,13 @@ Every save produces a new **immutable version**. The document row's `current_ver
     Open **KB → New Document**. Set the slug, title, category, language (`vi` or `en`), and permission tier. The document is created in draft state — it is not yet searchable or accessible to other members.
   </Step>
   <Step title="Write in markdown">
-    Use the built-in editor (or any markdown tool via the REST API). Include YAML frontmatter at the top of the file. Attachments (images, PDFs) upload directly in the editor and are stored in KMS-encrypted S3.
+    Use the built-in editor (or any markdown tool via the REST API). Include YAML frontmatter at the top of the file. Attachments (images, PDFs) upload directly in the editor and are stored securely.
   </Step>
   <Step title="Set permissions">
-    Choose one of the permission tiers (see below) before publishing. You can tighten permissions later, but loosening them requires an explicit ACL change that writes an audit row.
+    Choose one of the permission tiers (see below) before publishing. You can tighten permissions later, but loosening them requires an explicit permission change that is logged in the audit history.
   </Step>
   <Step title="Save and publish">
-    Click **Save**. CyberOS renders the markdown to sanitised HTML, creates an immutable version row, and queues a memory re-ingestion job. The document is live and searchable within seconds.
+    Click **Save**. CyberOS renders the markdown to sanitised HTML, creates an immutable version, and queues a re-indexing job. The document is live and searchable within seconds.
   </Step>
 </Steps>
 
@@ -60,14 +64,14 @@ Every save produces a new **immutable version**. The document row's `current_ver
 |------|-----------|-------------|
 | `public` | Anyone with the URL, including anonymous visitors (if Trust Center is enabled) | Trust Center pages, public marketing docs |
 | `org` | Any authenticated member of your tenant | How-to guides, reference docs, decision logs (default) |
-| `role-restricted` | Members holding one of the `allowed_role_codes` | HR policy, compensation references, security runbooks |
+| `role-restricted` | Members holding one of the allowed roles | HR policy, compensation references, security runbooks |
 | `share-link` | Anyone holding a valid time-bound token | External client review of a specific document |
 
 To generate a share link for external access, open the document and click **Share → Create time-bound link**. Set an expiry date and optionally a view limit. The link auto-expires and can be revoked at any time from the document's **Share links** panel.
 
 ### Dual-language support
 
-Documents in KB carry a `language` field (`vi` or `en`). Link a Vietnamese document to its English counterpart (or vice versa) by setting `translation_of` in the frontmatter or using **Document → Link translation** in the editor. When a member reads a document, KB serves the version matching their JWT locale. The AI Q&A engine grounds answers across both language versions when both are available.
+Documents in KB carry a `language` field (`vi` or `en`). Link a Vietnamese document to its English counterpart (or vice versa) by setting `translation_of` in the frontmatter or using **Document → Link translation** in the editor. When a member reads a document, KB serves the version matching their locale preference. The AI Q&A engine grounds answers across both language versions when both are available.
 
 ---
 
@@ -76,19 +80,19 @@ Documents in KB carry a `language` field (`vi` or `en`). Link a Vietnamese docum
 KB search is a sequential pipeline designed for Vietnamese-language precision and AI retrieval quality.
 
 <Steps>
-  <Step title="Layer 1 — Lexical (FTS5 / PGroonga)">
-    Full-text search using FTS5 for Latin-script content and PGroonga with Vietnamese bigram tokenisation for Vietnamese. This layer returns up to 100 candidate document versions based on keyword overlap. Vietnamese queries like *"hóa đơn cấp khi nào"* are tokenised correctly without needing the user to segment words manually.
+  <Step title="Step 1 — Lexical (FTS5 / PGroonga)">
+    Full-text search using FTS5 for Latin-script content and PGroonga with Vietnamese bigram tokenisation for Vietnamese. This step returns up to 100 candidate document versions based on keyword overlap. Vietnamese queries like *"hóa đơn cấp khi nào"* are tokenised correctly without needing the user to segment words manually.
   </Step>
-  <Step title="Layer 2 — Semantic (BGE-M3 embeddings)">
+  <Step title="Step 2 — Semantic (BGE-M3 embeddings)">
     The query is embedded using BGE-M3, a multilingual embedding model. Cosine similarity over the candidate set narrows the results to the top 30 most semantically relevant chunks.
   </Step>
-  <Step title="Layer 3 — Reranker (BGE-rerank-v2-m3)">
+  <Step title="Step 3 — Reranker (BGE-rerank-v2-m3)">
     The BGE-rerank-v2-m3 cross-encoder scores the top-30 chunks against the query in a single pass and returns the final top-10 results. The reranker accounts for query-document relevance at the sentence level, not just token overlap.
   </Step>
 </Steps>
 
 <Note>
-  ACL filtering happens **before** the reranker — documents you are not permitted to read never reach the reranker, the QA composer, or the search results. An ACL leak via search is a severity-0 bug.
+  Permission filtering happens **before** the reranker — documents you are not permitted to read never reach the reranker, the Q&A composer, or the search results. A permission leak via search is a severity-0 bug.
 </Note>
 
 ---
@@ -102,10 +106,10 @@ Every document has an **Ask this page** button that lets you pose natural-langua
     Open a document and click **Ask this page**, or type a question in the document's Q&A panel. For example: *"When must we issue the hóa đơn?"*
   </Step>
   <Step title="KB retrieves relevant spans">
-    KB embeds your question with BGE-M3, finds the top-8 most relevant text spans across the current document and its linked documents, and passes them to the QA composer.
+    KB embeds your question with BGE-M3, finds the top-8 most relevant text spans across the current document and its linked documents, and passes them to the Q&A composer.
   </Step>
   <Step title="AI composes a cited answer">
-    The QA composer calls the AI Gateway with a system instruction requiring every claim to cite a span ID. The AI returns a structured answer with inline citations.
+    The Q&A composer calls the AI Gateway with a system instruction requiring every claim to cite a span ID. The AI returns a structured answer with inline citations.
   </Step>
   <Step title="Validate citations">
     KB validates that every cited span ID actually exists in the source document at the claimed location. If a citation does not match — a hallucination — KB rejects the answer and returns *"I don't know"* rather than a fabricated response.
@@ -122,13 +126,13 @@ You can hover any citation in the answer to jump directly to the source paragrap
 
 ## Memory ingestion
 
-Every time you save a document, KB automatically re-indexes it to memory Layer 2 within **5 seconds p95**. The ingestion pipeline:
+Every time you save a document, KB automatically re-indexes it within **5 seconds p95**. The ingestion pipeline:
 
 1. Strips markdown syntax to clean plaintext
 2. Chunks the text at semantic boundaries (paragraph and heading level)
 3. Embeds each chunk with BGE-M3
-4. Upserts the chunks and vectors into memory Layer 2
-5. Writes an audit row confirming the ingestion latency
+4. Updates the search index with the new chunks and embeddings
+5. Confirms the ingestion is complete
 
 Because ingestion is automatic on every save, the AI retrieval layer is never more than seconds out of date. You do not need to manually trigger re-indexing.
 
@@ -148,17 +152,17 @@ Write runbooks as `category: runbook` documents with an `applicability` frontmat
 
 ## Promoting to canonical
 
-**Promote to canonical** elevates a document from a regular knowledge base page to a high-authority memory source used by Lumi cross-tenant AI synthesis (where `sync_class` permits).
+**Promote to canonical** elevates a document from a regular knowledge base page to a high-authority source used by Lumi cross-tenant AI synthesis (where `sync_class` permits).
 
 <Steps>
   <Step title="Request promotion">
-    Open the document and click **Promote to canonical**. Enter the memory canonical path (for example, `memories/policy/leave.md`). This triggers a CHAT notification to the CDO seat for approval.
+    Open the document and click **Promote to canonical**. Enter the canonical memory path (for example, `memories/policy/leave.md`). This triggers a CHAT notification to the CDO seat for approval.
   </Step>
   <Step title="CDO approves">
-    The CDO reviews the document to confirm it represents authoritative, stable knowledge suitable for cross-tenant synthesis. Approval is logged as an audit row.
+    The CDO reviews the document to confirm it represents authoritative, stable knowledge suitable for cross-tenant synthesis. Approval is logged in the audit history.
   </Step>
   <Step title="Canonical entry created">
-    KB writes a Layer 1 canonical memory entry mirroring the document. The document is now a high-authority source — AI answers that cite it carry higher confidence weighting than answers citing ordinary Layer 2 chunks.
+    KB registers a high-authority canonical entry mirroring the document. AI answers that cite it carry higher confidence weighting than answers citing ordinary search index chunks.
   </Step>
 </Steps>
 

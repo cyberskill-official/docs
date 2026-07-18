@@ -1,5 +1,5 @@
 ---
-title: 'AI Gateway: Multi-Provider AI with Cost Controls'
+title: 'AI Gateway: Multi-Provider AI Routing with Cost Controls'
 sidebarTitle: 'AI Gateway'
 description: 'CyberOS AI Gateway routes AI requests across providers (Anthropic, OpenAI, Bedrock) with per-tenant cost caps, PII redaction, and a full cost ledger.'
 ---
@@ -7,7 +7,7 @@ description: 'CyberOS AI Gateway routes AI requests across providers (Anthropic,
 Every AI feature in CyberOS — Genie/CUO responses, skill runs, KB Q&A, and `@genie` in CHAT — flows through the AI Gateway. You never manage per-feature API keys or worry about which model an individual feature uses. Instead, the gateway handles provider routing, enforces your plan's token budget, redacts PII before any data leaves your tenant, and writes a cost row for every request so you always know what you spent and why.
 
 <Note>
-  All CyberOS AI features (Genie/CUO, skill runs, KB Q&A, CHAT @genie) use the AI Gateway — there is no separate API key to manage per feature.
+  All CyberOS AI features (Genie/CUO, skill runs, KB Q&A, CHAT @genie) use the AI Gateway — there is no separate API key to manage per feature. The AI Gateway is a P0 module, currently in progress.
 </Note>
 
 ## Model routing and providers
@@ -62,8 +62,8 @@ Your token budget is set by your plan tier. The gateway checks your remaining qu
 
 | Plan | AI tokens / month | Behaviour when cap reached |
 |---|---|---|
-| **Starter** | 500,000 | Requests blocked until the next billing cycle |
-| **Team** | 3,000,000 | Requests blocked until the next billing cycle |
+| **Free** | 50,000 | Requests blocked until the next billing cycle |
+| **Pro** | 5,000,000 | Requests blocked until the next billing cycle |
 | **Enterprise** | Custom (negotiated) | Alert at threshold; hard-stop at agreed cap |
 
 <Note>
@@ -99,7 +99,7 @@ Every AI request produces a cost row you can inspect in your billing dashboard. 
 
 ## PII redaction
 
-The gateway automatically scans every prompt and every provider response for PII before logging, caching, or writing an audit row. Redaction happens in-process — PII never reaches Loki logs or the LangSmith AI trace store in unredacted form.
+The gateway automatically scans every prompt and every provider response for PII before logging, caching, or writing an audit row. Redaction happens in-process — PII never reaches the log pipeline or the LangSmith AI trace store in unredacted form.
 
 ### What counts as PII
 

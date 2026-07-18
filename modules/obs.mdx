@@ -1,5 +1,5 @@
 ---
-title: 'OBS: Observability, Alerts, and Runbooks'
+title: 'OBS: CyberOS Observability, Alerting, and Runbooks'
 sidebarTitle: 'OBS'
 description: 'CyberOS OBS gives tenants visibility into platform health, AI cost trends, and compliance posture — with auto-runbook routing powered by KB.'
 ---
@@ -101,7 +101,7 @@ OBS routes alerts in severity order:
 
 <Steps>
   <Step title="Alert fires">
-    Prometheus evaluates the alert rule. When the condition has been met for the configured duration, the alert transitions to Firing state.
+    The alert rule is evaluated against your configured threshold. When the condition has been met for the configured duration, the alert transitions to Firing state.
   </Step>
   <Step title="CUO triage">
     Before any human is notified, OBS invokes the `obs.execute_triage` skill. CUO consults your KB runbook catalogue and assigns a confidence score to the best matching runbook.

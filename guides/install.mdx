@@ -1,5 +1,5 @@
 ---
-title: 'Install CyberOS into Any Repository'
+title: 'Install CyberOS: npx, Claude Plugin, curl, or Docker'
 sidebarTitle: 'Installation'
 description: 'Install CyberOS into your project repository using npx, the Claude plugin, a curl bootstrap, or Docker. Supports Claude, Codex, Cursor, Gemini, and more.'
 ---
@@ -10,13 +10,17 @@ Installing CyberOS vendors a self-contained `.cyberos/` folder into your reposit
 
 Choose the channel that fits your setup. All channels produce the same `.cyberos/` layout.
 
-| Channel | Command | Best for |
+| Channel | Command / entry point | Best for |
 |---|---|---|
 | **npx CLI** | `npx cyberos install` | Most repos |
 | **Claude plugin** | `/install` command | Claude users |
 | **MCP stdio** | `task_install` tool | MCP agents |
 | **Docker image** | Docker image | CI / containerized |
-| **Git subtree** | `git subtree add` | Advanced / offline |
+| **Git subtree / submodule** | `git subtree add` | Advanced / offline |
+| **Makefile target** | `make` target | Makefile-driven projects |
+| **GitHub Action** | Workflow step | CI gate runner |
+| **`curl \| sh` bootstrap** | `curl \| sh` | One-liner remote install |
+| **`create.sh` scaffolder** | `create.sh` | Template-repo setup |
 
 ---
 
@@ -138,15 +142,6 @@ To update an already-installed repo, use any of the following:
 <CodeGroup>
 ```bash npx
 npx cyberos update
-```
-
-```bash Re-run installer
-bash /path/to/dist/cyberos/install.sh /path/to/your/repo
-```
-
-```bash Version check (interactive)
-bash .cyberos/version.sh
-# prints installed=, payload=, latest= and prompts to update
 ```
 </CodeGroup>
 

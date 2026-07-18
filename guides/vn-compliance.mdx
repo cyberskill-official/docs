@@ -12,7 +12,7 @@ CyberOS was designed for the Vietnamese market first. Every regulation below is 
 
 ## Vietnamese Data Privacy (PDPL)
 
-Vietnam's Personal Data Protection Law (Law 91/2025) — commonly called the PDPL — is the primary framework governing how CyberOS handles personal data for Vietnamese-market tenants. CyberOS targets the `vn-1` residency tier, which activates Decree 13/2023 and Decree 53/2022 data-localisation rules alongside the PDPL.
+Vietnam's Personal Data Protection Law (Decree 13/2023/NĐ-CP) — commonly called the PDPL — is the primary framework governing how CyberOS handles personal data for Vietnamese-market tenants. CyberOS targets the `vn-1` residency tier, which activates the PDPL's data-localisation rules (Decree 53/2022) as part of the `vn-1` compliance package.
 
 <CardGroup cols={2}>
   <Card title="PDPL Art. 38 — Cross-border Transfer" icon="globe">
@@ -42,7 +42,7 @@ Decree 145/2020 implements Labour Code 2019 Article 107. TIME enforces the follo
     CyberOS tracks regular working hours per member per ISO week. The cap is **40 hours of regular time per week**. Entries that would push a member past 40 hours in a week are flagged as overtime automatically — no manual categorisation required.
   </Step>
   <Step title="Standard overtime ceiling">
-    The default annual overtime ceiling is **200 hours per year** (Labour Code Art. 107 standard limit). TIME's `law_caps.rs` evaluates each new overtime entry against the running annual total. Entries that would exceed 200 hours are blocked at the API and page the CHRO.
+    The default annual overtime ceiling is **200 hours per year** (Labour Code Art. 107 standard limit). TIME evaluates each new overtime entry against the running annual total. Entries that would exceed 200 hours are blocked at the API and page the CHRO.
   </Step>
   <Step title="Extended overtime with consent">
     Up to **300 hours of overtime per year** is permitted with documented employee consent and a MoLISA notification on file. In TIME, the 200–300 hour band is gated: the member must have a signed consent record in HR and a MoLISA notification must be logged before the TIME write path allows entries in this band. Attempting to log overtime above 300 hours is a hard-block regardless of consent.
@@ -61,15 +61,15 @@ HR tracks eight statutory leave types, each tagged with its legal basis so your 
 |---|---|---|
 | Annual leave | Labour Code 2019 Art. 113 | Accrues from day 1; minimum 12 days/year for standard employees |
 | Sick leave | Labour Code 2019 Art. 112 | BHXH-funded; requires medical certificate |
-| Maternity leave | Labour Code 2019 Art. 139, Decree 13/2023 | 6 months for mothers; BHXH-funded |
-| Paternity leave | Labour Code 2019 Art. 34, Decree 13/2023 | 5–14 days depending on delivery type |
+| Maternity leave | Labour Code 2019 Art. 139, Decree 145/2020 | 6 months for mothers; BHXH-funded |
+| Paternity leave | Labour Code 2019 Art. 34, Decree 145/2020 | 5–14 days depending on delivery type |
 | Bereavement leave | Labour Code 2019 Art. 115 | 3 days for immediate family |
 | Marriage leave | Labour Code 2019 Art. 115 | 3 days |
 | Sabbatical | Internal policy + Labour Code 2019 Art. 116 | Requires employment anniversary milestone |
 | Unpaid leave | Labour Code 2019 Art. 115 | By agreement; no pay, BHXH suspended |
 
 <Note>
-  Maternity and paternity leave under Decree 13/2023 supplements the baseline Labour Code 2019 entitlements. CyberOS tags leave records with both the Labour Code article and the relevant Decree so downstream payroll reporting in REW can distinguish BHXH-funded leave from employer-funded leave.
+  Maternity and paternity leave entitlements are governed by Labour Code 2019 and implemented under Decree 145/2020. CyberOS tags leave records with both the Labour Code article and the relevant Decree so downstream payroll reporting in REW can distinguish BHXH-funded leave from employer-funded leave.
 </Note>
 
 ## Tax and Invoicing
@@ -134,7 +134,7 @@ CyberOS ships with full Vietnamese and English UI for `vn-1` tenants. The follow
 | Module | VN Compliance Feature |
 |---|---|
 | TIME | Decree 145 overtime caps (40 h regular/week, 200 h OT/year, 300 h with consent + MoLISA notification) |
-| HR | 8 statutory leave types tagged to Labour Code 2019, Decree 145/2020, Decree 13/2023 |
+| HR | 8 statutory leave types tagged to Labour Code 2019 and Decree 145/2020 |
 | REW | BHXH 10.5%, BHYT 1.5%, BHTN 1% payroll deductions; PIT progressive computation |
 | CRM | MST validation against GDT registry, hóa đơn emission on deal close, VietQR payment codes |
 | KB | Vietnamese bigram full-text search via PGroonga |

@@ -1,5 +1,5 @@
 ---
-title: 'PORTAL: White-Label Client Portal for Agencies'
+title: 'PORTAL: White-Label Client Portal for Service Agencies'
 sidebarTitle: 'Portal'
 description: 'CyberOS PORTAL gives your clients a branded portal to view projects, invoices, and documents — secured by their own SSO IdP and isolated per client.'
 ---
@@ -113,8 +113,8 @@ Each client's portal data is isolated from every other client at three independe
 
 | Layer | How it works |
 |---|---|
-| **Postgres RLS** | Every portal-related table has row-level security enforced by `(tenant_id, client_account_id)`. A misconfigured query cannot return another client's rows. |
-| **Apollo Router scope checks** | Every GraphQL field requires a `portal.read` scope grant bound to the client's account. The router injects the `client_account_id` predicate into every query before it reaches the subgraph. |
+| **Row-level security (RLS)** | Every portal-related data store enforces row-level security scoped to each client account. A misconfigured query cannot return another client's rows. |
+| **API scope checks** | Every data field requires a `portal.read` scope grant bound to the client's account. The API layer injects the client-account predicate into every query before it reaches the underlying data store. |
 | **S3 prefix ACLs** | All file assets (logo, attachments) are stored under a per-client S3 key prefix with IAM policies that block cross-client access. |
 
 The three-layer approach means a single misconfiguration at any one layer is caught by the other two.

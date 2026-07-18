@@ -1,7 +1,7 @@
 ---
-title: 'Skills: Verifiable Agent Capabilities'
+title: 'CyberOS Skills: Verifiable Auditable Agent Capabilities'
 sidebarTitle: 'Skills'
-description: 'CyberOS Skills package what agents can do into versioned, auditable capabilities. Each skill has a SKILL.md contract, structured inputs/outputs, and an audit sibling.'
+description: 'CyberOS Skills are versioned, auditable agent capabilities. Each skill ships as a SKILL.md contract with structured inputs, outputs, and an audit sibling.'
 ---
 
 A CyberOS skill is a self-contained folder that defines exactly what an agent can do, how it does it, and how to verify it did the job correctly. Every skill ships as an **author/audit pair**: the author skill produces an artifact and the audit skill independently scores it against a rubric. This pairing is the unit of release — you never ship an author without a matching audit. Every consequential run leaves evidence in the audit chain.

@@ -1,10 +1,14 @@
 ---
-title: 'CHAT: Threaded Messaging with AI Teammates'
+title: 'CyberOS CHAT: Team Messaging, Calls, and AI Teammates'
 sidebarTitle: 'Chat'
-description: 'CyberOS CHAT is a threaded messaging module where Members and AI agents share workspaces. @genie call-outs invoke CUO-powered AI responses inline.'
+description: 'Send messages, start voice and video calls, invoke @genie AI responses, and auto-log CRM activities — all inside CyberOS CHAT without external tools.'
 ---
 
 CyberOS CHAT is the built-in messaging layer for your whole team — channels, direct messages, threads, and voice/video calls, all in one place without needing Slack, Zalo, or any external tool. It is designed for CyberOS-native teams: every message lives inside your tenant, feeds the same audit chain your other modules use, and connects directly to the AI capabilities, CRM records, and HR onboarding flows that power the rest of the platform. When you @mention a colleague or invoke `@genie` in any thread, CHAT knows who you are, what channels you belong to, and which contacts your team is tracking — no copy-pasting context between apps.
+
+<Warning>
+  **CHAT is a P0 module currently in active development.** Core messaging, threads, @genie call-outs, and voice/video calls are available now. Some features described in this page — such as advanced CRM auto-logging triggers and full moderation tooling — are being rolled out progressively. Check the [changelog](/reference/changelog) for the latest status.
+</Warning>
 
 ## Key Features
 
@@ -16,7 +20,7 @@ CyberOS CHAT is the built-in messaging layer for your whole team — channels, d
     Type `@genie` anywhere in a message to invoke the CUO-powered AI persona inline. Genie replies in the thread, grounded in your tenant's Knowledge Base and Memory, and cites its sources.
   </Card>
   <Card title="Voice and Video Calls" icon="video">
-    Start a call directly from any DM or channel header. Calls run peer-to-peer through WebRTC signalling handled by CHAT — no separate conferencing app needed.
+    Start a voice or video call directly from any DM or channel header. Calls are built into CHAT — no separate conferencing app or external link needed.
   </Card>
   <Card title="CRM Activity Logging" icon="address-book">
     Messages and calls involving tracked domain contacts auto-log as CRM activities. Your sales and account-management timeline stays current without manual entry.

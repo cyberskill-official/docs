@@ -1,10 +1,14 @@
 ---
-title: 'LEARN: Skills Catalogue and Career Growth'
+title: 'LEARN Module: Skill Catalogue, VP Engine, and Promotions'
 sidebarTitle: 'LEARN'
 description: 'CyberOS LEARN tracks what each team member can do, computes Voting Power for bonus distribution, and runs the peer-review promotion council workflow.'
 ---
 
 CyberOS LEARN is the capability ledger — what each member can do, how good they are at it, and how that translates into promotions, bonus-pool weighting, and sabbatical readiness. It plays three distinct roles in the platform. As a **skills catalogue**, it maintains an evidence-backed, closed-enum skill tree across all disciplines. As the **VP (Voting Power) engine**, it computes a deterministic quarterly score per member that REW uses to weight the bonus-pool distribution. As the **Hội đồng Chuyên môn (Specialist Council)**, it runs the structured peer-review workflow that makes every promotion decision transparent, human-driven, and defensible under EU AI Act Art. 14.
+
+<Note>
+  LEARN is a **P1 module** — currently in planned/design phase and not yet generally available. Features described here reflect the planned P1 design.
+</Note>
 
 ## Skills Catalogue
 
@@ -116,7 +120,7 @@ The Specialist Council is CyberOS's adaptation of the Vietnamese academic peer-r
 </Steps>
 
 <Warning>
-  Per-judge individual scores **never leave LEARN**. This is the psychological-safety contract that makes honest peer review possible. Do not attempt to retrieve per-judge data via the admin REST API — the `/admin/vault/{case_id}` endpoint is restricted to the LEARN admin role and is explicitly blocked for HR's read role.
+  Per-judge individual scores **never leave LEARN**. This is the psychological-safety contract that makes honest peer review possible. HR's access role is structurally blocked from reading individual judge data — only the aggregate outcome summary and recommendation are ever forwarded to HR.
 </Warning>
 
 ### Promotion Gate Criteria — Example (L2 → L3 Engineering)

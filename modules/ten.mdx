@@ -1,5 +1,5 @@
 ---
-title: 'TEN: Tenant Management, Plans, and Billing'
+title: 'TEN: Tenant Lifecycle, Plans, and Billing Management'
 sidebarTitle: 'Tenancy'
 description: 'CyberOS TEN manages your organisation as a tenant: plans, seat limits, billing via Stripe or Vietnamese PSPs, data residency, and offboarding.'
 ---
@@ -7,7 +7,7 @@ description: 'CyberOS TEN manages your organisation as a tenant: plans, seat lim
 TEN is the SaaS control plane that governs your CyberOS organisation: plan tier, seat headcount, billing, data residency, and the full lifecycle from signup to offboarding. If you are an organisation admin or on the finance team, TEN is where you manage seats, review invoices, configure data retention overrides, and — if the day comes — trigger the offboarding process with confidence that your data is portable and your exit is clean.
 
 <Note>
-  Self-serve signup (P4) is coming. Until then, CyberSkill operations provisions tenants for vertical-pack customers at P2. Contact your account manager to provision your organisation.
+  TEN is a P2 slice / P4 full module. The billing infrastructure ships at P2 to support vertical-pack pricing; full self-serve signup and the complete tenant-admin UI land at P4. Until self-serve is live, CyberSkill operations provisions tenants for vertical-pack customers. Contact your account manager to provision your organisation.
 </Note>
 
 ## Plan tiers
@@ -16,23 +16,22 @@ Choose the plan that fits your team's size and AI usage needs. All plans include
 
 | Tier | Seats | BRAIN Storage | AI Tokens / month | Support |
 |---|---|---|---|---|
-| **Starter** | Up to 10 | 20 GB | 500,000 | Community |
-| **Team** | Up to 50 | 200 GB | 3,000,000 | Email |
+| **Free** | Up to 5 | 100 MB | 50,000 | Community |
+| **Pro** ($29/seat/mo) | Unlimited | 5 GB | 5,000,000 | Email |
 | **Enterprise** | Unlimited | Custom | Custom (negotiated) | Dedicated CSM |
 
 <Tip>
-  Vietnamese organisations can subscribe to the `starter-vn` or `team-vn` plans priced in VND (₫1,190,000/mo and ₫5,990,000/mo respectively), billed through Vietnamese PSPs.
+  Vietnamese organisations can pay in VND through Vietnamese PSPs (VnPay, Momo, ZaloPay). Contact your account manager for VND pricing details.
 </Tip>
 
 ### Module availability by plan
 
-Some advanced modules are locked at the Starter tier and unlock on upgrade:
+Some advanced modules are locked at the Free tier and unlock on upgrade:
 
-| Module | Starter | Team | Enterprise |
+| Module | Free | Pro | Enterprise |
 |---|---|---|---|
 | Core modules (memory, CUO, CHAT, PROJ, etc.) | ✅ | ✅ | ✅ |
-| OKR | ❌ | ✅ | ✅ |
-| REW (rewards) | ❌ | ✅ | ✅ |
+| All P0 + P1 modules | ❌ | ✅ | ✅ |
 | DOC (e-signatures) | ❌ | ❌ | ✅ |
 | PORTAL (client portal) | ❌ | ❌ | ✅ |
 | ESOP | ❌ | ❌ | ✅ |

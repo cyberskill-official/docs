@@ -1,10 +1,14 @@
 ---
-title: 'REW: Compensation, Payroll, and Bonus Points'
+title: 'REW Module: Compensation, Payroll, and Bonus Points'
 sidebarTitle: 'REW'
 description: 'CyberOS REW is the compensation ledger: append-only payslips, Vietnamese social insurance deductions, BP bonus points, and a CFO+CHRO co-sign gate.'
 ---
 
 CyberOS REW is the compensation computation and ledger plane — the place where Total Rewards parameters become payslips, and where every payslip is reproducible byte-for-byte from the inputs that were effective at period end. Three hard invariants govern everything REW does: the ledger is **append-only** (corrections are supersession rows, never edits), the **P1 base salary floor is inviolable** (no evaluation, no agent, and no buggy code path can propose a P1 reduction — violation is sev-0), and **parameters are anti-retroactive** (publishing a new rate schedule cannot change the output of any historical payslip). Compensation data lives in REW's own encrypted KMS keyspace and is structurally excluded from every other module, including the BRAIN memory store.
+
+<Note>
+  REW is a **P1 module** — currently in planned/design phase and not yet generally available. Full EU AI Act Annex III §4 conformity documentation is planned for the P2 release. Features described here reflect the planned P1 design.
+</Note>
 
 ## The 3P Compensation Structure
 
@@ -12,7 +16,7 @@ REW decomposes every member's cash compensation into three components, each gove
 
 <CardGroup cols={3}>
   <Card title="P1 Base" icon="shield">
-    **Contractually protected base salary.** Paid monthly in cash. REW enforces a hard floor: no evaluation outcome, parameter change, or agent action can result in a P1 value smaller than the prior period's P1. This constraint is enforced at both the application layer (`p1_guard.rs`) and the database layer (`CHECK` constraint). **Violation = sev-0.**
+    **Contractually protected base salary.** Paid monthly in cash. REW enforces a hard floor: no evaluation outcome, parameter change, or agent action can result in a P1 value smaller than the prior period's P1. This protection is enforced at multiple system layers — any attempt to reduce P1 is rejected outright. **Violation = sev-0.**
   </Card>
   <Card title="P2 Allowance" icon="sliders">
     **Role-tier cash allowance.** Tied to position and level (e.g. mentorship allowance for L3+, leadership allowance for managers). P2 can be adjusted upward or downward when a member's tier changes, subject to CHRO approval. Unlike P1, P2 is not contractually floored.
@@ -50,7 +54,7 @@ The close cycle runs from D-3 (three days before month end) through D+3 (publish
     REW's pure-function compute kernel ingests the approved timesheet, leave records, current BP balance, and the parameter version effective at period end. It produces P1, P2, P3, SI, PIT, and net values. No I/O, no clock, no randomness — the same inputs always produce the same output.
   </Step>
   <Step title="Vietnamese Statutory Deductions (D)">
-    The `si_pit.rs` component applies the versioned statutory deductions per Decree 152/2020 and Circular 111/2013:
+    REW applies versioned statutory deductions per Decree 152/2020 and Circular 111/2013:
     - BHXH (employee): **10.5%** of capped base
     - BHYT (employee): **1.5%**
     - BHTN (employee): **1%**
@@ -62,10 +66,10 @@ The close cycle runs from D-3 (three days before month end) through D+3 (publish
     REW surfaces any payslip where the net value moved more than ±20% versus the prior month. HR/Ops reviews and either confirms or adjusts inputs before proceeding.
   </Step>
   <Step title="CFO + CHRO Co-Sign (D+2)">
-    Both the CFO and CHRO must submit WebAuthn assertions within a 5-minute window to commit the cycle. A single-signer commit is rejected by `cosign_guard.rs`. If either signature lapses, both must re-authenticate.
+    Both the CFO and CHRO must submit WebAuthn assertions within a 5-minute window to commit the cycle. A single-signer commit is rejected. If either signature lapses, both must re-authenticate.
   </Step>
   <Step title="CEO Publish + Payslip Archive (D+2 → D+3)">
-    CEO gives final approval. REW renders deterministic PDF payslips via the tectonic LaTeX engine with frozen fonts and fixed timestamp metadata. Each PDF's SHA-256 is stored alongside the payslip row. PDFs are archived to S3 with a 10-year object-lock. Members receive a notification; the payslip portal shows the new entry.
+    CEO gives final approval. REW renders deterministic PDF payslips with fixed fonts and frozen timestamp metadata to ensure byte-identical reproducibility. Each PDF's SHA-256 is stored alongside the payslip row. PDFs are archived to S3 with a 10-year object-lock. Members receive a notification; the payslip portal shows the new entry.
   </Step>
   <Step title="VietQR Payroll Batch (D+3)">
     REW dispatches the payroll batch to Vietnamese banks via VietQR. Multi-currency support covers VND and USD. CFO confirms the batch before wires are sent.
@@ -73,7 +77,7 @@ The close cycle runs from D-3 (three days before month end) through D+3 (publish
 </Steps>
 
 <Warning>
-  Compensation data is structurally excluded from the BRAIN memory store. No agent can read or write payslip data. The memory module receives only opaque event references (e.g. `rew.payslip.published:<opaque_id>`) — never amounts, rates, or component breakdowns. This is enforced by DEC-036 and verified by a CI gate on every pull request.
+  Compensation data is structurally excluded from the BRAIN memory store (DEC-036). No agent can read or write payslip data. The memory module receives only opaque event references (e.g. `rew.payslip.published:<opaque_id>`) — never amounts, rates, or component breakdowns.
 </Warning>
 
 ## Payslip Immutability
@@ -91,9 +95,9 @@ REW maintains strict structural isolation from all other modules.
 | Boundary | Enforcement |
 |---|---|
 | HR cannot read compensation numbers | REW and HR use separate encrypted KMS keyspaces; no JOIN is possible across module schemas. |
-| Agents cannot ingest compensation data | DEC-036 structural exclusion; CI gate inspects every memory-bridge emission against a numeric blocklist. |
+| Agents cannot ingest compensation data | DEC-036 structural exclusion: the memory bridge emits only opaque references, never compensation numbers. |
 | Managers cannot see other members' payslips | `rew.payslip_read` scope is member-self-bound; no manager-scoped read path exists. |
-| Memory stores only opaque references | `memory_bridge.rs` emits `rew.payslip.published:<opaque_id>` — never amounts, rates, or breakdowns. |
+| Memory stores only opaque references | The memory bridge emits `rew.payslip.published:<opaque_id>` — never amounts, rates, or breakdowns. |
 
 ## Quarterly Bonus Orchestration
 

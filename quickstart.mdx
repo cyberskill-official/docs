@@ -1,7 +1,7 @@
 ---
-title: 'Get Started with CyberOS in Minutes'
+title: 'CyberOS Quickstart: Install, Write, and Ship a Task'
 sidebarTitle: 'Quickstart'
-description: 'Install CyberOS into your repository, scaffold your first task, and ship your first change with AI assistance in under 15 minutes.'
+description: 'Install CyberOS into your repository, write your first task, and ship your first change with AI assistance in under fifteen minutes.'
 ---
 
 This guide takes you from zero to a shipped, human-accepted change in under 15 minutes. You will install CyberOS into your repository, write a task that describes what to build, trigger your AI agent, and hold the two human gates that govern every piece of work. No prior CyberOS knowledge required.
@@ -115,6 +115,16 @@ This guide takes you from zero to a shipped, human-accepted change in under 15 m
     /ship-tasks
     ```
 
+    The Claude plugin also supports these commands:
+
+    | Command | What it does |
+    |---------|-------------|
+    | `/ship-tasks` | Drive the next eligible task end to end |
+    | `/install` | Install or re-install CyberOS into the current repo |
+    | `/update` | Update the vendored CyberOS payload to the latest version |
+    | `/changelog` | Show the CyberOS changelog |
+    | `/help` | List all available plugin commands |
+
     Without the plugin, paste this prompt into any file-and-shell agent (Claude, Codex, Cursor, Gemini, Grok, or any other):
 
     ```
@@ -151,6 +161,14 @@ npx cyberos install
 npx cyberos install /path/to/your-repo
 ```
 
+```bash npx update
+# Update the vendored CyberOS payload in the current directory
+npx cyberos update
+
+# Update a specific repo
+npx cyberos update /path/to/your-repo
+```
+
 ```bash terminal install
 # Build the payload from a CyberOS checkout (once)
 bash tools/install/build.sh
@@ -163,6 +181,11 @@ bash /path/to/dist/cyberos/install.sh /path/to/your-repo
 # Verify the memory store is healthy
 python -m cyberos doctor
 # Expected output: READY
+```
+
+```bash export
+# Export the BRAIN memory store to a portable zip
+python -m cyberos export
 ```
 
 </CodeGroup>

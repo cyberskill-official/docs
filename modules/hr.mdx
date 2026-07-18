@@ -1,10 +1,14 @@
 ---
-title: 'HR: Member Lifecycle and Vietnamese Labour Law'
+title: 'HR Module: Member Lifecycle and Vietnamese Labour Law'
 sidebarTitle: 'HR'
 description: 'CyberOS HR manages team member lifecycle from hire to exit, with Vietnamese labour-law compliance, onboarding orchestration, and statutory leave tracking.'
 ---
 
 CyberOS HR is the single source of truth for everyone who works at your company — employees, contractors, and interns alike. It serves HR admins, managers, and members themselves, covering the full arc from pre-hire candidate to final offboarding settlement. The module is Vietnamese-labour-law-first by design: Decree 145/2020 working-hour caps, Decree 13/2023 maternity and paternity entitlements, and PDPL Art. 38 data-protection rules are schema fields, not free-text comments. HR also acts as the Member-id spine for every downstream module — REW, LEARN, ESOP, TIME, CHAT, and AUTH all consume the single canonical roster HR provides.
+
+<Note>
+  HR is a **P1 module** — currently in planned/design phase and not yet generally available. Features described here reflect the planned P1 design.
+</Note>
 
 ## Member Lifecycle State Machine
 
@@ -173,5 +177,5 @@ CyberOS HR enforces Vietnamese regulatory requirements as hard system constraint
 </Accordion>
 
 <Accordion title="BHXH / BHYT / BHTN Profile Fields">
-  Vietnamese social-insurance numbers (BHXH, BHYT, BHTN) are first-class profile fields, not free-text notes. Decree 152/2020 employee contribution rates (BHXH 8%, BHYT 1.5%, BHTN 1%) are version-pinned parameters consumed by REW during the monthly payroll cycle.
+  Vietnamese social-insurance numbers (BHXH, BHYT, BHTN) are first-class profile fields, not free-text notes. Decree 152/2020 employee contribution rates (BHXH 10.5%, BHYT 1.5%, BHTN 1%) are version-pinned parameters consumed by REW during the monthly payroll cycle.
 </Accordion>

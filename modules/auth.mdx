@@ -1,7 +1,7 @@
 ---
-title: 'AUTH: Sign-In, Roles, and Multi-Factor Auth'
+title: 'CyberOS AUTH: Sign-In Options, Roles, and MFA Setup'
 sidebarTitle: 'Auth'
-description: 'CyberOS AUTH handles user authentication with OAuth 2.1, WebAuthn MFA, SSO, and per-tenant role-based access. Every auth event is audit-logged.'
+description: 'Manage sign-in methods, passkey MFA enrollment, role-based access, session revocation, and travel policy exceptions in CyberOS AUTH.'
 ---
 
 CyberOS AUTH is the identity and access layer that secures every module on the platform. It gives you flexible sign-in options — email/password, passkeys, Google SSO, or a company-wide enterprise IdP — and enforces role-based access so each person on your team sees exactly what they need and nothing more. Every sign-in attempt, MFA challenge, role assignment, and session revocation is written to an immutable, hash-chained audit log that you can browse at any time. When AUTH detects a login from an unusual location, it challenges you for a second factor before granting access, keeping your account safe even if your password is compromised.
@@ -18,7 +18,7 @@ CyberOS supports four sign-in paths. Your tenant admin determines which are enab
     If you have enrolled a passkey or FIDO2 security key, you can sign in without typing a password at all. Your device or hardware key handles the authentication ceremony.
   </Card>
   <Card title="Google SSO" icon="google">
-    Click **Sign in with Google** on the login screen. CyberOS handles the OAuth 2.1 + PKCE exchange in the background. No extra setup is required on your end once your admin has connected your Google Workspace.
+    Click **Sign in with Google** on the login screen. No extra setup is required on your end — once your admin has connected your Google Workspace in **Tenant Settings → SSO**, the button appears automatically.
   </Card>
   <Card title="SAML 2.0 Enterprise SSO" icon="building">
     If your company uses Azure AD, Okta, or Google Workspace as its identity provider, your admin can configure SAML 2.0 SSO. You are redirected to your company login page and land back in CyberOS after authenticating there.

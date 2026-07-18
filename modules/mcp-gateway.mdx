@@ -1,13 +1,13 @@
 ---
-title: 'MCP Gateway: Connect Any AI Agent to CyberOS'
+title: 'MCP Gateway: Connect Any AI Agent to CyberOS Tools'
 sidebarTitle: 'MCP Gateway'
-description: 'CyberOS MCP Gateway implements the Model Context Protocol, exposing CyberOS tools and memory to any MCP-compatible agent — Claude, Cursor, Codex, and more.'
+description: 'CyberOS MCP Gateway implements the Model Context Protocol, exposing tools and memory to any MCP-compatible agent — Claude, Cursor, Codex, and more.'
 ---
 
 The Model Context Protocol (MCP) is an open standard donated to the Linux Foundation in December 2025. With over 10,000 public servers already built against the spec, MCP has become the standard way for AI agents to discover and invoke tools in external systems. The CyberOS MCP Gateway implements MCP 2025-11-25, turning all of CyberOS's modules into a single coherent MCP server. Your AI agents — whether Claude Code in your IDE, Cursor, Codex CLI, or a custom agent — connect once and immediately have access to CyberOS's memory, task management, KB search, and audit capabilities through a unified, permission-gated interface.
 
 <Note>
-  The MCP Gateway uses the 2025-11-25 MCP spec (Streamable HTTP transport, Tasks primitive, and Elicitation support).
+  The MCP Gateway uses the 2025-11-25 MCP spec (Streamable HTTP transport, Tasks primitive, and Elicitation support). The MCP Gateway is a P0 module, currently planned.
 </Note>
 
 ## Agents you can connect
@@ -49,8 +49,8 @@ Your connected agent discovers these tools automatically via `tools/list`. The t
   <Accordion title="Memory (BRAIN) tools">
     | Tool | What it does | Annotations |
     |---|---|---|
-    | `cyberos.memory.search_memory` | Search the BRAIN store using semantic similarity — returns ranked memory files with relevance scores and citations | `readOnly: true` |
-    | `cyberos.memory.update_memory` | Write a memory entry to the BRAIN store — creates or replaces the file at the given path with a chained audit row | `idempotent: true` |
+    | `cyberos.memory.search` | Search the BRAIN store using semantic similarity — returns ranked memory files with relevance scores and citations | `readOnly: true` |
+    | `cyberos.memory.write_memory` | Write a memory entry to the BRAIN store — creates or replaces the file at the given path with a chained audit row | `idempotent: true` |
   </Accordion>
   <Accordion title="Knowledge Base tools">
     | Tool | What it does | Annotations |
@@ -61,7 +61,7 @@ Your connected agent discovers these tools automatically via `tools/list`. The t
   <Accordion title="Audit tools">
     | Tool | What it does | Annotations |
     |---|---|---|
-    | `cyberos.memory.audit_append` | Append an audit row to the memory chain — used by agents to record decisions, rationale, or external events with a cryptographic chain link | `idempotent: false`, requires `audit.write` scope |
+    | `cyberos.audit.append` | Append an audit row to the memory chain — used by agents to record decisions, rationale, or external events with a cryptographic chain link | `idempotent: false`, requires `audit.write` scope |
   </Accordion>
 </AccordionGroup>
 
@@ -126,7 +126,7 @@ Once connected, ask your agent to run:
 List the available CyberOS tools.
 ```
 
-You should see all tools your scope grants permit, including `cyberos.memory.search_memory`, `cyberos.skill.task_status`, and `cyberos.kb.search`.
+You should see all tools your scope grants permit, including `cyberos.memory.search`, `cyberos.skill.task_status`, and `cyberos.kb.search`.
 
 ## Tool annotations and safety gates
 

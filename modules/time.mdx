@@ -1,16 +1,20 @@
 ---
-title: 'TIME: Hours, Expenses, and Labour Compliance'
+title: 'TIME: Billable Hours, Expenses, and Labour Compliance'
 sidebarTitle: 'Time'
-description: 'CyberOS TIME tracks billable hours, expenses, and leave with Vietnamese labour-law guardrails, VND expense OCR, and a three-tier approval flow.'
+description: 'CyberOS TIME tracks billable hours, expenses, and leave with Vietnamese labour-law guardrails, hóa đơn OCR, and a three-tier approval flow.'
 ---
 
 TIME is CyberOS's billable-hours engine and the integrity-grade ledger that sits between PROJ and INV. It operates on three primitives: a `TimeEntry` records minutes worked against an Engagement, Project, or Issue with a billable flag; an `Expense` records VND or USD spent with vendor, VAT, and receipt image; a `LeaveRequest` records absence with a type and a multi-step approver flow. What makes TIME more than a simple timesheet is the integrity model — entries are append-only at the audit layer, every correction creates a new row rather than editing the original, and Vietnamese Labour Code caps on regular and overtime hours are enforced as hard system rules. At billing cycle close, TIME rolls up approved billable hours per member per role per Engagement and pushes the summary to INV, where it becomes invoice line items the Account Manager reviews before sending to the client.
+
+<Note>
+  TIME is a P1 module currently in the design phase. This page describes the planned functionality from the user perspective. Refer to the platform roadmap for GA availability details.
+</Note>
 
 ---
 
 ## Logging time
 
-TIME supports three entry modes. Choose the mode that fits how you work; all three produce the same auditable `TimeEntry` row.
+TIME supports three entry modes. Choose the mode that fits how you work; all three produce the same auditable `TimeEntry` record.
 
 <Tabs>
   <Tab title="Timer">
@@ -18,20 +22,20 @@ TIME supports three entry modes. Choose the mode that fits how you work; all thr
 
     <Steps>
       <Step title="Start the timer">
-        Open TIME and click **Start Timer**. Select the Engagement, Project, and Issue you are working on. The timer begins immediately and is stored in Redis so it survives page refreshes.
+        Open TIME and click **Start Timer**. Select the Engagement, Project, and Issue you are working on. The timer begins immediately and continues running even if you navigate elsewhere in CyberOS — the active timer indicator stays visible in the sidebar.
       </Step>
       <Step title="Work">
         The timer runs in the background. You can navigate anywhere in CyberOS; the active timer indicator remains visible in the sidebar.
       </Step>
       <Step title="Stop the timer">
-        Click **Stop Timer** and add a short description of what you did. CyberOS computes the `duration_minutes` from `start_time` and `end_time` as a generated column — you never type a duration.
+        Click **Stop Timer** and add a short description of what you did. CyberOS calculates the duration from your start and stop times automatically — you never type a duration.
       </Step>
     </Steps>
   </Tab>
   <Tab title="Manual entry">
     Use manual entry to log time retroactively — for example, time you spent in a client meeting before you had TIME open.
 
-    Open TIME, click **Log Time**, and enter the date, duration, Engagement, Project, Issue, and a description. The entry is created with `status = draft` and is included in your next weekly submission.
+    Open TIME, click **Log Time**, and enter the date, duration, Engagement, Project, Issue, and a description. The entry is created with a draft status and is included in your next weekly submission.
   </Tab>
   <Tab title="Auto-detect (proposal)">
     CyberOS watches your PROJ activity — Issue status changes, comments, and transitions — and proposes time entries that match that activity.
@@ -48,11 +52,11 @@ TIME supports three entry modes. Choose the mode that fits how you work; all thr
 
 ## Approval flow
 
-Every week you submit your time entries for review. The flow has three tiers, and each step writes an audit row to the memory chain.
+Every week you submit your time entries for review. The flow has three tiers, and each step is recorded in the audit trail.
 
 <Steps>
   <Step title="Member submits weekly">
-    Before the end of each work week (Sunday 23:59 at the latest), select **Submit Week** in TIME. The system validates that there are no overlapping entries and no single entry longer than 12 continuous hours, then locks the entries with `status = submitted` and notifies your Account Manager.
+    Before the end of each work week (Sunday 23:59 at the latest), select **Submit Week** in TIME. The system validates that there are no overlapping entries and no single entry longer than 12 continuous hours, then locks the entries and notifies your Account Manager.
   </Step>
   <Step title="Account Manager reviews">
     Your Account Manager reviews each entry against the Engagement and can **Approve**, **Reject** (with a note), or **Request revision**. Approved entries flow forward to INV at cycle close. Rejected or revision-requested entries return to you as drafts to correct.
@@ -63,7 +67,7 @@ Every week you submit your time entries for review. The flow has three tiers, an
 </Steps>
 
 <Note>
-  You cannot approve your own time entries. The system rejects any approval attempt where the approver ID matches the member ID on the entry.
+  You cannot approve your own time entries. The system rejects any approval attempt where the approver and the member on the entry are the same person.
 </Note>
 
 ---
@@ -74,23 +78,23 @@ Capture expenses by uploading a receipt photo directly from your phone or deskto
 
 <Steps>
   <Step title="Upload the receipt">
-    In TIME, open **Expenses → Capture Expense** and upload or photograph the receipt. CyberOS stores the image in KMS-encrypted S3 and queues an OCR job immediately.
+    In TIME, open **Expenses → Capture Expense** and upload or photograph the receipt. CyberOS stores the image securely and begins processing it immediately.
   </Step>
   <Step title="OCR processes the receipt">
-    The OCR pipeline (AWS Textract at P1) parses the `hóa đơn` structure: vendor name, MST tax code, line items, VAT split, and total. The `vietnam-mst-validate` skill cross-checks the vendor's MST against the GDT registry. The categoriser assigns a chart-of-accounts code (for example, `T&E.meals` or `T&E.travel.taxi`) with a confidence score.
+    The OCR pipeline parses the `hóa đơn` structure: vendor name, MST tax code, line items, VAT split, and total. The `vietnam-mst-validate` skill cross-checks the vendor's MST against the GDT registry. The categoriser assigns a chart-of-accounts code (for example, `T&E.meals` or `T&E.travel.taxi`) with a confidence score.
   </Step>
   <Step title="Confirm and submit">
     Review the extracted fields in the **Confirm Expense** panel. Correct anything the OCR got wrong — the OCR is high-recall but not infallible, and you are the source of truth. Once confirmed, submit the expense for AM approval.
   </Step>
 </Steps>
 
-TIME supports **VND and USD** expenses. Every expense row stores the amount in its original currency plus a Vietcombank FX rate snapshot taken on the expense date, so the VND equivalent on your invoice is always reproducible.
+TIME supports **VND and USD** expenses. Every expense record stores the amount in its original currency plus a Vietcombank FX rate snapshot taken on the expense date, so the VND equivalent on your invoice is always reproducible.
 
 ---
 
 ## Leave requests
 
-FILE leave through TIME's leave management flow. Eight leave types are supported:
+File leave through TIME's leave management flow. Eight leave types are supported:
 
 | Type | Vietnamese | Notes |
 |------|-----------|-------|
@@ -114,7 +118,7 @@ TIME enforces Vietnamese Labour Code Article 107 caps as hard system rules:
 - **Up to 300 hours** of overtime per year — only with documented employee consent and MoLISA notification on file
 
 <Warning>
-  The system will block time entries that would breach the Vietnamese overtime cap. Attempts to exceed 300 hours of annual overtime are blocked at the API level and immediately page the CHRO. There are no exceptions — this is a hard rule, not a warning.
+  The system will block time entries that would breach the Vietnamese overtime cap. Attempts to exceed 300 hours of annual overtime are blocked and immediately page the CHRO. There are no exceptions — this is a hard rule, not a warning.
 </Warning>
 
 The cap enforcer evaluates total hours per ISO week and per calendar year regardless of entry mode (timer, manual, or auto-detect proposal). You cannot work around the cap by mixing entry modes.
@@ -123,18 +127,18 @@ The cap enforcer evaluates total hours per ISO week and per calendar year regard
 
 ## Correction model
 
-TIME entries are **append-only** at the audit layer. You can never edit an existing entry in place. If you need to correct a submitted or approved entry, TIME creates a new row with a `correction_to` link pointing at the superseded row and transitions the original to `status = corrected`.
+TIME entries are **append-only** at the audit layer. You can never edit an existing entry in place. If you need to correct a submitted or approved entry, TIME creates a new corrected entry linked to the superseded original, and marks the original as corrected.
 
 ```
 Original entry A  (status=submitted)
        │
-       └─── Correction B  (correction_to=A, status=submitted)
+       └─── Correction B  (links back to A, status=submitted)
                  │
                  └─── AM approves B → status=approved
                       A → status=corrected
 ```
 
-INV and all downstream consumers read `WHERE correction_to IS NULL AND status = 'approved'` — they always see only the latest approved entry in each correction chain, never the superseded original.
+INV and all downstream consumers always read from the latest approved entry in a correction chain — they never see a superseded original.
 
 <Note>
   This design means every invoice is auditable back to a specific chain of entries with a documented correction history. If a client ever disputes a line item, you can show exactly what was logged, when, and what corrections were made.
@@ -148,13 +152,13 @@ At billing cycle close, TIME runs the per-cycle billable rollup and pushes a sum
 
 <Steps>
   <Step title="Rollup trigger">
-    The weekly cron (Monday 10:00) or a manual Account Manager trigger initiates the rollup for the closed week or billing period.
+    The scheduled rollup (every Monday morning) or a manual Account Manager trigger initiates the rollup for the closed week or billing period.
   </Step>
   <Step title="Billable hours aggregated">
-    TIME queries all approved entries where `billable = true` and `correction_to IS NULL`, grouped by Engagement, member, and role. The query applies the rate-card snapshot stored on each entry — not the current rate card — so retroactive rate changes never affect closed periods.
+    TIME collects all approved billable entries for the period, grouped by Engagement, member, and role. Each entry uses the rate-card snapshot recorded at entry time — not the current rate card — so retroactive rate changes never affect closed periods.
   </Step>
   <Step title="Summary pushed to INV">
-    TIME pushes the rollup to INV with each line item containing Engagement ID, member, role, hours, rate-card snapshot, and VND total. INV creates a draft invoice for the Account Manager to review before sending to the client.
+    TIME pushes the rollup to INV with each line item containing Engagement, member, role, hours, rate-card snapshot, and VND total. INV creates a draft invoice for the Account Manager to review before sending to the client.
   </Step>
 </Steps>
 

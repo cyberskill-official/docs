@@ -1,5 +1,5 @@
 ---
-title: 'ESOP: Equity Grants, Vesting, and Cap Table'
+title: 'ESOP Module: Phantom Stock Grants, Vesting, and Cap Table'
 sidebarTitle: 'ESOP'
 description: 'CyberOS ESOP manages employee stock option plan grants, vesting schedules, and cap table visibility — integrated with HR lifecycle events.'
 ---
@@ -30,7 +30,7 @@ A grant represents a member's allocation of Synthetic Phantom (SP) units. Grants
     When a new member is eligible for a founding grant, HR's onboarding orchestrator emits an `hr.member.joined` event. ESOP receives this event and opens a draft grant record for the CEO and CFO to review.
   </Step>
   <Step title="Three-Way Co-Sign">
-    The CEO, CFO, and a Board designate each submit a WebAuthn assertion. All three signatures must arrive within a 24-hour window. Any single-signer attempt is rejected by `cosign_guard.rs`.
+    The CEO, CFO, and a Board designate each submit a WebAuthn assertion. All three signatures must arrive within a 24-hour window. Any single-signer attempt is rejected.
   </Step>
   <Step title="Grant Committed">
     Once all three signatures are recorded, ESOP inserts the immutable grant row, renders a deterministic PDF (SHA-256 archived to S3 with a 10-year object-lock), and updates `pool_balance.issued_sp`.
@@ -98,7 +98,7 @@ ESOP is tightly integrated with HR's member lifecycle. Several HR state transiti
 | Required approvals | CFO confirms | CEO + CFO co-sign (mandatory) |
 
 <Warning>
-  The Good/Bad Leaver branch is a human-only decision. No system path selects the branch automatically. The `leaver.rs` component waits for explicit CEO + CFO WebAuthn signatures before writing the `GRANT_TERMINATION` row. Any attempt to automate this decision is a sev-0 compliance violation.
+  The Good/Bad Leaver branch is a human-only decision. No system path selects the branch automatically. The branch is not recorded until both the CEO and CFO have submitted their WebAuthn signatures. Any attempt to automate this decision is a sev-0 compliance violation.
 </Warning>
 
 ## Cap Table Visibility
