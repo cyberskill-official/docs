@@ -1,0 +1,177 @@
+---
+title: 'HR: Member Lifecycle and Vietnamese Labour Law'
+sidebarTitle: 'HR'
+description: 'CyberOS HR manages team member lifecycle from hire to exit, with Vietnamese labour-law compliance, onboarding orchestration, and statutory leave tracking.'
+---
+
+CyberOS HR is the single source of truth for everyone who works at your company — employees, contractors, and interns alike. It serves HR admins, managers, and members themselves, covering the full arc from pre-hire candidate to final offboarding settlement. The module is Vietnamese-labour-law-first by design: Decree 145/2020 working-hour caps, Decree 13/2023 maternity and paternity entitlements, and PDPL Art. 38 data-protection rules are schema fields, not free-text comments. HR also acts as the Member-id spine for every downstream module — REW, LEARN, ESOP, TIME, CHAT, and AUTH all consume the single canonical roster HR provides.
+
+## Member Lifecycle State Machine
+
+A member moves through a defined set of states from the moment an offer letter is generated to the moment the employment relationship ends. Each state transition fires events that downstream modules consume automatically — you never need to manually update AUTH, TIME, or ESOP separately.
+
+<Steps>
+  <Step title="Pre-hire → Offer">
+    HR/Ops generates an offer letter via the contract engine. The candidate receives a WebAuthn e-sign link through DOC. The member row is created in `pre_hire` status and does not yet consume a licence seat.
+  </Step>
+  <Step title="Offer → Probation">
+    The candidate signs and the contract's `start_date` is reached. Status moves to `probation`. AUTH provisions a subject account with time-limited scopes. The onboarding orchestrator fires immediately.
+  </Step>
+  <Step title="Probation → Active">
+    After the default 60-day probation window (configurable per contract), HR/Ops marks probation passed. Status becomes `active`. Full scopes apply. Leave accrual begins. ESOP founding-grant eligibility is evaluated.
+  </Step>
+  <Step title="Active → On Leave">
+    Any approved leave request of five or more days transitions the member to `on_leave`. TIME marks the calendar; CHAT sets an away status automatically.
+  </Step>
+  <Step title="Active → Sabbatical">
+    When the sabbatical eligibility tick reaches five continuous years and the member opts in, status becomes `sabbatical`. Vesting continues; KB authorship requirements apply.
+  </Step>
+  <Step title="Any → Suspended">
+    HR/Ops or CHRO can place a member in `suspended` status pending investigation. AUTH scopes are restricted; the member cannot submit timesheets or leave requests.
+  </Step>
+  <Step title="Active → Terminating → Terminated">
+    The CHRO initiates termination. CEO co-sign is required for Bad-Leaver ESOP branch decisions. Once both signatures are recorded, the offboarding orchestrator runs: AUTH revokes all sessions within a 5-second SLO, REW computes final pay, ESOP branches to Good or Bad Leaver, and asset-return tasks are opened.
+  </Step>
+</Steps>
+
+<Note>
+  Every state transition writes an immutable audit row to the memory module and emits a NATS event (e.g. `hr.member.joined`, `hr.member.terminated`). Downstream modules consume these events; you do not need to trigger them manually.
+</Note>
+
+## Onboarding Orchestration
+
+When a new member transitions to `active`, HR fires a multi-module onboarding playbook automatically. The entire fan-out runs as an idempotent saga — if one downstream step times out, it retries without re-executing steps that already succeeded.
+
+<Steps>
+  <Step title="AUTH — Account Provisioning">
+    AUTH creates a subject record, assigns role-scoped permissions, and sends the member a temporary passkey-enrolment link. This happens first; all subsequent steps depend on a live identity.
+  </Step>
+  <Step title="LEARN — Role Enrolment">
+    LEARN seeds the member's skill profile and enrols them in the role-based reading list and any mandatory onboarding modules for their discipline.
+  </Step>
+  <Step title="KB — Access Grant">
+    KB grants read access to the documentation scopes appropriate for the member's role level. Restricted documents remain gated until the manager explicitly adds scopes.
+  </Step>
+  <Step title="PROJ — Ramp-Plan Issues">
+    PROJ creates the structured ramp-plan issues: shadow these engagements, read these memory entries, complete the onboarding rubric by day 30.
+  </Step>
+  <Step title="CHAT — Workspace Provisioning">
+    CHAT adds the member to the default workspaces (`#general`, their team channel, and any channels specified by the manager).
+  </Step>
+  <Step title="Checklist Visibility">
+    The day-by-day onboarding checklist is visible to the manager, the new hire, and the CHRO simultaneously. Any step blocked for more than 24 hours triggers an automated alert.
+  </Step>
+</Steps>
+
+<Tip>
+  The onboarding orchestrator carries an idempotency key per step. If the playbook is re-fired (e.g. after a system restart), only incomplete steps execute — already-provisioned accounts are not duplicated.
+</Tip>
+
+## Leave Management
+
+HR tracks eight leave types, each with a Vietnamese statutory basis. Entitlements are first-class schema fields — they accrue automatically, enforce caps at write time, and are auditable by a Decree 13/2023 inspector without any manual data export.
+
+### Leave Type Catalogue
+
+| Code | Statutory Basis | Default Entitlement | Notes |
+|---|---|---|---|
+| `annual` | Labour Code Art. 113 | 12 working days/yr (≥ 5 yrs service: +1 day per 5 yrs) | Accrues quarterly per Decree 145; max 30-day carryover. |
+| `sick` | Decree 152/2020 Art. 26 | 30 / 40 / 60 days/yr (tier by BHXH service period) | Medical certificate required for requests ≥ 3 days. |
+| `maternity` | Labour Code Art. 139 | 6 months | Twins: +30 days per additional child. BHXH-funded. |
+| `paternity` | Decree 152/2020 Art. 34 | 5–14 working days | 5 days standard, 7 for C-section, extended for multiples. |
+| `sabbatical` | CyberSkill Total Rewards Appendix | 4 weeks per 5 continuous years | Eligibility tracked by the `SABBATICAL_TICK` counter. |
+| `unpaid` | Labour Code Art. 115 | By agreement | Used beyond annual and sick allocations. |
+| `bereavement` | Labour Code Art. 115 | 3 days (immediate family) | Covers direct ascendants, descendants, and spouse. |
+| `public_holiday` | Labour Code Art. 112 | 11 days/yr (VN) | Auto-charged from the public-holiday calendar; no request needed. |
+
+### Annual Leave Accrual
+
+Annual leave accrues automatically each quarter based on the rules in Decree 145/2020. You do not need to run a manual accrual job — the system updates `leave_balance.annual_remaining` at each quarter boundary.
+
+<Note>
+  The accrual is computed lazily at quarter boundaries rather than in real time, which keeps audit outputs deterministic and reproducible. The exact accrual date is visible in `leave_balance.last_accrual_at`.
+</Note>
+
+### Sick Leave Self-Reporting
+
+Members self-report sick leave. The system validates the submission against the BHXH-tier cap at write time and rejects any request that would exceed the statutory ceiling. If a medical certificate is required (requests ≥ 3 days), the system marks the request as pending until the document is attached or waived by the approving manager.
+
+## Contract Types
+
+HR supports five contract types, each with automatic renewal-reminder logic.
+
+<CardGroup cols={2}>
+  <Card title="Indefinite" icon="infinity">
+    Open-ended employment. No `effective_to`. Amendments append a supersession row; the original contract is never mutated.
+  </Card>
+  <Card title="Fixed-Term" icon="calendar">
+    Has a defined `effective_to`. The system sends a renewal reminder **90 days before expiry** so you never miss the statutory window.
+  </Card>
+  <Card title="Probation" icon="clock">
+    60-day default (configurable). Transitions automatically to indefinite or fixed-term on pass, or triggers offboarding on fail.
+  </Card>
+  <Card title="Part-Time" icon="hourglass-half">
+    Pro-rated leave entitlements and timesheet limits. Decree 145/2020 overtime caps apply proportionally.
+  </Card>
+  <Card title="Contractor" icon="file-signature">
+    No BHXH/BHYT/BHTN obligations. Treated as deferred-compensation scope in REW; no leave accrual.
+  </Card>
+</CardGroup>
+
+<Warning>
+  Missing a fixed-term renewal triggers a Vietnamese labour-law compliance issue. The 90-day reminder is automated, but confirming the renewed contract before `effective_to` is a manual CHRO obligation.
+</Warning>
+
+## PII Protection
+
+HR stores government-issued ID photos (CCCD) in a **separate KMS keyspace** from all other HR data. This means a query against the `member` table cannot accidentally over-fetch CCCD data — the photo columns live in an isolated `cccd_record` table encrypted under a distinct key.
+
+<Warning>
+  Every read of a CCCD photo generates a severity-1 access audit row in the memory module. Bulk exports of CCCD photos are structurally blocked — the admin REST endpoint returns a 30-second pre-signed S3 URL only, one record at a time.
+</Warning>
+
+Key PII boundaries enforced at the schema level:
+
+- **CCCD photos** — distinct KMS key, sev-1 audit on every read, never resolvable through GraphQL.
+- **Contract PDFs** — KMS-wrapped, stored in S3 with 10-year object-lock, accessible via time-limited pre-signed URLs only.
+- **Compensation data** — structurally absent from all HR tables. REW owns all compensation numbers (see [REW](/modules/rew)).
+
+## Performance Signals
+
+HR aggregates read-only performance signals from three modules to support 1:1 preparation and quarterly reviews. HR **never writes** to these signals and **never holds compensation numbers** — REW owns those.
+
+<Tabs>
+  <Tab title="PROJ Signals">
+    HR reads calibration drift rates and blocker authoring rates from PROJ. These surface in the manager's 1:1 prep dashboard as context, not as evaluation scores.
+  </Tab>
+  <Tab title="TIME Signals">
+    HR reads hour-discipline metrics — whether a member's logged hours are consistent with their contract type and the Decree 145/2020 overtime caps.
+  </Tab>
+  <Tab title="LEARN Signals">
+    HR reads course completion rates and skill mastery progression from LEARN. These feed into quarterly review preparation and inform HR's compensation-recommendation inputs to REW.
+  </Tab>
+</Tabs>
+
+<Note>
+  Aggregated performance signals are inputs to a human decision — they are never applied automatically to compensation. REW's compensation change flow requires CHRO + CFO co-sign regardless of what HR signals indicate.
+</Note>
+
+## Vietnamese Labour Law Compliance
+
+CyberOS HR enforces Vietnamese regulatory requirements as hard system constraints, not advisory warnings.
+
+<Accordion title="Decree 145/2020 — Working-Hour Caps">
+  The standard overtime limit is 200 hours per year. With employee consent and MoLISA notification, the cap rises to 300 hours. TIME rejects any timesheet submission that would push a member past the applicable cap; HR exposes the member's current cap-status via an MCP read tool so the CUO router can surface it in context.
+</Accordion>
+
+<Accordion title="Decree 13/2023 + Labour Code 2019 — Maternity / Paternity">
+  Maternity leave is six months (Labour Code Art. 139), extended for multiple births. Paternity leave ranges from 5 to 14 working days depending on birth circumstances (Decree 152/2020 Art. 34). HR requires HR/Ops to attach the statutory-basis tag when approving either leave type, creating an auditable eligibility record.
+</Accordion>
+
+<Accordion title="PDPL Art. 38 — Personal Data Rights">
+  Members can request a full DSAR export of their HR data (profile, leave records, contracts, non-compensation documents) within 30 days of request. Compensation data is excluded from the HR-scoped DSAR — that export runs separately through REW.
+</Accordion>
+
+<Accordion title="BHXH / BHYT / BHTN Profile Fields">
+  Vietnamese social-insurance numbers (BHXH, BHYT, BHTN) are first-class profile fields, not free-text notes. Decree 152/2020 employee contribution rates (BHXH 8%, BHYT 1.5%, BHTN 1%) are version-pinned parameters consumed by REW during the monthly payroll cycle.
+</Accordion>

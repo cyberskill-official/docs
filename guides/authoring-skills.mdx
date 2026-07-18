@@ -1,0 +1,174 @@
+---
+title: 'Create a Custom CyberOS Skill'
+sidebarTitle: 'Authoring Skills'
+description: 'Build a custom author/audit skill pair for CyberOS: scaffold from the template, define your SKILL.md contract, and wire it into the CUO workflow chain.'
+---
+
+Authoring a custom CyberOS skill lets you extend the platform with new artifact types, domain-specific document generation, or custom workflows beyond the built-in catalog. CyberOS ships 52 skills out of the box (covering everything from statements of work to architecture decision records), but your team's domain will have artifact types that are unique to your product — a custom skill pair gives you the same governed, auditable, human-in-the-loop workflow for those artifacts that the platform provides for everything else.
+
+## The author/audit pair pattern
+
+Every artifact type in CyberOS is represented by two skills:
+
+| Skill | Role |
+|---|---|
+| `<artifact>-author` | Generates the artifact from source inputs, halts at HITL gates, and chains to the audit skill by default. |
+| `<artifact>-audit` | Validates the generated artifact against a rubric, produces a `.audit.md` report, and assigns a score. |
+
+The author writes; the audit audits. They are separate skills that chain together. You must ship both — an author without a matching audit is not a complete release.
+
+---
+
+<Steps>
+  <Step title="Pick a name">
+    Skill names use `kebab-case`, lowercase, letters and digits only. Follow the `<artifact>-author` / `<artifact>-audit` convention.
+
+    Good examples from the existing catalog:
+    - `statement-of-work-author` / `statement-of-work-audit`
+    - `task-author` / `task-audit`
+    - `product-requirements-document-author` / `product-requirements-document-audit`
+
+    Choose a name that clearly identifies the artifact type. If you're unsure, look at the existing catalog in `.cyberos/cuo/skills/` for naming patterns.
+  </Step>
+
+  <Step title="Copy the scaffold">
+    From your `.cyberos/cuo/skills/` directory, copy both template directories:
+
+    ```bash
+    cd .cyberos/cuo/skills
+    cp -r _template/author my-artifact-author
+    cp -r _template/audit  my-artifact-audit
+    ```
+
+    Each template directory contains the full set of required files. You will fill in the artifact-specific content in the following steps.
+  </Step>
+
+  <Step title="Fill in the author SKILL.md">
+    Open `my-artifact-author/SKILL.md` and replace every `<ARTIFACT>` and `<artifact>` placeholder with your artifact's name (uppercase and lowercase respectively). Key fields to update:
+
+    - **`name`** — set to `my-artifact-author`
+    - **`description`** — describe when to invoke this skill and what it produces
+    - **`expects.required_fields`** — list the input fields the skill requires (e.g. `source_files`, `output_dir`)
+    - **`produces.output_kind`** — set to `artefact`
+    - **`depends_on_contracts`** — reference your artifact's contract definition
+
+    Leave the scope contract, MCP tools, escalation rules, and self-audit fields as-is unless you have a specific reason to change them.
+  </Step>
+
+  <Step title="Write the supporting author documents">
+    Fill in the remaining files in `my-artifact-author/`:
+
+    | File | What to write |
+    |---|---|
+    | `INVARIANTS.md` | List the self-audit checks the skill must pass on every invocation (confidence streaks, correction streaks, scope violations). |
+    | `PIPELINE.md` | Describe how the skill produces its artifact step by step and how it chains to the audit sibling. |
+    | `STANDALONE_INTERVIEW.md` | Write the questions the skill asks when invoked in chat mode without a structured input envelope. |
+    | `HUMAN_SUMMARY.md` | Define what the user sees in chat after each batch completes. |
+    | `references/` | Copy verbatim from the template: `ANTI_FABRICATION.md`, `UNTRUSTED_CONTENT.md`, `HITL_PROTOCOL.md`, `FAILURE_MODES.md`, `MANIFEST_SCHEMA.md`. Customise only `HITL_PROTOCOL.md` (HITL categories) and `MANIFEST_SCHEMA.md` (schema fields). |
+  </Step>
+
+  <Step title="Define input and output schemas">
+    Edit the JSON Schema files in `my-artifact-author/envelopes/`:
+
+    ```json title="envelopes/input.json (example)"
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "required": ["source_files", "output_dir"],
+      "properties": {
+        "source_files": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "output_dir": { "type": "string" },
+        "batch_size": { "type": "integer", "default": 3 },
+        "chain_to": {
+          "type": "array",
+          "default": ["my-artifact-audit"]
+        }
+      }
+    }
+    ```
+
+    The output schema (`envelopes/output.json`) should include `skill_id`, `batch_outcome`, `artefacts_written`, and `next_skill_recommendation`.
+  </Step>
+
+  <Step title="Fill in the audit SKILL.md and RUBRIC.md">
+    Open `my-artifact-audit/SKILL.md` and replace placeholders — the description should declare which rubric version it implements (e.g. `my_artifact_rubric@1.0`).
+
+    Then write `my-artifact-audit/RUBRIC.md`. This is the most important file in the audit skill — it defines the specific rules the audit applies. Follow the structure from `task-audit/RUBRIC.md` in the skill catalog:
+
+    - Use stable `rule_id` strings (e.g. `FM-001`, `SEC-001`, `QA-001`)
+    - Group rules into families: `FM` (fabrication), `SEC` (security), `COND` (conditional), `QA` (quality), `SAFE` (safety), `STALE` (freshness)
+    - Each rule should be falsifiable — the audit skill must be able to produce a clear pass/fail for it
+  </Step>
+
+  <Step title="Add acceptance fixtures and iterate">
+    In `my-artifact-author/acceptance/` and `my-artifact-audit/acceptance/`, add golden fixture files — sample inputs and the expected outputs your skills should produce.
+
+    Run the audit skill against a sample output from your author skill:
+
+    ```
+    Skill: my-artifact-audit
+    Input: { "artefact_paths": ["./sample/MY-ARTIFACT-001-example.md"] }
+    ```
+
+    Iterate until the audit skill scores 10/10 on every sample. Do not ship below 10/10.
+  </Step>
+
+  <Step title="Wire chaining (optional)">
+    To have the author skill automatically invoke the audit skill after each artifact is written, set the default value of `chain_to` in the author's `envelopes/input.json`:
+
+    ```json
+    "chain_to": {
+      "type": "array",
+      "default": ["my-artifact-audit"]
+    }
+    ```
+
+    The CUO supervisor reads `produces.next_skill_recommendation` from the output envelope and queues the audit skill unless the user opts out. Set `chain_to` to an empty array to disable automatic chaining.
+  </Step>
+</Steps>
+
+---
+
+## Key SKILL.md fields
+
+| Field | Purpose |
+|---|---|
+| `name` | Unique skill identifier (kebab-case) |
+| `description` | When to invoke, what it produces, and what it does NOT do |
+| `license` | `Apache-2.0` for CyberOS skills |
+| `invocation_modes` | `[standalone, chained]` for most skills |
+| `expects.required_fields` | Input fields the skill cannot run without |
+| `expects.optional_fields` | Optional inputs including `chain_to` |
+| `produces.output_kind` | `artefact` for document-generating skills |
+| `allowed_memory_scopes` | What the skill may read and write in the BRAIN |
+| `allowed_mcp_tools` | MCP tools the skill is permitted to call |
+| `escalation` | Which CUO persona to escalate to on legal, security, or compliance issues |
+
+---
+
+## What happens when the skill is invoked
+
+When an agent invokes your skill, CyberOS:
+
+1. Loads `SKILL.md` and emits a `CONTRACT_ECHO` block before any file action
+2. Validates the input envelope against `envelopes/input.json`
+3. Runs the pipeline defined in `PIPELINE.md`
+4. Writes the artifact to `output_dir` and computes its hash
+5. Chains to the audit skill if `chain_to` is non-empty
+6. Emits a batch summary and halts on any HITL pause
+
+<Tip>
+  Start from an existing skill that is close to what you want. `task-author` is the most complete reference — it covers the full pipeline, HITL gates, manifest state machine, and chaining pattern. Read it before writing your own.
+</Tip>
+
+<CardGroup cols={2}>
+  <Card title="Skill module" icon="puzzle-piece" href="/modules/skill">
+    Browse the full catalog of 52 built-in author/audit skill pairs.
+  </Card>
+  <Card title="Ship Tasks Workflow" icon="arrow-right-arrow-left" href="/guides/ship-tasks-workflow">
+    Understand how skills fit into the end-to-end task lifecycle.
+  </Card>
+</CardGroup>

@@ -1,0 +1,197 @@
+---
+title: 'OBS: Observability, Alerts, and Runbooks'
+sidebarTitle: 'OBS'
+description: 'CyberOS OBS gives tenants visibility into platform health, AI cost trends, and compliance posture — with auto-runbook routing powered by KB.'
+---
+
+OBS is the observability plane that runs underneath every CyberOS module. As a tenant admin or operator, you interact with OBS through the CyberOS dashboard — not by configuring log shippers or managing a separate monitoring tool. OBS surfaces the platform's health, your AI cost trends, AI session traces (powered by LangSmith), and a compliance posture view of your tenant's audit history. When something goes wrong, OBS can consult your KB runbook catalogue and route the alert to the right channel before a human ever gets paged.
+
+<Note>
+  OBS is a P0 module integrated into the core platform — you interact with it through the CyberOS dashboard and alert channels.
+</Note>
+
+## Dashboard views
+
+Open **Settings → Observability** in your CyberOS dashboard to access the following views. All views are scoped to your tenant — you cannot see another tenant's metrics or logs.
+
+<CardGroup cols={2}>
+  <Card title="Platform health" icon="heart-pulse">
+    Real-time SLO status for the platform services your tenant depends on. See current availability, p95 latency, and error-budget burn rate for CHAT, AUTH, AI Gateway, and MCP Gateway.
+  </Card>
+  <Card title="AI cost trends" icon="chart-line">
+    Rolling charts of your AI token consumption and USD cost, fed directly from the AI Gateway cost ledger. Drill down by module, skill, or agent persona to identify cost drivers.
+  </Card>
+  <Card title="Agent session tracing" icon="route">
+    Full LLM call traces for CUO sessions, powered by LangSmith. See the prompt, completion, tool calls, and decision rationale for any AI session in your tenant's history.
+  </Card>
+  <Card title="Compliance posture" icon="shield-check">
+    A read-only view of your tenant's compliance-relevant audit events. Filter by regulation (EU AI Act, PDPL, SOC 2) to see the decision rows auditors need.
+  </Card>
+</CardGroup>
+
+### Platform health metrics
+
+The platform health dashboard shows SLO status for each service:
+
+| Service | SLO target | What the indicator measures |
+|---|---|---|
+| Platform (aggregate) | ≥ 99.5% availability | Composite of all module SLOs |
+| CHAT | ≥ 99.9% availability | Message delivery success rate |
+| AI Gateway | ≥ 99.9% availability · p95 ≤ 2 s | Inference request success + latency |
+| AUTH | ≥ 99.95% availability | Login and token-issuance success |
+| MCP Gateway | ≥ 99.95% availability · write tool p95 ≤ 1 s | Tool call success + latency |
+
+### AI cost trend charts
+
+The AI cost chart reads directly from the AI Gateway cost ledger. Each data point shows:
+
+- **Token consumption** — input + output tokens by day/week/month
+- **USD cost** — estimated spend based on the provider rate at the time of the call
+- **Breakdown by module** — which CyberOS feature (chat, skill, kb) drove the spend
+- **Breakdown by skill** — per-skill token spend for automation workflows
+
+<Tip>
+  Set an AI cost alert threshold (described below) to receive a notification before your tenant approaches the monthly quota cap. This gives you time to adjust usage patterns before requests are blocked.
+</Tip>
+
+### Agent session tracing
+
+The tracing view integrates with LangSmith to show full AI session traces for CUO. For each session you can see:
+
+- The conversation thread that triggered the session
+- Every LLM call in the session, with input/output token counts and latency
+- Tool calls the agent made (memory lookups, KB searches, skill invocations)
+- The final decision and any reasoning the agent recorded in memory
+
+All traces are correlated by a W3C `trace_id` that links back to the operational HTTP trace, so you can jump from "why did this CHAT response take 8 seconds?" directly to the LLM call that explains it.
+
+## Alerts
+
+### Configuring alert thresholds
+
+Open **Settings → Observability → Alerts** to configure thresholds for your tenant.
+
+<ParamField path="ai_cost_threshold_pct" type="number" default="80">
+  Percentage of your monthly AI token quota at which you receive a warning alert. Set to `80` to get notified when you have consumed 80% of your budget.
+</ParamField>
+
+<ParamField path="error_rate_threshold_pct" type="number" default="5">
+  Percentage error rate on API calls that triggers a warning. Set to `5` to alert when more than 5% of requests in a 5-minute window return errors.
+</ParamField>
+
+<ParamField path="latency_p95_ms" type="number" default="2000">
+  p95 latency threshold in milliseconds for AI Gateway requests. Alerts when the 95th percentile latency exceeds this value for more than 5 minutes.
+</ParamField>
+
+### Available alert types
+
+| Alert | Default severity | Default routing |
+|---|---|---|
+| AI cost cap approaching (80% of quota) | Warning | CHAT `#alerts` channel |
+| AI cost cap reached (100% of quota) | Critical | CHAT `#alerts` + email to tenant admins |
+| Platform availability degraded | Critical | PagerDuty + CHAT `#alerts` |
+| Error rate spike (> 5% for 5 min) | Warning | CHAT `#alerts` |
+| Latency p95 exceeds threshold | Warning | CHAT `#alerts` |
+| AI provider outage (failover active) | Info | CHAT digest |
+| Agent session anomaly (persona drift) | Info | Daily CUO digest |
+
+### Alert routing
+
+OBS routes alerts in severity order:
+
+<Steps>
+  <Step title="Alert fires">
+    Prometheus evaluates the alert rule. When the condition has been met for the configured duration, the alert transitions to Firing state.
+  </Step>
+  <Step title="CUO triage">
+    Before any human is notified, OBS invokes the `obs.execute_triage` skill. CUO consults your KB runbook catalogue and assigns a confidence score to the best matching runbook.
+  </Step>
+  <Step title="Routing decision">
+    If CUO confidence is ≥ 0.70 **and** severity is P2 or lower, a self-service ticket is created in your CHAT `#alerts` channel with the runbook link and suggested first step. If confidence is below 0.70 **or** severity is P0/P1, the alert escalates to PagerDuty with the suggested runbook pre-attached.
+  </Step>
+  <Step title="Acknowledgement">
+    Your on-call acknowledges the alert in CHAT or PagerDuty. The acknowledgement is recorded in the memory audit chain.
+  </Step>
+</Steps>
+
+<Warning>
+  P0 (platform down) and P1 (severely impaired) alerts always escalate to PagerDuty regardless of CUO triage confidence. This override cannot be changed per-tenant — it is a platform safety guarantee.
+</Warning>
+
+## Auto-runbook routing
+
+When an alert fires, OBS consults KB for matching runbooks automatically. The more runbooks you publish, the more alerts OBS can handle without paging anyone.
+
+### Publishing runbooks to KB for OBS
+
+To have OBS find and suggest your runbooks automatically:
+
+<Steps>
+  <Step title="Write the runbook">
+    Create a KB document in the `runbooks/` path of your knowledge base. Include the alert name or signature in the document title or first paragraph so the semantic search can match it.
+  </Step>
+  <Step title="Tag the runbook">
+    Add front-matter tags for the applicable providers, services, and alert types. This helps CUO filter runbooks to those relevant to the specific alert context.
+
+    ```markdown
+    ---
+    title: "Increase Bedrock quota when AI latency spikes"
+    tags: [runbook, ai-gateway, bedrock, latency]
+    applies_to: [sg-1, us-1]
+    alert_signature: AIGatewayLatencyHigh
+    ---
+    ```
+  </Step>
+  <Step title="Publish to KB">
+    Ingest the document into your KB corpus. OBS's triage skill uses semantic search against your KB, so the runbook is discoverable within minutes of ingestion.
+  </Step>
+</Steps>
+
+<Tip>
+  After each incident, add a runbook for the root cause. The next time a similar alert fires, CUO will find it, and the alert may never need to page a human again. The target is ≥ 60% of alerts auto-runbookable by the end of P1.
+</Tip>
+
+## Compliance posture view
+
+The compliance posture view surfaces the audit events most relevant to each regulatory framework your tenant operates under. Tenant admins can access this view; external auditors can be granted time-bound read-only access.
+
+### What you see per framework
+
+| Framework | Events surfaced | Minimum retention |
+|---|---|---|
+| **EU AI Act (Art. 12)** | All AI invocation rows for EU-residency tenants — persona, decision rationale, human-confirm events | 6 months |
+| **Vietnam PDPL (Art. 14)** | Per-subject decision rows filtered to Vietnamese data subjects; all processing events for a subject | 1 year |
+| **SOC 2 Type II** | Access events, privilege changes, backup events, SLO breaches | 1 year |
+| **ISO 27001:2022** | Security audit rows, risk register updates, control changes | 3 years |
+
+### Exporting compliance evidence
+
+To export a signed bundle for an auditor:
+
+<Steps>
+  <Step title="Request the export">
+    In **Settings → Observability → Compliance**, select the regulation, time window, and (for PDPL/GDPR) the data subject ID. Click **Generate Export**.
+  </Step>
+  <Step title="Receive the bundle">
+    OBS generates a signed JSON bundle containing the filtered audit rows, chain anchors, and a chain-of-custody manifest signed with Ed25519. The bundle URL is valid for 24 hours.
+  </Step>
+  <Step title="Provide to auditor">
+    Share the bundle with your auditor. They can independently verify the chain integrity by recomputing the hash from the exported rows and comparing it to the manifest anchors — no CyberOS access required.
+  </Step>
+</Steps>
+
+## Data retention
+
+Retention tiers are governed by your plan and residency:
+
+| Signal type | Hot tier | Warm tier | Cold / compliance tier |
+|---|---|---|---|
+| Logs | 7 days | 90 days (S3) | 1 year (Glacier) |
+| Traces | 7 days | 30 days (S3) | — |
+| Metrics | 15 days | 1 year (P1+) | — |
+| AI traces (LangSmith) | 90 days | 1 year | — |
+| Memory audit chain | Indefinite (append-only) | Indefinite | Indefinite |
+
+<Note>
+  Decision logs (AI invocation audit rows) are retained for a minimum of 180 days to satisfy EU AI Act Art. 12. Tenant admins can configure longer retention overrides in **Settings → Tenancy → Data Retention**, but cannot set retention below the regulatory minimum without DPO approval.
+</Note>

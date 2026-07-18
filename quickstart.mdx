@@ -1,47 +1,177 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: 'Get Started with CyberOS in Minutes'
+sidebarTitle: 'Quickstart'
+description: 'Install CyberOS into your repository, scaffold your first task, and ship your first change with AI assistance in under 15 minutes.'
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+This guide takes you from zero to a shipped, human-accepted change in under 15 minutes. You will install CyberOS into your repository, write a task that describes what to build, trigger your AI agent, and hold the two human gates that govern every piece of work. No prior CyberOS knowledge required.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+
+  <Step title="Prerequisites">
+    Before you install, make sure you have the following available:
+
+    - **Python 3.11+** — the CyberOS memory module and doctor command run on Python.
+    - **Node 24+** — required for the `npx cyberos` CLI and the MCP server.
+    - **An AI agent** — CyberOS works with Claude, Codex, Cursor, Gemini, Grok, Command Code, Windsurf, Copilot, and any other file-and-shell agent. The Claude plugin gives you the most seamless experience with one-command `/ship-tasks` access, but it is not required.
+
+    Your existing codebase does not need any changes. CyberOS installs entirely under a gitignored `.cyberos/` folder and a tracked `docs/tasks/` folder — it never touches your source files.
+  </Step>
+
+  <Step title="Install via npx (recommended)">
+    Run the following command from your repository root:
 
     ```bash
-    npm install your-package
+    npx cyberos install
     ```
+
+    This single command does everything you need to get started:
+
+    - **Vendors the `.cyberos/` folder** — the CUO workflow engine, the BRAIN memory protocol, the plugin, and the gate runner land under `.cyberos/`, which is immediately added to your `.gitignore`.
+    - **Scaffolds `docs/tasks/BACKLOG.md`** — your task index is created if it does not already exist. Existing files are never overwritten.
+    - **Creates the local BRAIN store** at `.cyberos/memory/store/` — your append-only, audit-chained memory store is ready from the first run.
+    - **Writes agent entry files** — `AGENTS.md` (the canonical cross-tool spine), `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, and per-agent skill directories are created as needed, so every skill-aware agent can drive the workflow immediately.
+    - **Auto-detects your gate commands** — CyberOS inspects your repo for `Cargo.toml`, `package.json`, `pyproject.toml`, `go.mod`, and other stack markers, then wires build, lint, test, and coverage commands into `.cyberos/gates.env` automatically.
+
+    <Tip>
+      Install the Claude plugin for one-command `/ship-tasks` access. In Claude, go to **Settings → Plugins → Add** and pick the file `dist/cyberos/cyberos.plugin`. Once installed, typing `/ship-tasks` in your repo session drives the next eligible task end to end without any additional setup.
+    </Tip>
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+
+  <Step title="Or install via terminal (alternative)">
+    If you prefer to install directly from a CyberOS payload you have built or downloaded, run the shell installer instead:
 
     ```bash
-    your-cli init
+    bash /path/to/dist/cyberos/install.sh /path/to/your-repo
     ```
+
+    The result is identical to the `npx` route. Use this option when you are working offline, in a CI environment, or when you want to pin to a specific payload version. You can also run `install.sh` again at any time to update an already-initialised repo — it backs up `gates.env` and never overwrites your `BACKLOG.md` or existing tasks.
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+
+  <Step title="Verify installation">
+    Confirm that the memory store is healthy and the installation is complete:
 
     ```bash
-    your-cli start
+    python -m cyberos doctor
     ```
+
+    A successful install prints a single line:
+
+    ```
+    READY
+    ```
+
+    If you see any warnings or errors, re-run `npx cyberos install` from your repo root to repair the installation. The `doctor` command walks the full invariant set defined in `memory.invariants.yaml` and reports the store's health in detail.
+
+    <Note>
+      The `.cyberos/` folder is gitignored — **never commit it**. It is a vendored machine that regenerates on every `install` run. Your BRAIN store (`.cyberos/memory/store/`) contains local tenant data that must stay out of version control.
+    </Note>
   </Step>
+
+  <Step title="Write your first task">
+    Create one file under `docs/tasks/`. Use the naming convention `docs/tasks/<module>/task-<MODULE>-<NNN>-<slug>.md`, or copy the template from `.cyberos/cuo/templates/`. Here is the minimal skeleton:
+
+    ```markdown
+    ---
+    id: TASK-SHOP-001
+    title: Add a login rate limit
+    module: shop
+    class: product
+    status: ready_to_implement
+    priority: MUST
+    depends_on: []
+    routed_back_count: 0
+    ---
+
+    # TASK-SHOP-001 — Add a login rate limit
+
+    ## Context
+    The login endpoint has no rate limiting. A brute-force attacker
+    can try unlimited passwords. This task adds a 429 response after
+    5 attempts per minute per account.
+
+    ## 1. Normative clauses
+    1. The login endpoint MUST reject more than 5 attempts per minute per account.
+    2. A rejected attempt MUST return 429 with a Retry-After header.
+
+    ## 2. Acceptance criteria
+    - [ ] 6th attempt within a minute returns 429.
+    - [ ] Tests cover the limit and the reset window.
+    ```
+
+    **Key frontmatter fields:**
+    - `id` — unique task identifier, used everywhere as the canonical reference.
+    - `class` — `product` for new capabilities; `improvement` for hardening, refactors, and fixes.
+    - `status: ready_to_implement` — marks the task as eligible for the agent to pick up. Tasks in `draft` are skipped by the queue.
+    - `priority` — `MUST`, `SHOULD`, or `COULD` following MoSCoW convention.
+
+    After saving the file, add one line to `docs/tasks/BACKLOG.md` in the appropriate module section. The task file's `status:` field is the record of truth; `BACKLOG.md` is the index.
+  </Step>
+
+  <Step title="Trigger the agent">
+    With the Claude plugin installed, type the following slash command in your repo session:
+
+    ```
+    /ship-tasks
+    ```
+
+    Without the plugin, paste this prompt into any file-and-shell agent (Claude, Codex, Cursor, Gemini, Grok, or any other):
+
+    ```
+    Follow .cyberos/AGENT-ENTRY.md and drive the next eligible task in
+    docs/tasks/BACKLOG.md. HITL required. repo_root = this repo.
+    ```
+
+    The agent picks the first `ready_to_implement` task from your backlog, implements every normative clause, runs your repo's machine gates (`bash .cyberos/cuo/gates/run-gates.sh`), reviews its own work, and advances the task status as it goes. It runs continuously between the two human gates and self-resolves everything it can verify by machine.
+  </Step>
+
+  <Step title="Hold the two human gates">
+    The agent stops and waits for you at exactly two points. These are the only moments the process requires your attention, and it cannot proceed without you:
+
+    **Gate 1 — Review acceptance (`reviewing → ready_to_test`)**
+
+    The agent presents what it built together with its code-review findings and an edge-case matrix. Read the task's normative clauses against the change. If everything is correct, say "approved" and the agent moves the task to `ready_to_test`. If something is wrong, describe the issue in one sentence — the task routes back to `ready_to_implement` with `routed_back_count` incremented, and the agent tries again.
+
+    **Gate 2 — Final acceptance (`testing → done`)**
+
+    The agent presents its test evidence: gate output, coverage results, and proof that each acceptance criterion passed. If you are satisfied, say "done". The task status becomes `done` and the work is complete. If something is still wrong, route it back the same way.
+
+    The agent **never sets `done` itself**. An agent that marks its own work done without a recorded human verdict is broken — report it. Every verdict you record is written as an audit row in the BRAIN with your identity, the task ID, the prior status, and the timestamp.
+  </Step>
+
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+<CodeGroup>
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+```bash npx install
+# Install CyberOS into the current directory
+npx cyberos install
+
+# Install into a specific directory
+npx cyberos install /path/to/your-repo
+```
+
+```bash terminal install
+# Build the payload from a CyberOS checkout (once)
+bash tools/install/build.sh
+
+# Install into your repo
+bash /path/to/dist/cyberos/install.sh /path/to/your-repo
+```
+
+```bash doctor
+# Verify the memory store is healthy
+python -m cyberos doctor
+# Expected output: READY
+```
+
+</CodeGroup>
+
+## What's next?
+
+You have installed CyberOS, written a task, and shipped your first change. From here you can:
+
+- **Read [Core Concepts](/concepts)** to understand the BRAIN memory model, the full task lifecycle, and the Skills system in depth.
+- **Explore the [CUO module](/modules/cuo)** to see the complete workflow doctrine, execution discipline, and the 10-state status contract.
+- **Browse the [Skills Library](/modules/skill)** to discover the 104 built-in Skills and learn how to invoke them from any agent.
+- **Check the [Install Guide](/guides/install)** for all available installation channels: GitHub Action, Docker, MCP server, Makefile target, and more.

@@ -1,0 +1,186 @@
+---
+title: 'Skills: Verifiable Agent Capabilities'
+sidebarTitle: 'Skills'
+description: 'CyberOS Skills package what agents can do into versioned, auditable capabilities. Each skill has a SKILL.md contract, structured inputs/outputs, and an audit sibling.'
+---
+
+A CyberOS skill is a self-contained folder that defines exactly what an agent can do, how it does it, and how to verify it did the job correctly. Every skill ships as an **author/audit pair**: the author skill produces an artifact and the audit skill independently scores it against a rubric. This pairing is the unit of release — you never ship an author without a matching audit. Every consequential run leaves evidence in the audit chain.
+
+## What Is a Skill?
+
+A skill is a directory containing a `SKILL.md` contract file plus optional supporting documents, envelope schemas, acceptance fixtures, and references. Agents load skills by name. The `SKILL.md` declares the trigger conditions, input/output contract, memory scopes, allowed MCP tools, escalation paths, and self-audit invariants. Because skills are plain markdown, they are readable by humans, portable across agent hosts, and version-controlled alongside your code.
+
+Skills live at `.cyberos/cuo/skills/<skill-name>/` in any CyberOS-initialized repo, and at `modules/skill/<skill-name>/` in the CyberOS source.
+
+## SKILL.md Anatomy
+
+The `SKILL.md` frontmatter is the machine-readable contract. Every field serves a purpose in the CUO routing and execution pipeline.
+
+<AccordionGroup>
+  <Accordion title="Identity fields">
+    <ParamField path="name" type="string" required>
+      Kebab-case skill identifier following the `<artifact>-author` or `<artifact>-audit` convention. Example: `task-author`. Must match `[a-z0-9-]+`.
+    </ParamField>
+    <ParamField path="description" type="string" required>
+      When to use this skill and, critically, when **not** to use it. CUO's router reads this field to distinguish closely related skills (e.g., `task-author` vs. `task-audit`).
+    </ParamField>
+    <ParamField path="license" type="string" required>
+      License for the skill. Built-in CyberOS skills use `Apache-2.0`.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Invocation and pipeline fields">
+    <ParamField path="invocation_modes" type="array" required>
+      How the skill may be called. Valid values: `standalone` (direct invocation), `chained` (called by a supervisor from another skill's output).
+    </ParamField>
+    <ParamField path="expects" type="object" required>
+      Input contract. Contains `schema_ref` (path to `envelopes/input.json`), `required_fields`, `optional_fields` (including `chain_to` for downstream routing), and `standalone_interview_ref` (chat-mode interview questions when no envelope is provided).
+    </ParamField>
+    <ParamField path="produces" type="object" required>
+      Output contract. Contains `schema_ref` (path to `envelopes/output.json`), `output_kind`, and `human_summary_ref` (the template rendered to the user after each batch).
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Scope and security fields">
+    <ParamField path="allowed_memory_scopes" type="object" required>
+      Declares which memory scopes the skill may read from and write to. The CUO supervisor enforces this at runtime. Example read scopes: `project:*`, `module:*`, `company:locked-decisions`. Example write scopes: `project:*`, `memories:projects`.
+    </ParamField>
+    <ParamField path="allowed_mcp_tools" type="array" required>
+      The explicit list of MCP tools this skill may call. Example: `kb.read`, `kb.search`, `memory.write_memory`, `audit.append`, `chat.notify`.
+    </ParamField>
+    <ParamField path="escalation" type="object" required>
+      Persona routing for edge cases. `to_persona_on_legal` routes legal questions (e.g., to `cuo-clo`). `to_persona_on_security` routes security questions (e.g., to `cuo-cseco`). `to_human_on_irreversible: true` halts for human review before any irreversible action.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+## The Author/Audit Pair Convention
+
+Every artifact type in CyberOS has two skills: an **author** that produces the artifact and an **audit** that scores it. The author chains naturally into the audit by default (via `chain_to` in the output envelope). You never ship one without the other.
+
+| Author skill | Audit skill | Artifact produced |
+|---|---|---|
+| `task-author` | `task-audit` | Task specification files |
+| `statement-of-work-author` | `statement-of-work-audit` | Statements of work |
+| `product-requirements-document-author` | `product-requirements-document-audit` | Product requirements documents |
+| `code-review-author` | `code-review-audit` | Code review packets |
+| `budget-author` | `budget-audit` | Budget documents |
+| `hire-decision-author` | `hire-decision-audit` | Hiring decision records |
+| `contract-review-author` | `contract-review-audit` | Contract review reports |
+| `postmortem-author` | `postmortem-audit` | Postmortem documents |
+| `board-deck-author` | `board-deck-audit` | Board presentation decks |
+| `implementation-plan-author` | `implementation-plan-audit` | Implementation plans |
+
+## Built-In Skill Catalog
+
+CyberOS ships **100+ author/audit skill pairs** covering the full range of operational work across every C-suite persona. A representative sample:
+
+- **Engineering:** `task-author`, `implementation-plan-author`, `code-review-author`, `architecture-decision-record-author`, `edge-case-matrix-author`, `software-design-document-author`, `software-requirements-specification-author`, `postmortem-author`, `runbook-author`, `threat-model-author`
+- **Product:** `product-requirements-document-author`, `product-roadmap-author`, `product-metrics-review-author`, `stage-gate-author`, `test-strategy-author`
+- **Finance:** `budget-author`, `forecast-author`, `thirteen-week-cash-flow-author`, `capital-allocation-memo-author`, `monthly-close-author`
+- **People & legal:** `hire-decision-author`, `workforce-plan-author`, `contract-review-author`, `statement-of-work-author`, `non-disclosure-agreement-triage-author`
+- **Executive:** `board-deck-author`, `investor-update-author`, `strategy-document-author`, `objectives-and-key-results-set-author`, `ai-strategy-author`
+
+The full catalog of shipped pairs is in `modules/skill/MODULE.md`. Every pair follows the same folder layout, envelope schema pattern, and 10-point rubric scoring system.
+
+## How Skills Reach Your Repo
+
+Skills are vendored into your project during installation and updated whenever you re-run install. You never manage skill versions manually.
+
+```bash
+# Install or update CyberOS (vendors skills into .cyberos/cuo/skills/)
+npx cyberos install
+
+# Or via the Claude plugin
+/install
+```
+
+After installation, all built-in skills live at `.cyberos/cuo/skills/<skill-name>/`. The Claude plugin also exposes the `ship-tasks` skill directly as the `/ship-tasks` command — it bundles its own copy of the workflow doctrine and runs the same gates as the full workflow.
+
+## Creating a Custom Skill
+
+<Steps>
+  <Step title="Copy the template scaffold">
+    Navigate into the skills directory and copy the author and audit templates for your new artifact type:
+
+    ```bash
+    cd .cyberos/cuo/skills
+    cp -r _template/author  my-artifact-author
+    cp -r _template/audit   my-artifact-audit
+    ```
+  </Step>
+
+  <Step title="Name your skill">
+    Choose a kebab-case name following the `<artifact>-author` / `<artifact>-audit` convention. Use only `[a-z0-9-]` characters. Examples: `release-note-author` + `release-note-audit`, `onboarding-checklist-author` + `onboarding-checklist-audit`.
+  </Step>
+
+  <Step title="Fill in author SKILL.md">
+    Open `my-artifact-author/SKILL.md` and replace every `<ARTIFACT>` and `<artifact>` placeholder. Update the following required fields:
+
+    - `name` — your kebab-case skill name
+    - `description` — when to use it and when **not** to use it
+    - `expects.required_fields` — the fields callers must supply
+    - `produces.output_kind` — the type of artifact this skill writes
+    - `depends_on_contracts` — any artifact contracts this skill reads from
+  </Step>
+
+  <Step title="Write the author support documents">
+    Fill in the four key support documents in your author folder:
+
+    - `INVARIANTS.md` — self-audit checks the skill must pass on every run (confidence thresholds, correction streaks, scope violations)
+    - `PIPELINE.md` — how the skill produces its artifact and hands off to the audit sibling
+    - `STANDALONE_INTERVIEW.md` — the questions the skill asks when invoked in chat mode without an input envelope
+    - `HUMAN_SUMMARY.md` — the summary the user sees in chat after each batch completes
+  </Step>
+
+  <Step title="Define input and output schemas">
+    Edit `envelopes/input.json` and `envelopes/output.json` with the JSON Schema definitions for your skill's input and output envelopes. The output envelope must include `next_skill_recommendation` pointing at your audit sibling.
+  </Step>
+
+  <Step title="Fill in audit SKILL.md and RUBRIC.md">
+    Open `my-artifact-audit/SKILL.md` and replace placeholders. The audit skill's `description` should declare the rubric version it implements.
+
+    Edit `RUBRIC.md` with your artifact-specific audit rules. Follow the rule families used across all built-in audits: `FM` (fabrication), `SEC` (security), `COND` (conditions), `QA` (quality), `SAFE` (safety), `STALE` (staleness). Use stable `rule_id` strings — changing a `rule_id` is a breaking change.
+  </Step>
+
+  <Step title="Add acceptance fixtures and iterate">
+    Add golden input/output fixtures to `acceptance/`. Run your new audit skill against a sample artifact produced by your author skill. Iterate on both skills until the audit scores 10/10. Do not ship a skill pair below 10/10 on its own rubric.
+  </Step>
+
+  <Step title="Wire chaining (optional)">
+    If you want the author to automatically chain into the audit after each artifact, set `chain_to` in the author's `optional_fields` defaults:
+
+    ```yaml
+    optional_fields:
+      chain_to:               # default: ['my-artifact-audit']
+    ```
+
+    The CUO supervisor reads `produces.next_skill_recommendation` from the output envelope and queues the audit skill unless the caller opts out.
+  </Step>
+</Steps>
+
+<Tip>
+  Each skill bundle is self-contained. Do not reference sibling bundles for prompt content, rubric content, or fixtures. Do not add top-level frontmatter fields — CyberOS extensions go under `metadata.cyberos-*` or in sibling `.md` files such as `INVARIANTS.md` and `RUBRIC.md`.
+</Tip>
+
+## Anthropic Agent Skills Open Standard
+
+CyberOS skills are valid [Anthropic Agent Skills](https://agentskills.io/specification) verbatim. A skill authored for CyberOS works without modification in any Agent Skills-compatible client:
+
+- **Claude** (Claude Code, Cowork, Claude Desktop)
+- **OpenAI Codex CLI**
+- **Cursor**
+- **Goose**
+- **Amp**
+- **Gemini CLI**, **Grok**, **Mistral**, and 20+ other compliant clients
+
+The protocol is the Anthropic open standard, plus opt-in CyberOS extensions inside the spec-permitted `metadata` map. CyberOS never adds top-level SKILL.md fields and never invents an alternative manifest format. Markdown frontmatter was chosen deliberately — it is the lowest common denominator across every agent host.
+
+<CardGroup cols={2}>
+  <Card title="Authoring Skills" icon="pen-nib" href="/guides/authoring-skills">
+    Complete guide to writing, testing, and shipping a production-quality author/audit skill pair from scratch.
+  </Card>
+  <Card title="Core Concepts" icon="book-open" href="/concepts">
+    Understand the foundational CyberOS concepts: the task lifecycle, memory protocol, audit chain, and persona model.
+  </Card>
+</CardGroup>

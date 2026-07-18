@@ -1,0 +1,170 @@
+---
+title: 'AUTH: Sign-In, Roles, and Multi-Factor Auth'
+sidebarTitle: 'Auth'
+description: 'CyberOS AUTH handles user authentication with OAuth 2.1, WebAuthn MFA, SSO, and per-tenant role-based access. Every auth event is audit-logged.'
+---
+
+CyberOS AUTH is the identity and access layer that secures every module on the platform. It gives you flexible sign-in options — email/password, passkeys, Google SSO, or a company-wide enterprise IdP — and enforces role-based access so each person on your team sees exactly what they need and nothing more. Every sign-in attempt, MFA challenge, role assignment, and session revocation is written to an immutable, hash-chained audit log that you can browse at any time. When AUTH detects a login from an unusual location, it challenges you for a second factor before granting access, keeping your account safe even if your password is compromised.
+
+## Sign-In Methods
+
+CyberOS supports four sign-in paths. Your tenant admin determines which are enabled in **Tenant Settings → Authentication**.
+
+<CardGroup cols={2}>
+  <Card title="Email + Password" icon="lock">
+    Sign in with your registered email address and password. If your tenant has MFA required, you are prompted for a passkey or security key tap after your password is accepted.
+  </Card>
+  <Card title="Passkey (passwordless)" icon="fingerprint">
+    If you have enrolled a passkey or FIDO2 security key, you can sign in without typing a password at all. Your device or hardware key handles the authentication ceremony.
+  </Card>
+  <Card title="Google SSO" icon="google">
+    Click **Sign in with Google** on the login screen. CyberOS handles the OAuth 2.1 + PKCE exchange in the background. No extra setup is required on your end once your admin has connected your Google Workspace.
+  </Card>
+  <Card title="SAML 2.0 Enterprise SSO" icon="building">
+    If your company uses Azure AD, Okta, or Google Workspace as its identity provider, your admin can configure SAML 2.0 SSO. You are redirected to your company login page and land back in CyberOS after authenticating there.
+  </Card>
+</CardGroup>
+
+<Note>
+  **Google SSO:** Your tenant admin configures the Google Workspace IdP connection once in **Tenant Settings → SSO**. After that, everyone on your team simply clicks **Sign in with Google** — no individual setup needed.
+</Note>
+
+---
+
+## Role-Based Access
+
+Every account in CyberOS holds one or more roles. Your roles determine which modules you can open, which records you can create or edit, and which admin screens you can see. Roles are assigned by your tenant admin and are displayed on your profile page under **Settings → My Roles**.
+
+<Tabs>
+  <Tab title="Member Roles">
+    These roles cover the typical day-to-day team member. Most people hold exactly one.
+
+    | Role | What you can do |
+    |---|---|
+    | **Tenant Member** | Access all standard modules (CHAT, KB, PROJ, TIME, etc.) for your tenant. The default role every new member receives. |
+    | **Founder** | Full cross-module read access, including privileged reports. Assigning this role requires a registered passkey or security key. |
+    | **CFO / CTO / COO / CHRO / CMO / CPO / CSO / CLO / CDO / DPO / CAIO / CSECO** | C-suite functional roles that unlock the corresponding module views (e.g. CFO sees REW payroll summaries; CHRO sees HR contracts). Each role grants the read/write surface appropriate to the function. |
+    | **Client Portal User** | External client or partner with read-only access to the client portal. Assigned by your admin; not self-assignable. |
+  </Tab>
+  <Tab title="Admin Roles">
+    Admin roles control platform configuration and are assigned only to the people responsible for operating CyberOS for your organisation.
+
+    | Role | What you can do |
+    |---|---|
+    | **Tenant Admin** | Manage members, roles, SSO configuration, travel policies, and billing for your tenant. Full read across all modules. |
+    | **Root Admin** | Cross-tenant operator role used by CyberSkill staff only. Not visible to tenant users. |
+    | **Service Account** | Non-human accounts used by integrations and automated pipelines. |
+    | **Agent Persona** | AI agent identities (e.g. the CUO router). Appear in CHAT and KB as AI teammates. |
+  </Tab>
+  <Tab title="External Roles">
+    These roles are reserved and cannot be self-assigned. They are provisioned by your admin or by CyberSkill.
+
+    | Role | Purpose |
+    |---|---|
+    | **Auditor** | External auditor with read access to audit logs and specified reports. |
+    | **Regulator** | Regulatory authority observer. Read-only, scoped per regulatory engagement. |
+    | **Billing System** | Internal role for Stripe/VietQR webhook automation. |
+  </Tab>
+</Tabs>
+
+<Note>
+  Your active roles are always visible at **Settings → My Account → Roles**. If you believe you are missing access, contact your tenant admin — role changes take effect immediately at next sign-in (or on token refresh within one hour).
+</Note>
+
+---
+
+## Passkeys and MFA Enrollment
+
+CyberOS uses WebAuthn Level 3 (FIDO2) for multi-factor authentication. A passkey can be a device biometric (Face ID, Touch ID, Windows Hello) or a hardware security key (YubiKey, Titan Key). Once enrolled, your passkey serves as your second factor after a password login — or as a standalone passwordless credential.
+
+<Steps>
+  <Step title="Open Security Settings">
+    Navigate to **Settings → Security → Passkeys & MFA**. You see a list of your enrolled factors (empty if you have not enrolled one yet).
+  </Step>
+  <Step title="Start enrollment">
+    Click **Add passkey or security key**. Give it a label (e.g. "MacBook Touch ID" or "YubiKey 5 NFC") so you can identify it later.
+  </Step>
+  <Step title="Complete the browser ceremony">
+    Your browser or operating system prompts you to tap your security key or use your biometric. Follow the on-screen prompt. The whole ceremony takes under 10 seconds.
+  </Step>
+  <Step title="Save your recovery codes">
+    After enrollment, CyberOS generates 10 single-use recovery codes. **Download or print them now** and store them somewhere safe. Each code is 8 characters and can be used exactly once if you ever lose access to all your enrolled factors.
+  </Step>
+</Steps>
+
+**At sign-in with MFA enabled**, after you submit your password CyberOS presents a "Verify your identity" screen. Tap your security key or complete the biometric prompt. If successful, you are signed in immediately.
+
+<Warning>
+  If you lose all enrolled passkeys and have no recovery codes remaining, contact your tenant admin to reset your MFA factors. Without either, access cannot be restored without admin intervention.
+</Warning>
+
+---
+
+## GeoIP Travel Policy
+
+CyberOS monitors sign-in locations to protect your account from credential theft. When a login appears to come from a continent different from your previous sign-in, or moves faster than physically plausible, AUTH triggers a travel challenge.
+
+**What you see when a travel challenge fires:**
+
+> *"We noticed a sign-in from a new location. Please verify with your passkey or security key to continue."*
+
+You are not blocked — you are asked to confirm with your second factor. Once you pass the MFA challenge, the session proceeds normally.
+
+**If your tenant's policy is set to block unusual logins outright**, you see:
+
+> *"Sign-in blocked: unusual location detected. Contact your admin or try again from your usual network."*
+
+### Creating a Travel Policy Exception
+
+If you frequently travel and want to avoid repeated location challenges, ask your **Tenant Admin** or **Security Admin** to create an allowlist entry for the IP ranges you use while travelling (e.g. a hotel network or VPN exit node). Once added, logins from those addresses are treated as trusted and skip the travel check.
+
+Admins can manage allowlists at **Admin → Security → Travel Policy → CIDR Allowlist**.
+
+---
+
+## Session Lifecycle and Token Expiry
+
+When you sign in, CyberOS issues an **access token** (valid for 1 hour) and a **refresh token** (valid for 7 days). Your browser or desktop app manages this automatically — you stay signed in as long as you use CyberOS at least once every 7 days.
+
+<AccordionGroup>
+  <Accordion title="What your session looks like">
+    Your active sessions are listed at **Settings → Security → Active Sessions**. Each entry shows the device type, approximate location, and last-seen time. You can revoke any session you do not recognise.
+  </Accordion>
+  <Accordion title="When tokens expire">
+    Your 1-hour access token is refreshed silently in the background every time you interact with the platform. If you close your browser for more than 7 days, your refresh token expires and you are asked to sign in again. No data is lost — only the session ends.
+  </Accordion>
+  <Accordion title="Revoking a session">
+    Go to **Settings → Security → Active Sessions**, find the session you want to end, and click **Revoke**. The session is invalidated immediately — any browser tab using that session is signed out within seconds. Admins can also revoke sessions for any member from **Admin → Members → [member] → Sessions**.
+  </Accordion>
+  <Accordion title="Signing out everywhere">
+    Click **Revoke all other sessions** on the Active Sessions page to instantly invalidate every session except your current one. Use this if you think your account has been compromised.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Audit Log
+
+Every authentication event is written to a hash-chained audit log — sign-ins, sign-out events, failed attempts, MFA challenges, travel flags, and role changes all appear here.
+
+- **Members** can view their own sign-in history at **Settings → Security → Sign-in History**.
+- **Tenant Admins** can view the full tenant-wide auth audit log at **Admin → Audit Log → Authentication**.
+
+Each entry shows the timestamp, event type, source IP (hashed for privacy), and the outcome (success, challenge, block, or failure).
+
+<Note>
+  Audit rows are immutable and hash-chained — no one can delete or alter them. The chain is anchored to the CyberOS memory module's audit infrastructure for cryptographic verifiability.
+</Note>
+
+---
+
+## Common Auth Errors
+
+| Error | What it means | What to do |
+|---|---|---|
+| **401 Unauthorized** | Your session has expired or your token is invalid. | Sign in again. If it keeps happening, clear your browser cache. |
+| **403 Forbidden** | You are signed in but do not have permission to access this resource. | Check your roles at **Settings → My Account → Roles**. Ask your admin if you need access. |
+| **429 Too Many Attempts** | You have exceeded 10 sign-in attempts in a minute from your network, or 5 attempts for your account. | Wait 60 seconds and try again. If your account is locked, contact your admin. |
+| **Geo-block: unusual location** | Your tenant's travel policy is set to block logins from new continents. | Contact your admin to add your current IP range to the allowlist, or connect from a trusted network. |
+| **Needs MFA challenge** | A travel or security policy requires you to verify with a second factor before the session is granted. | Complete the passkey or security-key prompt. Use a recovery code if your device is unavailable. |
+| **Account revoked** | Your account has been disabled by your tenant admin. | Contact your HR admin or IT team. |

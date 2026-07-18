@@ -1,0 +1,144 @@
+---
+title: 'BRAIN Memory: Audit-Chained Knowledge Store'
+sidebarTitle: 'Memory (BRAIN)'
+description: 'CyberOS BRAIN is an append-only, cryptographically chained memory store. Every write is verifiable; every fact is traceable back to the exact operation that created it.'
+---
+
+CyberOS BRAIN is the platform's remembering faculty — **BRAIN** is the name you speak, `memory` is the name you write in code. Under the hood it is two cooperating layers sharing one source of truth: a tamper-evident Layer 1 store on local disk, and a Layer 2 service that derives searchable, tiered structure from it. Everything any agent or human records — decisions, facts, people, projects — flows through this store and is chained together so that no byte can change without breaking the chain.
+
+## Layer 1 — The Protocol Store
+
+The protocol store is the authoritative record. It lives on disk at `.cyberos/memory/store/` relative to your project root, inside the gitignored `.cyberos/` tree alongside the CUO workflow engine.
+
+<Note>
+  The store is tenant data. It is always gitignored and must never be committed to version control. Keep it local; use `cyberos export` when you need a portable snapshot.
+</Note>
+
+### Store Layout
+
+Every store is a self-contained, zippable artefact with a predictable structure:
+
+```
+.cyberos/memory/store/
+├── manifest.json            # store metadata and config
+├── HEAD                     # 8-byte LE u64 sequence counter (atomic)
+├── .lock                    # exclusive write lock + lease record
+├── audit/
+│   ├── *.binlog             # binary-framed audit log segments (one per month)
+│   ├── checkpoints/         # signed tree-head anchors per consolidation
+│   └── current.binlog       # the active segment
+└── memories/
+    ├── decisions/           # architectural and product decisions
+    ├── facts/               # grounded facts about the world
+    ├── people/              # team members, contacts
+    ├── projects/            # project-scoped context
+    ├── preferences/         # user and agent preferences
+    ├── drift/               # detected drift signals
+    └── refinements/         # proposed refinements awaiting review
+```
+
+### The Four Canonical Operations
+
+Every mutation to the store is expressed as exactly one of four canonical operations. There is no fifth.
+
+| Operation | Semantics |
+|---|---|
+| `put(path, body, meta)` | Create or replace a memory file. Idempotent given identical arguments. |
+| `move(src, dst)` | Rename a file within the store. Preserves the content hash. |
+| `delete(path, mode)` | `mode` is `"tombstone"` (default) or `"purge"` (GDPR erasure, requires explicit approval). |
+| `put_if(path, body, meta, precondition)` | Create or replace, gated on the SHA-256 of the current body matching `precondition`. A `null` precondition means "must not exist". Mismatch emits a `memory.precondition_failed` audit row; the chain advances for the aux row only. |
+
+### Merkle Audit Chain
+
+Each audit record carries two chain fields: `prev_chain` (the chain hash of the preceding record) and `chain`, computed as:
+
+```
+chain = SHA-256(canonical_json(record_minus_chain) || prev_chain)
+```
+
+Monthly binlog segments are binary-framed (`[u32 length][u32 crc32c][u64 seq][u64 ts_ns][payload]`). At consolidation, sealed segments are compressed with deterministic zstd and a signed tree-head anchor is written to `audit/checkpoints/`. This means you can replay any record, prove any write happened, or detect any byte-level tampering — even across machines and over time.
+
+## Layer 2 — The Brain Service
+
+Layer 2 is a Rust service (`services/memory`) that reads Layer 1 and builds derived structure on top of it:
+
+<CardGroup cols={3}>
+  <Card title="Embeddings" icon="vector-square">
+    Per-event embeddings stored in pgvector, enabling semantic recall over every memory the store has ever recorded.
+  </Card>
+  <Card title="Summaries" icon="file-lines">
+    Rolling summaries computed over recent audit rows so agents can load context-efficient snapshots rather than raw ledger data.
+  </Card>
+  <Card title="Hot / Warm / Cold Tiers" icon="layer-group">
+    Memories tiered by `occurred_at` time. Recall answers queries over the hot index with full provenance back to the exact Layer 1 rows.
+  </Card>
+</CardGroup>
+
+Access to the Layer 2 service is consent-gated and tenant-scoped with fail-closed row-level security. The DB-backed test suite runs via `scripts/local_verify.sh`.
+
+## Day-to-Day Usage
+
+### Installation and Setup
+
+A fresh store is scaffolded automatically when you run `npx cyberos install` in any project. The installer creates `.cyberos/memory/store/` and wires it to the workflow engine. To skip store creation (e.g. in a CI-only environment), set `CYBEROS_NO_MEMORY=1`.
+
+If you need to point agents at a different store location, pass `--store <path>` or set the `CYBEROS_STORE` environment variable. Resolution order is: explicit override → nearest `.cyberos/memory/store/` walking up from the working directory.
+
+<Warning>
+  Sandbox and ephemeral paths (e.g. `/tmp/`, runner scratch directories) are explicitly rejected by the store invariants. If you are running inside a CI runner, set `CYBEROS_HOST_MOUNT_PREFIX` to exempt a stable mount point, or disable memory with `CYBEROS_NO_MEMORY=1`.
+</Warning>
+
+### CLI Commands
+
+```bash
+# Check store health — walks all invariants and reports pass/fail
+python -m cyberos doctor
+
+# Repair a recoverable frozen store
+python -m cyberos doctor --repair
+
+# Export a deterministic, portable zip (byte-identical across runs and platforms)
+python -m cyberos export out.zip
+```
+
+`cyberos doctor` derives the store's current state:
+
+| State | Meaning |
+|---|---|
+| `READY` | All invariants pass; writes are permitted. |
+| `FROZEN_RECOVERABLE` | An invariant failed; reads are allowed, writes refused. Run `doctor --repair` or ask a human to intervene. |
+| `FROZEN_HUMAN` | Catastrophic divergence (e.g. chain corruption); recovery requires `doctor --repair --reason <text>` with explicit human steps. |
+
+### Python API
+
+The public surface is intentionally small:
+
+```python
+from cyberos.core.writer import Writer, AuditRecord, WriterConfig
+from cyberos.core.reader import Reader
+from cyberos.core import ops               # put, move, delete, put_if
+from cyberos.core.frontmatter import parse, serialize, Frontmatter
+from cyberos.core.walker import MmapWalker
+```
+
+Everything heavier (SQLite, mmap, msgspec, hashlib) is loaded lazily from subcommand handlers, so a cold `python -m cyberos --help` starts in under 30 ms.
+
+## BRAIN in Practice
+
+<Tip>
+  Add `.cyberos/memory/store/` to your `.gitignore` before your first commit. The installer does this for you, but double-check any repo that was initialised manually. Committing the store exposes tenant data and breaks the single-writer guarantee.
+</Tip>
+
+<Note>
+  The store enforces a **single-writer guarantee**: only one process may hold `LOCK_EX` on `.lock` at a time. The lock record carries a JSON lease (`pid`, `host`, `monotonic_ns`, `expiry_ns`) with a 10-second TTL and a 3-second renew interval. Stale leases left by a killed writer are reaped in microseconds. If two agents need to share memories, use `cyberos import` to merge one store into another — never share a store directory between concurrent writers.
+</Note>
+
+<Warning>
+  Sandbox and ephemeral paths are rejected at the protocol level (invariant `layout-no-sandbox-path` in `memory.invariants.yaml`). A store created at `/tmp/` or inside a container scratch layer will be refused on the next `doctor` run. Use a stable, host-mounted path and set `CYBEROS_HOST_MOUNT_PREFIX` if needed.
+</Warning>
+
+<CardGroup cols={1}>
+  <Card title="Install CyberOS" icon="rocket" href="/guides/install">
+    Run `npx cyberos install` in your repo to scaffold the store, the workflow engine, and the agent entry point in one step.
+  </Card>
+</CardGroup>

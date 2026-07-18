@@ -1,0 +1,194 @@
+---
+title: 'PROJ: Projects, Engagements, and Issue Tracking'
+sidebarTitle: 'Projects'
+description: 'CyberOS PROJ manages client engagements, projects, and issues with billable-hours tracking, rate cards, and the CRM deal-to-engagement bridge.'
+---
+
+PROJ is the orchestration spine of CyberOS — the module where a won CRM deal becomes a live client engagement, where work breaks into projects and issues, and where every billable hour flows forward into TIME and ultimately into INV invoices. When an Account Manager clicks **Convert to Engagement** on a closed deal, PROJ creates the Engagement with the rate card pre-wired from the deal's pricing, wires billable rules to roles, and opens the billing cycle. From that moment, every time entry logged in TIME against the Engagement traces a clean audit chain back to a specific issue, a specific member, and a specific rate — giving you invoice-grade traceability without manual re-keying.
+
+---
+
+## Data model
+
+PROJ organises work in a four-level hierarchy. Everything billable lives under an Engagement; nothing drifts outside that hierarchy.
+
+<CardGroup cols={2}>
+  <Card title="Workspace" icon="building">
+    The top-level tenant container. All Engagements, Projects, and Issues belong to a single Workspace and inherit its member roster and default rate settings.
+  </Card>
+  <Card title="Engagement" icon="handshake">
+    The client-facing billing unit. Carries a rate card, billing mode (T&M, fixed-fee, or retainer), non-billable category list, and a link back to the originating CRM deal.
+  </Card>
+  <Card title="Project" icon="folder">
+    A logical grouping of Issues within an Engagement. Use Projects to separate work-streams, phases, or deliverable areas under the same client contract.
+  </Card>
+  <Card title="Issue" icon="circle-check">
+    The atomic unit of work. Issues carry status, assignee, priority, and an optional billable override. Time entries logged against an Issue inherit the Engagement's billable rules unless the Issue overrides them.
+  </Card>
+</CardGroup>
+
+---
+
+## Creating an Engagement
+
+You can create an Engagement in two ways: from a won CRM deal, or directly in PROJ.
+
+### From a won CRM deal (recommended)
+
+<Steps>
+  <Step title="Open the deal in CRM">
+    Navigate to the deal record and confirm the stage is **Closed Won**.
+  </Step>
+  <Step title="Click Convert to Engagement">
+    Select **Convert to Engagement** from the deal actions menu. The PROJ §2.5 join contract fires automatically: the Engagement is created with the rate card pre-populated from the deal's pricing page, and the deal's contract URL and client `account_id` are linked.
+  </Step>
+  <Step title="Choose a billing mode">
+    Select **Time & Materials**, **Fixed-Fee**, or **Retainer**. This choice locks once the Engagement is created — choose carefully, as changing billing mode mid-cycle requires a new Engagement.
+  </Step>
+  <Step title="Review the rate card">
+    Confirm the per-role rates (VND and USD) and the `billable_default` for each role. Adjust if the deal pricing differs from your default rate card.
+  </Step>
+  <Step title="Save">
+    The Engagement is live. Members can begin logging TIME entries against it immediately.
+  </Step>
+</Steps>
+
+### Creating an Engagement directly
+
+If the work does not originate from a CRM deal (for example, an internal project or a pre-sales pilot), open **PROJ → New Engagement** and fill in the client account, billing mode, and rate card manually. You can link it to a CRM account later.
+
+<Note>
+  Not every won deal should become a PROJ Engagement. Pure resale deals — where you are collecting payment without delivering services — do not need an Engagement. The deal-to-Engagement conversion requires an explicit Account Manager action for this reason.
+</Note>
+
+---
+
+## Managing issues
+
+Issues are the day-to-day work surface in PROJ. Each Issue lives under a Project, which lives under an Engagement.
+
+### Creating an issue
+
+Open the Project board and click **New Issue**. Set the title, description, priority, and assignee. If the Issue involves work that should be tracked against a different billable rule than the Project default, tick **Override billable flag** and set the value explicitly.
+
+### Assigning issues to members
+
+Drag the Issue to a member's lane on the Board view, or open the Issue and select the assignee from the member picker. You can assign to any member who has access to the Engagement. CUO's next-best-action signal (see [AI features](#ai-features) below) will surface recommended assignees based on role and current workload.
+
+### Tracking status
+
+Issues move through a configurable status workflow. The default statuses are **Backlog → In Progress → In Review → Done → Cancelled**. Workspace admins can add custom statuses and define transition rules (for example, requiring a reviewer before an Issue can move to Done).
+
+<Tip>
+  Use the **Timeline** view to spot Issues that have been stuck in the same status for more than a week. The CUO next-best-action signal flags these automatically on your dashboard.
+</Tip>
+
+---
+
+## Billable hours rules engine
+
+Every time entry in TIME that references a PROJ Issue goes through a four-step cascade to determine whether it is billable. The decision is snapshotted on the `TimeEntry` row at write time — retroactive rate-card changes never shift past entries.
+
+<Steps>
+  <Step title="Step 1 — Member override">
+    If the member logging the entry has an explicit billable override set on the Engagement, that value wins. This handles cases like a non-billable senior reviewer whose time you want to record but not charge.
+  </Step>
+  <Step title="Step 2 — Task class (non-billable categories)">
+    Each Engagement carries a list of `non_billable_categories` (for example, `internal-admin`, `pre-sales`, `travel`). If the Issue's category matches one of these, the entry is non-billable regardless of role.
+  </Step>
+  <Step title="Step 3 — Role default">
+    The rate card on the Engagement specifies a `billable_default` per role (for example, `architect: true`, `intern: false`). If neither Step 1 nor Step 2 applies, the member's role default is used.
+  </Step>
+  <Step title="Step 4 — Fallback">
+    If no override, category rule, or role default resolves the flag, the entry is billable. The fallback is always billable, so unclassified work never silently drops off an invoice.
+  </Step>
+</Steps>
+
+<Warning>
+  Changing `non_billable_categories` on a live Engagement affects only new time entries. Past entries retain their snapshotted billable flag. If you need to retroactively correct an entry's billable status, use TIME's correction model to create a new corrected entry.
+</Warning>
+
+---
+
+## Rate cards
+
+A rate card defines per-role pricing on an Engagement. Each role entry specifies a VND rate, an optional USD rate, and a `billable_default` flag.
+
+```yaml
+# Example Engagement rate card
+roles:
+  - role: architect
+    rate_vnd_per_hour: 2_500_000
+    rate_usd_per_hour: 100
+    billable_default: true
+  - role: senior-engineer
+    rate_vnd_per_hour: 1_800_000
+    rate_usd_per_hour: 72
+    billable_default: true
+  - role: mid-engineer
+    rate_vnd_per_hour: 1_200_000
+    rate_usd_per_hour: 48
+    billable_default: true
+  - role: junior-engineer
+    rate_vnd_per_hour: 700_000
+    rate_usd_per_hour: 28
+    billable_default: true
+  - role: account-manager
+    rate_vnd_per_hour: 1_500_000
+    rate_usd_per_hour: 60
+    billable_default: false
+```
+
+The rate card is **locked at Engagement creation** when the deal-to-Engagement bridge fires. You can edit it before the first TIME rollup, but once INV has pulled a billable summary, rate changes apply only to future billing cycles.
+
+<Tip>
+  For fixed-fee Engagements, the rate card still matters: it powers the internal **margin watchdog** (P2) that compares hours-at-rate against the fixed contract value and warns you of scope creep before the Engagement goes underwater.
+</Tip>
+
+---
+
+## PROJ → TIME → INV spine
+
+PROJ, TIME, and INV form the revenue-delivery spine of CyberOS. Here is how data flows across the three modules:
+
+<CardGroup cols={3}>
+  <Card title="PROJ" icon="clipboard-list">
+    Defines Engagements, Projects, Issues, and the billable rules that govern each time entry. Every Issue is the anchor point for billable work.
+  </Card>
+  <Card title="TIME" icon="clock">
+    Members log time against PROJ Issues. Each entry goes through the billable cascade, and the decision is snapshotted. At billing cycle close, TIME rolls up approved billable hours per member per role per Engagement.
+  </Card>
+  <Card title="INV" icon="file-invoice">
+    Consumes the TIME rollup and generates invoice line items. Each line item traces back to a TIME entry, which traces back to a PROJ Issue — giving you a clean audit chain from invoice to work item.
+  </Card>
+</CardGroup>
+
+The rollup event carries rate-card snapshots, member overrides, and approval-flow flags. INV draws the draft invoice; the Account Manager reviews it; the client receives the final bill. Every invoice line is auditable to a specific chained `TimeEntry` row.
+
+---
+
+## AI features
+
+CUO (CyberOS's AI orchestration layer) provides two classes of intelligent assistance in PROJ.
+
+<Accordion title="Next-best-action on open issues">
+  CUO continuously monitors open Issues across your Engagements and surfaces next-best-action recommendations on your dashboard. Recommendations are ranked by urgency and include suggested assignees based on role, capacity, and past performance on similar Issues. Recommendations are always proposals — CUO never auto-assigns or auto-closes an Issue.
+</Accordion>
+
+<Accordion title="Performance review calibration signals">
+  At the end of a review cycle, CUO synthesises each member's Issue history — completion rate, billable hours contribution, comment patterns, and revision frequency — into calibration signals for HR performance reviews. These signals are grounded in the audit chain and cite specific Issues and time periods, making the calibration evidence-based rather than anecdotal.
+</Accordion>
+
+---
+
+## Integrations
+
+PROJ connects to five other CyberOS modules through explicit join contracts. Each integration is auditable — every cross-module event writes a chained memory row.
+
+| Module | Direction | What flows |
+|--------|-----------|------------|
+| **CRM** | CRM → PROJ | Won deal triggers Engagement creation via the deal bridge. Rate card and client `account_id` are pre-wired. |
+| **TIME** | PROJ → TIME | Engagements, Projects, and Issues are the reference targets for every time entry. Billable cascade rules originate in PROJ. |
+| **INV** | TIME → INV (via PROJ rules) | Billable rollup at cycle close drives INV invoice line items. Rate-card snapshots travel with the rollup. |
+| **HR** | PROJ → HR | Issue completion history and billable contribution flow to HR as calibration signals for performance reviews. |
+| **KB** | KB ↔ PROJ | Issues can cite KB documents as authority sources. CUO grounds next-best-action suggestions in KB runbooks and decision logs. |

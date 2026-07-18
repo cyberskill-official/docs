@@ -1,0 +1,89 @@
+---
+title: 'What is CyberOS? AI-Native Internal Ops'
+sidebarTitle: 'Introduction'
+description: 'CyberOS is a federated AI operations platform for teams: memory, workflows, skills, HR, CRM, projects, and finance — with agents and humans working together.'
+---
+
+CyberOS is CyberSkill's AI-native internal operations platform. It gives your team a single governed substrate where AI agents and human operators work side by side — agents implement, review, and test; humans hold the two acceptance gates that decide when work is truly done. Instead of bolting AI onto existing tools after the fact, CyberOS is agentic from day one: every action is captured in an audit-chained memory store, every capability is a versioned Skill, and every unit of work flows through the same governed lifecycle regardless of whether it is a new feature, a refactor, or a compliance check.
+
+## What problems does CyberOS solve?
+
+Most teams face three persistent problems when they try to work with AI agents: they cannot trust what the agent did (no audit trail), they cannot control when the agent acts autonomously (no governance layer), and they have to wire together separate tools for memory, tasks, skills, and business modules. CyberOS solves all three in one platform:
+
+- **No audit trail** → every memory write is hash-chained and replayable; the BRAIN stores every decision, plan, and review with cryptographic provenance.
+- **No governance** → the CUO workflow engine enforces two mandatory human-acceptance gates that agents cannot cross on their own.
+- **Fragmented tooling** → 25 federated modules (HR, CRM, Projects, Finance, and more) run on the same substrate, share the same memory store, and speak the same Skills protocol.
+
+## Key value propositions
+
+**Audit-chained memory (BRAIN)**
+The BRAIN is the platform's memory layer — an append-only local store at `.cyberos/memory/store/` where every mutation chains by hash into monthly binlog segments. Any byte of history can be replayed or cryptographically proved. This is not a log bolted on later; it is the write path itself.
+
+**104 agent Skills**
+A Skill is a versioned, auditable capability: a `SKILL.md` contract that defines trigger, inputs, outputs, and verification, plus an author/audit pair that separates the work from the evidence. CyberOS ships 104 Skills — from task authoring and code review to Vietnamese-market compliance tools — all compatible with Anthropic's Agent Skills open standard. Claude, Codex, Cursor, Gemini, Grok, and every other skill-aware agent can invoke them.
+
+**CUO workflow engine**
+The CUO module orchestrates every unit of work through one governed lifecycle: `draft → ready_to_implement → implementing → reviewing → testing → done`. Failures route back rather than terminating, so work never disappears into a dead end. One backlog, one workflow, one lifecycle — for both new features and hardening work.
+
+**Human-in-the-loop governance**
+Two transitions in every task are mandatory human-acceptance gates. The agent brings the work to each gate with evidence and halts; only a recorded human verdict advances it. Agents never set `done` on their own. This is not optional — it is enforced by the workflow engine.
+
+## Platform modules
+
+CyberOS ships modules in phases. The three P0 modules (memory, CUO, skill) form the operating substrate; all higher-level modules depend on them.
+
+| Phase | Module | What it does |
+|-------|--------|--------------|
+| P0 | **memory** | Append-only, audit-chained BRAIN store + Layer-2 semantic search |
+| P0 | **CUO** | Workflow engine — drives tasks through the governed lifecycle |
+| P0 | **AUTH** | Identity, JWT, OAuth 2.1, WebAuthn MFA, RBAC |
+| P0 | **AI** | AI Gateway — model routing, rate limits, token accounting |
+| P0 | **MCP** | MCP Gateway — Model Context Protocol native integration |
+| P0 | **OBS** | Observability — tracing, alerting, CUO triage from production events |
+| P0 | **CHAT** | Real-time chat with agent teammates |
+| P1 | **PROJ** | Project management — tasks, milestones, boards |
+| P1 | **TIME** | Time tracking |
+| P1 | **CRM** | Customer relationship management |
+| P1 | **KB** | Knowledge base |
+| P1 | **HR** | Human resources — hiring, onboarding, contracts |
+| P1 | **EMAIL** | Email integration |
+| P1 | **REW** | Rewards and recognition |
+| P1 | **LEARN** | Learning and development |
+| P2 | **INV** | Inventory management |
+| P2 | **ESOP** | Employee stock option plan |
+| P3 | **RES** | Resource planning |
+| P3 | **OKR** | Objectives and key results |
+| P4 | **DOC** | Document management |
+| P4 | **PORTAL** | Customer and partner portal |
+| P4 | **TEN** | Multi-tenancy management |
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install CyberOS, write your first task, and ship it with AI in under 15 minutes.
+  </Card>
+  <Card title="Core Concepts" icon="lightbulb" href="/concepts">
+    Deep-dive into BRAIN, Skills, CUO, task states, and the human-in-the-loop model.
+  </Card>
+</CardGroup>
+
+## Who CyberOS is for
+
+CyberOS is designed for **teams and organisations** that want to work with AI agents without losing control or auditability. It is particularly well suited to:
+
+- **Product and engineering teams** that already work in a task-driven way and want AI to carry the implementation load between human decisions.
+- **Operations-heavy organisations** that need HR, CRM, finance, and project tooling to share a single audit trail rather than scatter data across siloed SaaS products.
+- **Vietnamese-market businesses** that require compliance with Vietnamese e-invoicing, banking APIs, and legal frameworks — CyberOS ships a dedicated `cyberskill-vn` skill pack for exactly this, with SEA expansion on the roadmap.
+- **Platform builders** who want a white-labelable, Apache 2.0-licensed agentic OS they can extend with their own modules and Skills.
+
+## How agents and humans collaborate
+
+Every unit of work in CyberOS is a task — a small markdown file in `docs/tasks/` that states what to build and how to prove it works. The `ship-tasks` workflow drives the task end to end. Here is how the two roles divide the work:
+
+**Agents** implement the task's normative clauses, run the machine gates (build, lint, test, coverage), review their own work, and move the task's status forward automatically between gates. They do everything that can be verified by a machine.
+
+**Humans** hold the two mandatory acceptance gates where machine verification is necessary but not sufficient:
+
+1. **Review gate** (`reviewing → ready_to_test`): you read the agent's code-review packet against the task's clauses and edge-case matrix. Say "approved" to continue, or route it back with a reason.
+2. **Final acceptance gate** (`testing → done`): you read the test evidence (gate output, proof per acceptance criterion) and record your verdict. Only you can set `done`.
+
+Between the gates the agent runs continuously and self-resolves everything it can verify. Every human verdict is captured as an audit row in the BRAIN, so the full lifecycle story — including who approved what and when — is always provable.

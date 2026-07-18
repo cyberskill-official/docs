@@ -1,0 +1,169 @@
+---
+title: 'PORTAL: White-Label Client Portal for Agencies'
+sidebarTitle: 'Portal'
+description: 'CyberOS PORTAL gives your clients a branded portal to view projects, invoices, and documents — secured by their own SSO IdP and isolated per client.'
+---
+
+PORTAL is the client-facing surface of CyberOS. If you run a consultancy, agency, or professional services firm, PORTAL gives each of your clients a branded web portal where they can see the projects you are running for them, review and pay invoices, access signed contracts, and ask a branded AI assistant questions grounded in their own project history — all without ever seeing the CyberOS product name unless you want them to. Every client's view is isolated from every other client at three independent layers, and clients log in through their own identity provider so you never manage their passwords.
+
+<Note>
+  PORTAL is a P4 module. Contact sales for early access.
+</Note>
+
+## What clients see in their portal
+
+<CardGroup cols={2}>
+  <Card title="Projects (PROJ)" icon="kanban">
+    All PROJ projects where the client's Engagement is the parent, filtered to items marked `client-visible`. Clients see status, milestones, and progress — not internal comments or private issues.
+  </Card>
+  <Card title="Invoices (INV)" icon="file-invoice">
+    All invoices scoped to the client's account, with outstanding balance, payment history, and a direct pay link to Stripe or VietQR. Clients never see invoices for other accounts.
+  </Card>
+  <Card title="Documents (DOC)" icon="file-signature">
+    Signed contracts and agreements the client is party to. Clients can view signing status, download executed copies, and see personalised signing links for documents awaiting their signature.
+  </Card>
+  <Card title="CHAT threads" icon="message-circle">
+    Any CHAT threads the client is a member of — typically threads for project updates or support conversations started from the portal itself.
+  </Card>
+  <Card title="Branded AI assistant" icon="sparkles">
+    A CUO variant pre-loaded with the client's project history. Clients can ask questions like "What's our SOW spend so far this quarter?" and receive grounded answers with citations to the actual invoice or project data.
+  </Card>
+</CardGroup>
+
+## White-label branding
+
+Your clients see your brand in the portal, not CyberOS.
+
+### Custom subdomain
+
+By default, your client portal is available at `clients.<your-slug>.cyberos.world`. To use your own domain:
+
+<Steps>
+  <Step title="Claim your CNAME">
+    In **Settings → Portal → Branding**, enter the domain you want to use (e.g. `portal.acmecorp.com`). The system issues a DNS TXT challenge for ownership verification.
+  </Step>
+  <Step title="Add the DNS TXT record">
+    Add the provided TXT record at your DNS provider under `_cyberos-challenge.<your-domain>`. This proves you own the domain.
+  </Step>
+  <Step title="Verify and activate">
+    Click **Verify** in the portal settings. CyberOS validates the TXT record, requests a TLS certificate from AWS ACM, and activates your custom domain. The process takes approximately 3–5 minutes after DNS propagation.
+  </Step>
+</Steps>
+
+### Brand pack
+
+Configure your brand pack in **Settings → Portal → Branding**:
+
+<ParamField path="logo" type="file">
+  Upload your logo (SVG or PNG, max 2 MB). Displayed in the portal header and client-facing email templates. SVG files are sanitised automatically.
+</ParamField>
+
+<ParamField path="accent_color" type="string" placeholder="#00A37C">
+  Your brand's primary colour as a hex code. Used for buttons, links, and highlights throughout the portal.
+</ParamField>
+
+<ParamField path="typography_pack" type="string" default="Inter">
+  Font family for the portal UI. Supported packs: `Inter`, `Plus Jakarta Sans`, `Geist`, `DM Sans`.
+</ParamField>
+
+<ParamField path="email_templates" type="object">
+  Override the default transactional email templates (invite, invoice notification, document signing) with your own branded versions.
+</ParamField>
+
+<ParamField path="powered_by_cyberos" type="boolean" default="false">
+  Show or hide the "Powered by CyberOS" attribution in the portal footer. Defaults to hidden — your brand is front and centre.
+</ParamField>
+
+## Client authentication via their own IdP
+
+Clients log in through their own identity provider. You configure the connection once per client; after that, their IdP manages all access — including removals.
+
+### Supported protocols
+
+- **SAML 2.0** — works with Okta, Azure AD, Google Workspace, OneLogin, Ping Identity, and any other SAML 2.0-compliant IdP
+- **OIDC** — works with Okta, Azure AD, Google Workspace, Auth0, and any OIDC-compliant IdP
+
+### Configuring a client's IdP
+
+<Steps>
+  <Step title="Add the client account">
+    In **Settings → Portal → Clients**, click **Add Client**. Enter the client's organisation name and slug.
+  </Step>
+  <Step title="Configure their SSO">
+    In the client's settings, select **SSO → Configure SAML** or **Configure OIDC**. Enter their IdP metadata URL (for SAML) or their discovery URL (for OIDC). The portal generates an Assertion Consumer Service (ACS) URL to give to the client's IT team.
+  </Step>
+  <Step title="Test the connection">
+    Click **Test SSO**. You are redirected to the client's IdP login page. A successful login confirms the configuration.
+  </Step>
+</Steps>
+
+### JIT provisioning
+
+When a client user logs in for the first time, the portal automatically creates their account (a `ClientMember`) using attributes from the SSO assertion — typically email address, display name, and role. You do not need to pre-create user accounts.
+
+Role mapping is configured in the client's SSO settings. If the IdP assertion does not contain a recognisable role claim, the user is provisioned with the lowest-privilege `viewer` role by default.
+
+### No orphan accounts
+
+When you remove a user from the client's IdP (or the client offboards an employee), their next login attempt is denied automatically. There is no separate step required on the CyberOS side. For clients using SCIM 2.0, deprovisioning events revoke the session within 30 seconds.
+
+## Data isolation
+
+Each client's portal data is isolated from every other client at three independent layers:
+
+| Layer | How it works |
+|---|---|
+| **Postgres RLS** | Every portal-related table has row-level security enforced by `(tenant_id, client_account_id)`. A misconfigured query cannot return another client's rows. |
+| **Apollo Router scope checks** | Every GraphQL field requires a `portal.read` scope grant bound to the client's account. The router injects the `client_account_id` predicate into every query before it reaches the subgraph. |
+| **S3 prefix ACLs** | All file assets (logo, attachments) are stored under a per-client S3 key prefix with IAM policies that block cross-client access. |
+
+The three-layer approach means a single misconfiguration at any one layer is caught by the other two.
+
+## Setting up a client portal
+
+<Steps>
+  <Step title="Configure your brand pack">
+    Set your logo, accent colour, and typography in **Settings → Portal → Branding**. Optionally configure a custom CNAME (described above).
+  </Step>
+  <Step title="Add the client account">
+    In **Settings → Portal → Clients**, click **Add Client**. Enter the client organisation name and assign the PROJ engagements, INV invoices, and DOC documents that should be visible to this client.
+  </Step>
+  <Step title="Set up the client's SSO IdP">
+    Configure SAML or OIDC for the client as described in the authentication section above. The client's IT team provides their IdP metadata; you enter it in the client's SSO settings.
+  </Step>
+  <Step title="Invite the first client admin">
+    For clients without SSO configured yet, or as a fallback, send a magic-link invite to the client's primary contact. They log in, set up the portal, and can invite their colleagues once SSO is active.
+  </Step>
+</Steps>
+
+## Client-initiated workflows
+
+Clients can initiate requests directly from the portal. Each request type materialises as a CHAT thread on your side and is automatically routed to the right Account Manager by CUO.
+
+<AccordionGroup>
+  <Accordion title="New project request">
+    The client fills out a brief form describing the project they want to start. This creates a CHAT thread in your workspace tagged with the client account, pre-routed to their Account Manager.
+  </Accordion>
+  <Accordion title="Billing inquiry">
+    The client flags a question about a specific invoice. This creates a CHAT thread linking directly to the invoice in question, routed to your finance team or their AM.
+  </Accordion>
+  <Accordion title="Support ticket">
+    The client describes an issue or question about a running project. Creates a CHAT thread in the `#<client>-portal` channel, automatically routed to the responsible Account Manager based on CRM ownership.
+  </Accordion>
+</AccordionGroup>
+
+Your team responds in CHAT as usual. If the client is a member of the thread, they see the response in their portal's CHAT section.
+
+## Client lifecycle
+
+<Steps>
+  <Step title="Provisioned">
+    You create the client account. The default subdomain is assigned and default branding is applied.
+  </Step>
+  <Step title="Active">
+    The client's first SSO login succeeds. The portal is live; the data lens, AI assistant, and client-initiated workflow channels are all active.
+  </Step>
+  <Step title="Offboarding (if engagement ends)">
+    Trigger offboarding from **Settings → Portal → Clients → [client] → Offboard**. The client retains read-only access for 30 days, during which they can export their data. After 30 days, data is wiped per your tenant's retention policy.
+  </Step>
+</Steps>

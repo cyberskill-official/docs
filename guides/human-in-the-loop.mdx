@@ -1,0 +1,128 @@
+---
+title: 'Human-in-the-Loop: Your Two Required Gates'
+sidebarTitle: 'Human Gates'
+description: 'CyberOS requires human approval at two points in every task. Learn what each gate expects, how to approve or route back, and why agents can never skip them.'
+---
+
+Human-in-the-loop (HITL) is non-negotiable in CyberOS. The platform is built around a fundamental rule: an agent does the mechanical work, but a human makes the judgment calls that matter. In practice this means every task has exactly two points where the workflow halts and waits for you — it cannot proceed until you record a verdict. These are not optional review checkpoints; they are hard stops. An agent that skips them, or claims to have set `ready_to_test` or `done` without your input, is behaving incorrectly.
+
+## Gate 1 — Review acceptance
+
+**Transition:** `reviewing → ready_to_test`
+
+When the agent finishes implementation and reviews its own work, it halts and presents a review packet. You must read it and give a verdict before the workflow continues.
+
+### What the agent presents
+
+- A summary of what it built and which files changed
+- How each normative clause in the task maps to the actual change
+- Review findings — anything it found during self-review
+- Any deviations from the task clauses or open questions
+
+### What you check
+
+Go through the task's normative clauses one by one. For each clause, ask: does the change actually implement this? Check that the review packet is complete — missing or vague clause coverage is a reason to route back.
+
+### How to approve
+
+Say `approved` (or equivalent natural language). The agent advances the task to `ready_to_test` and moves on to running gates and gathering test evidence.
+
+### How to route back
+
+Give one sentence explaining exactly what is wrong. For example:
+
+> "Clause 2 requires a 429 response, but the implementation returns 400."
+
+The agent drops the task back to `ready_to_implement`, increments `routed_back_count` by 1, and begins the rework loop.
+
+---
+
+## Gate 2 — Final acceptance
+
+**Transition:** `testing → done`
+
+After the agent runs all gates and proves each acceptance criterion, it halts again and presents test evidence. This is the last gate before a task is considered shipped.
+
+### What the agent presents
+
+- Full gate output (build, lint, test results — all must be green)
+- Proof per acceptance criterion — for each checkbox in the task's acceptance criteria, evidence that it is satisfied
+- A summary of what was tested and how
+
+### What you check
+
+Go through the acceptance criteria one by one. For each criterion, check the evidence the agent presents. Is the proof convincing? Does the gate output show green across the board?
+
+### How to approve
+
+Say `done` (or equivalent). The task status becomes `done` — the terminal success state. The change is ready for you to land.
+
+<Warning>
+  Never accept at Gate 2 with failing gates. If the agent presents red gate output — a failing build, lint error, or failing test — refuse and send it back. The agent must fix every failure and re-run gates before requesting your final acceptance.
+</Warning>
+
+### How to route back
+
+Give one sentence explaining the problem. For example:
+
+> "The rate-limit reset test is not in the test output — the acceptance criterion is not proven."
+
+`routed_back_count` increments again, and the agent restarts from `ready_to_implement`.
+
+---
+
+## The rule on agent self-acceptance
+
+Agents never set `ready_to_test` or `done`. Those two status transitions are human-only — the agent brings the task to the gate with evidence and stops. Only your recorded verdict advances the task past the gate.
+
+If an agent claims it has already set `done` without halting for your input, that is broken behaviour. Do not accept the output. Report it.
+
+---
+
+## After Gate 2: landing the change
+
+Once you have accepted at Gate 2, landing the change is your responsibility:
+
+```bash
+git add .
+git commit -m "feat(myapp): your change description (TASK-ID)"
+git push origin your-branch
+# open a PR in your usual flow
+```
+
+Agents never commit, push, merge, or deploy on your behalf. The gate closes when you say `done`; what happens next is always a human action.
+
+---
+
+## Routing-back best practices
+
+Routing back is a normal part of the workflow — use it freely. The `routed_back_count` field in the task frontmatter exists precisely to track these loops, and there is no limit on how many times you can route back.
+
+<AccordionGroup>
+  <Accordion title="Be specific about what is wrong">
+    A precise route-back message fixes the task faster. Compare:
+
+    - ❌ `"It's wrong."`
+    - ✅ `"The rate-limiter returns 400, not 429 as clause 2 requires."`
+
+    The agent uses your message to target the rework. Vague messages lead to vague fixes.
+  </Accordion>
+
+  <Accordion title="Check routed_back_count for patterns">
+    If `routed_back_count` is high (3 or more), the issue is usually in the task spec itself — an ambiguous clause, a missing constraint, or an acceptance criterion that is too vague to prove. Consider routing back with a request to rewrite the spec rather than fix the implementation.
+  </Accordion>
+
+  <Accordion title="There is no limit to route-backs">
+    Route back as many times as needed. The workflow has no time pressure and no maximum loop count. Hold the standard — a task is not done until it genuinely is.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Multi-agent teams
+
+If your team uses multiple agents — for example, Claude Code for implementation and Cursor for review — each agent reads the same `.cyberos/AGENT-ENTRY.md` and honours the same two gates. The gates are enforced by the workflow doctrine, not by the plugin. Whichever agent is driving the task at gate time must halt and present evidence before any status transition to `ready_to_test` or `done` is valid.
+
+<Tip>
+  The two gates are where your expertise matters most. The agent handles the mechanical implementation work; you hold the quality standard. A thoughtful route-back at Gate 1 saves far more time than a catch at Gate 2.
+</Tip>

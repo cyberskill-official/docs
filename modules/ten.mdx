@@ -1,0 +1,189 @@
+---
+title: 'TEN: Tenant Management, Plans, and Billing'
+sidebarTitle: 'Tenancy'
+description: 'CyberOS TEN manages your organisation as a tenant: plans, seat limits, billing via Stripe or Vietnamese PSPs, data residency, and offboarding.'
+---
+
+TEN is the SaaS control plane that governs your CyberOS organisation: plan tier, seat headcount, billing, data residency, and the full lifecycle from signup to offboarding. If you are an organisation admin or on the finance team, TEN is where you manage seats, review invoices, configure data retention overrides, and — if the day comes — trigger the offboarding process with confidence that your data is portable and your exit is clean.
+
+<Note>
+  Self-serve signup (P4) is coming. Until then, CyberSkill operations provisions tenants for vertical-pack customers at P2. Contact your account manager to provision your organisation.
+</Note>
+
+## Plan tiers
+
+Choose the plan that fits your team's size and AI usage needs. All plans include the core CyberOS modules; higher tiers unlock advanced modules and increase resource limits.
+
+| Tier | Seats | BRAIN Storage | AI Tokens / month | Support |
+|---|---|---|---|---|
+| **Starter** | Up to 10 | 20 GB | 500,000 | Community |
+| **Team** | Up to 50 | 200 GB | 3,000,000 | Email |
+| **Enterprise** | Unlimited | Custom | Custom (negotiated) | Dedicated CSM |
+
+<Tip>
+  Vietnamese organisations can subscribe to the `starter-vn` or `team-vn` plans priced in VND (₫1,190,000/mo and ₫5,990,000/mo respectively), billed through Vietnamese PSPs.
+</Tip>
+
+### Module availability by plan
+
+Some advanced modules are locked at the Starter tier and unlock on upgrade:
+
+| Module | Starter | Team | Enterprise |
+|---|---|---|---|
+| Core modules (memory, CUO, CHAT, PROJ, etc.) | ✅ | ✅ | ✅ |
+| OKR | ❌ | ✅ | ✅ |
+| REW (rewards) | ❌ | ✅ | ✅ |
+| DOC (e-signatures) | ❌ | ❌ | ✅ |
+| PORTAL (client portal) | ❌ | ❌ | ✅ |
+| ESOP | ❌ | ❌ | ✅ |
+
+## Billing methods
+
+CyberOS supports both international and Vietnamese domestic payment methods. PCI scope never touches CyberOS — card data is handled entirely by Stripe or the relevant Vietnamese PSP.
+
+<Tabs>
+  <Tab title="International (Stripe)">
+    Pay by credit or debit card in USD, EUR, or SGD. Stripe generates your monthly invoice automatically. You can access all invoices in **Settings → Billing → Invoices**.
+
+    Supported currencies: USD · EUR · SGD
+
+    Stripe handles all PCI compliance. CyberOS never stores or processes card numbers.
+  </Tab>
+  <Tab title="Vietnamese domestic">
+    Pay in Vietnamese Đồng (VND) using any of the following PSPs:
+
+    | PSP | Method |
+    |---|---|
+    | **VnPay** | QR code or linked bank account |
+    | **Momo** | Momo e-wallet |
+    | **ZaloPay** | ZaloPay e-wallet or linked bank |
+
+    Vietnamese PSPs are SBV-licensed (State Bank of Vietnam). All VND transactions comply with Circular 18/2018/TT-NHNN.
+  </Tab>
+</Tabs>
+
+## Usage metering
+
+CyberOS meters usage across four axes. You can view real-time and historical usage in **Settings → Billing → Usage**.
+
+<CardGroup cols={2}>
+  <Card title="Seats" icon="users">
+    The number of active Members in your tenant. Seat count is checked against your plan limit when you invite a new member.
+  </Card>
+  <Card title="AI tokens" icon="brain">
+    Total tokens consumed across all modules in the current billing cycle. Checked against your monthly quota by the AI Gateway before every request.
+  </Card>
+  <Card title="API calls" icon="webhook">
+    Total API calls made to CyberOS services in the current billing cycle. Informational at current plan tiers.
+  </Card>
+  <Card title="Storage" icon="database">
+    Total storage used across BRAIN (memory), KB corpora, and file attachments. Checked against your plan's storage cap.
+  </Card>
+</CardGroup>
+
+### Viewing usage in the billing dashboard
+
+Navigate to **Settings → Billing → Usage** and select a billing period to see:
+
+- A breakdown of each metering axis against your plan limit
+- A daily time-series chart for AI token consumption
+- A per-module breakdown of API calls
+- A storage breakdown by data type (memory, KB, attachments)
+
+You can also export a CSV of your monthly usage via **Settings → Billing → Usage → Export CSV**.
+
+## Data residency
+
+When your tenant is provisioned, you choose a data residency region. This setting determines where your data is stored and which AI model endpoints are used for compliance.
+
+<Warning>
+  Data residency cannot be changed after tenant creation. Choose carefully at signup.
+</Warning>
+
+| Residency | Location | Compliance regime | AI providers in scope |
+|---|---|---|---|
+| **vn-1** | Vietnam | PDPL (Law 91/2025) · Decree 13/2023 | Bedrock AP-SE-1 + PDPL DPA · Anthropic with VN DPA |
+| **sg-1** | Singapore | PDPA-SG · PDPL-VN cross-border under DPA | Bedrock AP-SE-1 · Anthropic · OpenAI |
+| **eu-1** | Frankfurt | GDPR · EU AI Act · EU Data Boundary | Bedrock EU-CENTRAL · Vertex EU · Anthropic EU |
+| **us-1** | US East | CCPA · state-level privacy laws | Bedrock US-EAST · Anthropic · OpenAI · Vertex US |
+
+Residency is enforced at every layer — Postgres shard, object storage region, AI Gateway provider selection, and OBS retention region. Your data never leaves your chosen region, even during a provider failover.
+
+## Tenant admin actions
+
+As a tenant admin, you manage your organisation from **Settings → Tenancy**.
+
+### Seat management
+
+<Steps>
+  <Step title="Invite a member">
+    Go to **Settings → Tenancy → Seats → Invite Member**. Enter the email address and select a role. The invitee receives a magic-link email. The seat is added to your active seat count when they accept.
+  </Step>
+  <Step title="Remove a seat">
+    Find the member in **Settings → Tenancy → Seats**, click their row, and select **Revoke Seat**. Their login is disabled immediately. If they were assigned active tasks, reassign those before revoking.
+  </Step>
+  <Step title="Monitor seat utilisation">
+    The seat count card in **Settings → Billing → Usage** shows your current seat utilisation against the plan limit.
+  </Step>
+</Steps>
+
+### Plan upgrade or downgrade
+
+- **Upgrade** — takes effect immediately. New modules unlock, higher quotas apply pro-rata, and a prorated invoice is generated.
+- **Downgrade** — takes effect at the end of the current billing period. If your usage exceeds the new tier's limits, a 30-day grace period applies before enforcement. You will see a clear overage warning before confirming the downgrade.
+
+### Audit log
+
+Your tenant's full audit log is available in **Settings → Tenancy → Audit Log**. Every admin action — seat changes, plan changes, retention overrides, offboarding initiation — is recorded with the actor, timestamp, and a cryptographic chain link.
+
+### Data retention overrides
+
+To configure retention overrides, go to **Settings → Tenancy → Data Retention**. You can increase retention beyond the platform default (for example, to meet a regulator's minimum). Reducing retention below the default requires DPO sign-off.
+
+| Retention policy | Default | Minimum (regulatory floor) |
+|---|---|---|
+| Logs | 30 days | 30 days |
+| Audit chain | 365 days | 365 days |
+| Decision logs (AI) | 180 days | 180 days (EU AI Act Art. 12) |
+| Legal documents | Forever | Forever |
+
+## Offboarding and data export
+
+CyberOS provides a 90-day grace period on any cancellation — whether voluntary or due to non-payment — before any data is irreversibly deleted.
+
+<Warning>
+  Offboarding is a two-confirmation process. You must type your tenant slug twice to confirm. Once the 90-day window expires, deletion is cryptographically attested and irreversible.
+</Warning>
+
+### The 90-day offboarding timeline
+
+| Phase | Days | What you can do |
+|---|---|---|
+| **Terminating-A (read-only)** | Days 1–30 | Read all data; download the export bundle; no new writes |
+| **Terminating-B (recoverable)** | Days 31–90 | No login; CyberSkill support can restore the tenant on your request |
+| **Terminated** | Day 91+ | Irreversible deletion with cryptographic attestation |
+
+### GDPR Art. 20 data portability — signed export bundle
+
+At any point during your tenancy (and throughout the offboarding grace period), you can generate a signed export bundle containing all your tenant data:
+
+<Steps>
+  <Step title="Request the export">
+    Go to **Settings → Tenancy → Data Export** and click **Generate Export Bundle**. For DSAR requests, use **Settings → Tenancy → DSAR Requests** instead.
+  </Step>
+  <Step title="Download the bundle">
+    The bundle is prepared within a few minutes and available for download for 24 hours. It includes:
+    - All BRAIN memory files with audit chain segments
+    - Per-module data exports (PROJ, CRM, KB, etc.) as SQL dumps
+    - All file attachments
+    - Full billing history and tenant configuration
+    - A chain-of-custody manifest signed with Ed25519
+  </Step>
+  <Step title="Verify the bundle">
+    The manifest includes SHA-256 hashes and an Ed25519 signature you can verify independently, proving the bundle is unmodified since export.
+  </Step>
+</Steps>
+
+### DSAR APIs
+
+For data subject access requests under PDPL Art. 14 or GDPR Art. 15, use the DSAR endpoints in **Settings → Tenancy → DSAR Requests**. The bundle is automatically scoped to the data subject's records across all modules.

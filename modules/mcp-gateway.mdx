@@ -1,0 +1,181 @@
+---
+title: 'MCP Gateway: Connect Any AI Agent to CyberOS'
+sidebarTitle: 'MCP Gateway'
+description: 'CyberOS MCP Gateway implements the Model Context Protocol, exposing CyberOS tools and memory to any MCP-compatible agent — Claude, Cursor, Codex, and more.'
+---
+
+The Model Context Protocol (MCP) is an open standard donated to the Linux Foundation in December 2025. With over 10,000 public servers already built against the spec, MCP has become the standard way for AI agents to discover and invoke tools in external systems. The CyberOS MCP Gateway implements MCP 2025-11-25, turning all of CyberOS's modules into a single coherent MCP server. Your AI agents — whether Claude Code in your IDE, Cursor, Codex CLI, or a custom agent — connect once and immediately have access to CyberOS's memory, task management, KB search, and audit capabilities through a unified, permission-gated interface.
+
+<Note>
+  The MCP Gateway uses the 2025-11-25 MCP spec (Streamable HTTP transport, Tasks primitive, and Elicitation support).
+</Note>
+
+## Agents you can connect
+
+<CardGroup cols={3}>
+  <Card title="Claude Code" icon="terminal">
+    The Claude Code CLI and VS Code extension connect directly via the MCP server URL. All CyberOS tools appear natively in the tool panel.
+  </Card>
+  <Card title="Cursor" icon="code">
+    Add CyberOS to Cursor's MCP config and access memory, tasks, and KB from inside your IDE without switching context.
+  </Card>
+  <Card title="Codex CLI" icon="square-terminal">
+    OpenAI's Codex CLI supports MCP 2025-11-25. Connect it to CyberOS to drive tasks and write memory from your terminal.
+  </Card>
+  <Card title="Goose" icon="bird">
+    Block Labs' Goose agent framework supports MCP servers natively. Point it at the CyberOS gateway for autonomous task workflows.
+  </Card>
+  <Card title="Amp" icon="bolt">
+    Sourcegraph's Amp coding agent connects via MCP to search KB and read task state without leaving your editor.
+  </Card>
+  <Card title="Any MCP client" icon="plug">
+    Any agent implementing the MCP 2025-11-25 spec connects using standard OAuth 2.1 + PKCE discovery at `/.well-known/oauth-protected-resource`.
+  </Card>
+</CardGroup>
+
+## Available MCP tools
+
+Your connected agent discovers these tools automatically via `tools/list`. The tools your agent can see are filtered by your OAuth token's scope grants — you only see tools you are authorised to call.
+
+<AccordionGroup>
+  <Accordion title="Task management tools">
+    | Tool | What it does | Annotations |
+    |---|---|---|
+    | `cyberos.skill.task_install` | Install CyberOS into a repository — sets up the `.cyberos/` directory, seeds the initial task catalogue, and configures the skill runner | `destructive: false`, `idempotent: true` |
+    | `cyberos.skill.task_gates` | Run verification gates for a task — executes the defined acceptance criteria and returns a pass/fail verdict with evidence | `readOnly: false`, `idempotent: true` |
+    | `cyberos.skill.task_status` | Check the current status of a task (planned / building / shipped) along with its gate results and last-updated timestamp | `readOnly: true` |
+    | `cyberos.skill.ship_task` | Drive the next eligible task through the workflow — runs gates, updates status to shipped, and emits the audit row | `destructive: false`, human-confirm for irreversible transitions |
+  </Accordion>
+  <Accordion title="Memory (BRAIN) tools">
+    | Tool | What it does | Annotations |
+    |---|---|---|
+    | `cyberos.memory.search_memory` | Search the BRAIN store using semantic similarity — returns ranked memory files with relevance scores and citations | `readOnly: true` |
+    | `cyberos.memory.update_memory` | Write a memory entry to the BRAIN store — creates or replaces the file at the given path with a chained audit row | `idempotent: true` |
+  </Accordion>
+  <Accordion title="Knowledge Base tools">
+    | Tool | What it does | Annotations |
+    |---|---|---|
+    | `cyberos.kb.read` | Read a KB document by path — returns the document body and metadata | `readOnly: true` |
+    | `cyberos.kb.search` | Search KB using semantic similarity — returns ranked document chunks with source citations | `readOnly: true` |
+  </Accordion>
+  <Accordion title="Audit tools">
+    | Tool | What it does | Annotations |
+    |---|---|---|
+    | `cyberos.memory.audit_append` | Append an audit row to the memory chain — used by agents to record decisions, rationale, or external events with a cryptographic chain link | `idempotent: false`, requires `audit.write` scope |
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  Destructive tools (those that make irreversible changes) always require explicit human confirmation via the MCP Elicitation flow. Your agent will surface a confirmation prompt in its UI before proceeding — this cannot be bypassed programmatically.
+</Tip>
+
+## Connecting your agent
+
+### Quick-start: Claude Code or Claude Desktop
+
+Add the following to your Claude MCP configuration file (`~/.claude/mcp.json` or the equivalent path for your platform):
+
+```json
+{
+  "mcpServers": {
+    "cyberos": {
+      "command": "node",
+      "args": [".cyberos/mcp/cyberos-mcp.mjs"]
+    }
+  }
+}
+```
+
+<Note>
+  This configuration uses the local CyberOS MCP bridge installed in your repository by `task_install`. The bridge handles OAuth token exchange automatically using your existing CyberOS session.
+</Note>
+
+### Cursor
+
+Add the same block to your project's `.cursor/mcp.json` file:
+
+```json
+{
+  "mcpServers": {
+    "cyberos": {
+      "command": "node",
+      "args": [".cyberos/mcp/cyberos-mcp.mjs"]
+    }
+  }
+}
+```
+
+After saving, restart the Cursor MCP session (⌘/Ctrl + Shift + P → **MCP: Reconnect**). The CyberOS tools appear in the Cursor Tools panel.
+
+### Other MCP clients (remote URL mode)
+
+For agents that support remote MCP server URLs directly:
+
+```
+MCP server URL: https://mcp.cyberos.world
+OAuth discovery: https://mcp.cyberos.world/.well-known/oauth-protected-resource
+```
+
+Complete the OAuth 2.1 PKCE flow in your browser to authorise the agent. Your token is scoped to the modules and actions you approve at consent time.
+
+### Verifying the connection
+
+Once connected, ask your agent to run:
+
+```
+List the available CyberOS tools.
+```
+
+You should see all tools your scope grants permit, including `cyberos.memory.search_memory`, `cyberos.skill.task_status`, and `cyberos.kb.search`.
+
+## Tool annotations and safety gates
+
+Every tool in the registry carries annotations that drive how the gateway handles it:
+
+| Annotation | Meaning | What your agent experiences |
+|---|---|---|
+| `readOnly: true` | No state mutation | Auto-invoked without confirmation |
+| `idempotent: true` | Safe to retry with the same arguments | Auto-invoked; gateway enforces idempotency key |
+| `destructive: true` | Irreversible action (delete, send, overwrite) | Your agent shows a confirmation prompt before proceeding |
+| `longRunning: true` | Returns a task ID; completes asynchronously | Your agent polls for progress; you see a progress indicator |
+
+## Tool registry (admin feature)
+
+Tenant admins and module owners register new tools by submitting a tool manifest to the gateway. Registration requires CTO + CSO approval because every new tool expands the surface area available to connected agents.
+
+<Steps>
+  <Step title="Author the tool manifest">
+    Create a JSON manifest that defines the tool name (following the `cyberos.{module}.{verb}_{noun}` convention), input/output schema, required scope, and annotations.
+  </Step>
+  <Step title="Submit for review">
+    Submit the manifest via the admin CLI or the tenant admin panel. The gateway validates the naming convention and annotation completeness automatically.
+  </Step>
+  <Step title="Approval and registration">
+    After CTO and CSO approval, the tool is registered and immediately available to agents that hold the required scope. Subscribed agents receive a `tools/list_changed` notification and re-fetch the catalogue automatically.
+  </Step>
+</Steps>
+
+<Warning>
+  Tool names must follow the `cyberos.{module}.{verb}_{noun}` pattern (e.g. `cyberos.proj.create_issue`). The gateway rejects registrations that violate this convention at submission time.
+</Warning>
+
+## Long-running tasks
+
+For operations that take more than a few seconds — such as ingesting a large KB corpus or running a bulk skill — the gateway uses the MCP **Tasks** primitive. Your agent starts the operation and receives a `task_id` immediately. You can disconnect and reconnect; the task persists until completion.
+
+```
+Your agent: "Index the /docs folder into KB"
+Gateway:    task_id: tsk_01HZJ...XK  status: running  progress: 34%
+            "Embedding 3,400 / 10,000 documents..."
+```
+
+## Audit trail
+
+Every tool call — whether it succeeds, fails, is confirmed, or is denied — produces an `mcp.invocation` audit row in the memory chain. The row records:
+
+- Which tool was called and with what arguments hash
+- Which agent persona made the call (e.g. `claude-code@user-stephen`)
+- The OAuth scope that was checked
+- Whether a destructive confirmation was obtained
+- The outcome and latency
+- The chain anchor linking to the previous audit row

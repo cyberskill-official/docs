@@ -1,0 +1,94 @@
+---
+title: 'Set Up the CyberOS Claude Plugin'
+sidebarTitle: 'Plugin Setup'
+description: 'Add the CyberOS plugin to Claude Code or Claude Desktop for one-command /install, /ship-tasks, /update, /changelog, and /help access.'
+---
+
+The CyberOS Claude plugin is a convenience layer that packages the full task workflow as host commands. Once installed, it gives you five slash commands — `/install`, `/update`, `/changelog`, `/help`, and `/ship-tasks` — directly inside Claude Code, Claude Desktop, or Cowork, without needing to copy prompts or reference file paths manually. The plugin is not required to use CyberOS; it is a shortcut on top of a doc-driven system that works with any agent.
+
+## Plugin commands
+
+| Command | What it does |
+|---|---|
+| `/install [repo]` | Install or update CyberOS in your repo — auto-detects gate commands, vendors `.cyberos/`, scaffolds `docs/tasks/BACKLOG.md`, and writes agent entry files. Idempotent. |
+| `/update [repo]` | Check your installed `.cyberos/VERSION` against the available payload and apply the update on your confirmation. Read-only until you say yes. |
+| `/changelog [repo]` | Report the installed version and what changed recently. |
+| `/help` | Print the commands, the task lifecycle, the two human gates, and where things live in an initialised repo. |
+| `/ship-tasks` | Drive the next eligible task in `docs/tasks/BACKLOG.md` end-to-end: implement → review → test → done. Halts at both human gates. |
+
+---
+
+## Install the plugin
+
+<Tabs>
+  <Tab title="Claude Code">
+    <Steps>
+      <Step title="Add the marketplace">
+        Run the following in your Claude Code session, pointing at the built payload directory:
+
+        ```
+        /plugin marketplace add <path to dist/cyberos>
+        ```
+      </Step>
+
+      <Step title="Install the plugin from the marketplace">
+        ```
+        /plugin install cyberos@cyberos
+        ```
+
+        Claude Code will confirm the plugin is active. The five commands are now available in any repo session.
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Claude Desktop and Cowork">
+    <Steps>
+      <Step title="Open Plugin settings">
+        Go to **Settings → Plugins → Add**.
+      </Step>
+
+      <Step title="Pick the plugin file">
+        Navigate to your CyberOS payload and select `dist/cyberos/cyberos.plugin`.
+
+        <Tip>
+          Use the `.plugin` file (not the folder). The Add picker greys out the Open button on a folder — the single-file bundle is the correct install target for Claude Desktop and Cowork.
+        </Tip>
+      </Step>
+
+      <Step title="Confirm activation">
+        The plugin appears in your Plugins list as **cyberos**. All five commands are now available in every session.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+---
+
+## Human-in-the-loop is required
+
+The plugin does not change the fundamental workflow contract. Every task still requires two recorded human verdicts before it reaches `done`:
+
+1. **Gate 1 — Review acceptance** (`reviewing → ready_to_test`): the agent presents what it built and its review findings, then halts. You read the task clauses against the change and say "approved" to continue, or route back with what is wrong.
+2. **Gate 2 — Final acceptance** (`testing → done`): the agent presents test evidence and gate output, then halts. You accept with "done" or route back.
+
+The agent never sets `ready_to_test` or `done` on its own. An agent that claims to have done so is behaving incorrectly — report it.
+
+---
+
+## The ship-tasks skill in depth
+
+`/ship-tasks` is more than a shortcut — it is a self-contained skill that bundles its own copy of the workflow doctrine:
+
+- `ship-tasks.md` — the full workflow rules
+- `EXECUTION-DISCIPLINE.md` — how agents must behave between the gates
+- `STATUS-REFERENCE.md` — the 10 task states and who may set each
+
+Because the doctrine is bundled inside the skill, `/ship-tasks` works even if `.cyberos/` is not present in the current repo. The skill always carries the rules it needs.
+
+---
+
+## Agent-independence
+
+<Note>
+  The Claude plugin is convenience, not a requirement. Installing CyberOS writes the canonical `AGENTS.md` spine, `.cyberos/AGENT-ENTRY.md`, and per-agent pointer files for every supported agent. Point any file-and-shell agent — Codex, Cursor, Gemini, Grok, or others — at `AGENTS.md` or `.cyberos/AGENT-ENTRY.md`, and it drives the same workflow with the same two mandatory human gates. The plugin adds slash-command access on top; the underlying system is entirely agent-independent.
+</Note>

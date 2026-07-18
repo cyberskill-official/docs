@@ -1,0 +1,154 @@
+---
+title: 'CRM: Pipeline, Accounts, and Vietnamese Commerce'
+sidebarTitle: 'CRM'
+description: 'CyberOS CRM manages your sales pipeline with Account, Contact, and Deal primitives — plus native Vietnamese tax code validation, VietQR, and hóa đơn.'
+---
+
+CRM is CyberOS's sales pipeline, account intelligence, and Vietnamese-market commercial layer. It is built on three primitives — **Account**, **Contact**, and **Deal** — in a Salesforce-flavoured hierarchy, but with Vietnamese commercial realities baked in as protocol features rather than plugin afterthoughts. MST tax code validation runs automatically against the General Department of Taxation (GDT) registry on every account write. VietQR generates a Napas247 payment code with one tap on any deal. `hóa đơn` (VAT invoices compliant with Circular 78/2021) are emitted automatically on deal close via INV. The CRM is also the upstream half of the CyberOS orchestration spine: when a deal is won, the Account Manager converts it to a PROJ Engagement with the rate card pre-wired, and the full PROJ → TIME → INV → REW chain begins at that single click.
+
+---
+
+## Pipeline management
+
+CRM ships four default pipeline shapes. Each pipeline has fully configurable stages and transition rules.
+
+<CardGroup cols={2}>
+  <Card title="Sales" icon="chart-line">
+    The standard B2B sales funnel. Default stages: Qualifying → Discovery → Proposal → Negotiation → Closed Won / Closed Lost.
+  </Card>
+  <Card title="Partner" icon="handshake">
+    For channel and referral partnerships. Stages reflect mutual due-diligence and co-selling motions.
+  </Card>
+  <Card title="Inbound" icon="arrow-down-to-line">
+    For web form and inbound lead flows. Deals are pre-scored by CUO before the Account Manager sees them.
+  </Card>
+  <Card title="Outbound" icon="arrow-up-from-line">
+    For account-based outreach. Stages reflect the prospecting and qualification cadence.
+  </Card>
+</CardGroup>
+
+You move deals between stages by dragging and dropping on the pipeline board. Stage transitions are validated by the pipeline rules engine before they are committed — if a transition is not allowed (for example, jumping from Qualifying to Closed Won without passing through Proposal), the system rolls back the card and shows you the reason.
+
+Workspace admins can add custom stages, rename defaults, and configure per-pipeline transition rules from **CRM → Settings → Pipelines**.
+
+---
+
+## Vietnamese-specific features
+
+CyberOS CRM treats Vietnamese commercial requirements as first-class features, not integrations to configure.
+
+<Accordion title="MST tax code validation">
+  Every time you create or update an Account that includes a Vietnamese tax code (`vn_mst`), CRM automatically invokes the `vietnam-mst-validate` skill against the GDT registry. If the MST matches, the account is marked `vn_mst_validated = true`. If the registry returns a canonical name that differs from what you entered, CRM normalises the account name to the GDT value and shows you a warning.
+
+  Results are cached for seven days, so validations on existing accounts do not hit the GDT registry on every page load. The cache is invalidated automatically if you update the MST field.
+</Accordion>
+
+<Accordion title="VietQR for collection">
+  On any open deal, click **Generate VietQR** to produce a Napas247-compliant QR code pre-filled with your bank, account number, amount, and deal reference. Share the QR in an email, a CHAT message, or on a printed invoice. The QR is cached for 24 hours — regenerate it if the deal amount changes.
+
+  Your tenant's bank account allow-list governs which bank BINs are available for QR generation. A Member must confirm the bank account on first use.
+</Accordion>
+
+<Accordion title="Hóa đơn (VAT invoice)">
+  When you close a deal as **Won**, CRM automatically invokes the `vietnam-vat-invoice` skill to assemble a GDT-compliant XML invoice (template based on the account's legal entity type). The Account Manager must confirm the amount and recipient before the invoice is emitted — this is a tax document and requires an explicit human confirmation step. On confirmation, the `hóa đơn` is registered in INV and the XML is stored for 10-year retention per Decree 123/2020.
+</Accordion>
+
+<Accordion title="Account types and legal entity mapping">
+  CRM maps Vietnamese legal entities to the following account types, which determine the correct `hóa đơn` template:
+
+  | Code | Vietnamese | English | MST length | Hóa đơn template |
+  |------|-----------|---------|-----------|-----------------|
+  | `sole_proprietor` | Hộ kinh doanh | Sole proprietor | 10 digits | 06GTKT (simplified) |
+  | `llc` | Công ty TNHH | LLC | 10 or 13 digits | 01GTKT |
+  | `jsc` | Công ty cổ phần | JSC | 10 or 13 digits | 01GTKT |
+  | `fdi` | FDI | Foreign-invested | 10 or 13 digits | 01GTKT |
+  | `individual` | Cá nhân | Individual | 10 digits (CCCD-linked) | 06GTKT |
+</Accordion>
+
+<Accordion title="Salutation logic">
+  Contact records include a `salutation` field pre-populated from gender and age signals: **Anh** (male, peer or senior), **Chị** (female, peer or senior), **Em** (junior), or **Bạn** (neutral). Salutation is used in AI-drafted emails and any outbound communications CyberOS generates on your behalf.
+</Accordion>
+
+---
+
+## Activity auto-logging
+
+CRM automatically logs activities from EMAIL, CHAT, and Calendar — you never need to manually enter that you sent an email or attended a meeting.
+
+<CardGroup cols={3}>
+  <Card title="EMAIL" icon="envelope">
+    Inbound and outbound emails to and from **tracked domains** are auto-logged as CRM activities on the matching Contact and Deal. Only tracked domains trigger auto-logging — personal email addresses are never attached.
+  </Card>
+  <Card title="CHAT" icon="message">
+    Meeting notes captured in CHAT threads are auto-logged as meeting activities on the relevant Deal or Contact based on context and participant matching.
+  </Card>
+  <Card title="Calendar" icon="calendar">
+    Calendar attendance is auto-logged as a meeting activity. If the meeting is linked to a Deal through its title or participants, it appears in that Deal's activity timeline.
+  </Card>
+</CardGroup>
+
+<Note>
+  Activity auto-logging uses idempotency keys derived from the source event ID. If the same email or calendar event is processed more than once (for example, after a retry), CRM deduplicates it automatically — you will never see duplicate activities on a Deal.
+</Note>
+
+---
+
+## AI features
+
+CUO provides four classes of AI assistance in CRM. All AI suggestions are proposals — CUO never auto-progresses a deal or auto-logs an activity without a human action.
+
+<Tabs>
+  <Tab title="Lead scoring">
+    Every new Contact is automatically scored (0–100, tiered as hot / warm / cold) by the `crm.score-lead@1` skill using activity recency, engagement size, account vertical, and historical win-rate signals. Scores refresh nightly. The score is a priority signal for your outreach queue — you decide who to contact first.
+  </Tab>
+  <Tab title="Next-best-action">
+    The `crm.next-action@1` skill ranks the single most valuable next move for each open Deal. Suggestions include **call**, **send proposal**, **schedule demo**, and **request VietQR collection**. Each suggestion shows a confidence percentage and the reasoning behind it, grounded in memory context from prior interactions with the account and similar deal trajectories.
+  </Tab>
+  <Tab title="Confidence-banded forecast">
+    The CRO-skill produces a pipeline forecast with three confidence bands (50%, 80%, 95%) for both VND and USD totals. Forecasts run per pipeline and are updated whenever a deal moves stage or the expected close date changes.
+  </Tab>
+  <Tab title="Win/loss analysis">
+    After a deal is closed (won or lost), CUO drafts a win/loss analysis grounded in the deal's activity history, competitor signals, and similar past deals. The Account Manager reviews and accepts the draft, which is then stored as a memory entry that future deals with the same account or vertical can cite.
+  </Tab>
+</Tabs>
+
+---
+
+## Deal → Engagement bridge
+
+When you click **Convert to Engagement** on a won deal, CRM fires the PROJ §2.5 join contract:
+
+<Steps>
+  <Step title="Engagement created">
+    A new PROJ Engagement is created with the deal's contract URL and client `account_id` linked automatically.
+  </Step>
+  <Step title="Rate card pre-wired">
+    The rate card is pre-populated from the deal's pricing page. You choose the billing mode (T&M, fixed-fee, or retainer) — this choice locks once the Engagement is saved.
+  </Step>
+  <Step title="Billable rules applied">
+    PROJ's billable cascade rules are wired to the Engagement's roles. Members can begin logging TIME entries immediately.
+  </Step>
+  <Step title="Deal memory ingested">
+    The closed deal is ingested into memory Layer 3 as a win/loss record, where it becomes citable context for future deals with the same account or vertical.
+  </Step>
+</Steps>
+
+<Warning>
+  Not every won deal should become a PROJ Engagement. For pure resale deals where you are collecting payment without delivering services, skip the conversion. The conversion dialog requires an explicit Account Manager action — there is no automatic Engagement creation.
+</Warning>
+
+---
+
+## Auto vs manual operations
+
+| Operation | How it happens | Why this split |
+|-----------|---------------|----------------|
+| Activity auto-logging | **Automatic** from EMAIL / CHAT / Calendar by domain and contact match | Eliminates the manual logging tax; no manual entry needed for tracked-domain communications. |
+| Lead scoring | **Automatic** on Contact create; refreshed nightly | Score is a hint, not an action — the AM decides outreach priority. |
+| Stage transition | **Manual** with workflow validator | Sales is a relationship motion; the AM owns when a deal progresses. |
+| MST validation | **Automatic** on every account write with an MST | VN tax-code authority is the GDT registry; CRM calls it automatically. |
+| VietQR generation | **Available automatically, triggered manually** per deal | One click on the deal page; cached 24 hours. |
+| Hóa đơn emission | **Automatic** on `deal.stage = won` via INV; **manual confirm** required | Tax document — the AM must confirm amount and recipient before emission. |
+| Deal → Engagement conversion | **Manual** AM click | Not every won deal becomes a PROJ Engagement; AM intent is required. |
+| Win/loss analysis | **Automatic** draft via CUO; **AM accepts** | Generates a memory entry for future deals to cite; the AM owns the narrative. |
+| Inbound web-form deal creation | **Automatic** with lead scoring pre-applied | Reduces friction; AM triages from a pre-scored queue. |

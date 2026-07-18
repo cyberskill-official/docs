@@ -1,0 +1,128 @@
+---
+title: 'CyberOS Platform Changelog'
+sidebarTitle: 'Changelog'
+description: 'Significant changes across CyberOS modules and services, including shipped features, protocol amendments, and platform version milestones.'
+---
+
+This changelog covers notable changes to the CyberOS platform that affect users and integrators. It highlights user-facing features, protocol amendments, and module status milestones. For the full line-by-line technical history, see the `CHANGELOG.md` in each module directory in the open-source repository.
+
+## Checking Your Installed Version
+
+<CodeGroup>
+```bash Terminal
+cat .cyberos/VERSION
+```
+
+```bash Claude Plugin
+/version
+```
+
+```bash CLI
+npx cyberos --version
+```
+</CodeGroup>
+
+<Tip>
+  Use `cat .cyberos/VERSION` in an installed repo to check your installed CyberOS version. The current platform release is **1.0.0** (2026-07-14).
+</Tip>
+
+## Version 1.0.0 — 2026-07-14
+
+The first stable release of CyberOS. The 1.0.0 designation is deliberate: the 0.x line hardened the governed development machinery end to end. 1.0.0 commits to the `engineering-spec@1` task contract and the 10-state task lifecycle as stable interfaces.
+
+<Tabs>
+  <Tab title="Highlights">
+    - **Stable contracts.** `engineering-spec@1` and the 10-state task lifecycle are committed stable interfaces. The `/create-tasks` and `/ship-tasks` workflows are hardened for multi-repo production use — resumable ship manifests, deterministic queue selection, gate autodetect across 9 language stacks, per-repo config, and audited backlog writes.
+    - **Visual deliverables.** Every task renders to its own CDS-styled page. The status hub (`status-hub@2`) provides three lenses — board, table, and releases — regenerated from task frontmatter, this CHANGELOG, and the VERSION file on every deploy.
+    - **Consumer CLI finalised.** Commands: `install`, `uninstall`, `version`, `status`, `help`. Matching Claude plugin slash commands: `/install`, `/uninstall`, `/version`, `/status`, `/help`.
+    - **Soft update-check.** On any `.cyberos` use, CyberOS checks whether a newer version is available. If stale, it prompts you to run `cyberos install` to re-vendor.
+  </Tab>
+  <Tab title="What Changed from 0.x">
+    - **Status page consolidated.** Roadmap, Backlog, and Changelog stopped being three separate tabs and became three lenses — board, table, releases — over one filtered task corpus with a per-task spec drawer.
+    - **Entrypoints renamed.** `changelog` → `status` (opens the status hub); `update` → `version` (check-only). There is no separate `apply` path — re-vendor via `install` only.
+    - **Root `AGENTS.md` thinned.** The root `AGENTS.md` is now a thin pointer to `.cyberos/AGENT-ENTRY.md`. The Layer-1 memory protocol lives at `modules/memory/AGENTS.md`.
+    - **Version numbering fixed.** The 1.x tags from the 0.x era were withdrawn. Store build numbers are decoupled from semver via a monotonic `BUILD_NUMBER` file seeded at 10701.
+  </Tab>
+</Tabs>
+
+## Recent Module Highlights
+
+<AccordionGroup>
+  <Accordion title="AUTH — Wave 1+2 Shipped">
+    **Wave 1 — All 6 MUST tasks shipped and strict-audited (TASK-AUTH-001 through TASK-AUTH-006).**
+
+    - **SAML XML-DSig (TASK-AUTH-103):** `services/auth/src/saml_sig.rs` (~520 lines) — `ds:Signature` discovery, strict algorithm allowlist (RSA-SHA256 + SHA-256 + exc-c14n), enveloped-signature stripping, reference-by-ID resolution, RSA-PKCS1-v1.5 verification, X.509 → SPKI TLV parsing. 14 canonicaliser tests + 7 X.509/PEM tests.
+    - **GeoIP travel policy (TASK-AUTH-106):** New `geoip.rs` with `GeoIpResolver` trait, `MaxMindResolver`, and `NullResolver` fallback. Activates `cross_continent_velocity` and `geo_velocity_exceeded` detectors. `travel_policy.rs` ships with a 60-second `PolicyCache` and bounded-50k `StickySuppress` LRU. All four login flows now pass through `assess_login`.
+    - **Admin REST API (TASK-AUTH-005):** `list_tenants`, `list_subjects`, `revoke`, `unrevoke` endpoints with cursor pagination (HMAC-SHA256 signed cursors via HKDF) and an in-memory JTI deny-list. 17 spec-vs-code gaps closed. New modules: `cursor.rs`, `deny_list.rs`, `sessions.rs`. New migration: `0021_sessions.sql`.
+    - **Rust floor bumped 1.83 → 1.88** to accommodate `webauthn-rs 0.5.5`, `time 0.3.47`, `icu_* 2.2.0`, and `base64urlsafedata 0.5.5`.
+
+    Deferred to Wave 3: Redis-backed deny-list (TASK-AUTH-110) and closed revoke reason taxonomy (TASK-AUTH-111).
+  </Accordion>
+
+  <Accordion title="Memory (BRAIN) — Wave 2026-Q3 Complete">
+    All 9 tasks in the MEMORY Wave 2026-Q3 shipped end-to-end. 2,784 lines of tests covering 110+ acceptance criteria.
+
+    - **TASK-MEMORY-118 — `put_if` precondition-hash (P21 APPROVED 2026-05-19):** New canonical op `put_if` that only writes if the current content hash matches the supplied precondition. Prevents lost-update races in concurrent multi-agent scenarios.
+    - **TASK-MEMORY-115 — `cyberos dream` (P19 §7.7):** Proposal-mode dreaming loop. Agents propose memory consolidations; proposals are queued for human review before any write. Dream proposals are tracked by `dream_id` and visible in `cyberos history`.
+    - **TASK-MEMORY-117 — per-store ACL (P20 §14.4):** Fine-grained access control on memory subtrees. Denied accesses emit `memory.acl_denied` audit rows.
+    - **TASK-MEMORY-119 — session transcript ledger (P22 §18):** Opt-in session transcripts stored in `sessions/<YYYY-MM-DD>/<id>.binlog` with AES-256-GCM encryption for `restricted` classification. CLI: `cyberos transcript start|append|end|read|list|purge-expired`.
+    - **TASK-MEMORY-120 — `cyberos history`:** Read-only per-path history projection. Flags: `--limit`, `--chronological`, `--no-follow-moves`, `--show-body`, `--since`, `--json`. Never mutates the store.
+    - **Desktop scaffold (TASK-MEMORY-104):** Tauri 2 + Svelte 5 runes desktop app at `services/memory/desktop/`. Dashboard, Search, and Sync tabs. Sync supervisor with 5-restarts-per-60s circuit breaker.
+  </Accordion>
+
+  <Accordion title="Skill Library — 100+ Author/Audit Pairs">
+    - **100+ author/audit skill pairs indexed** in the CyberOS skill library, covering all 47 active CUO personas.
+    - **Anthropic Agent Skills open-standard compliance.** All skills conform to the `SKILL.md` contract format, making them compatible with Claude, Codex, Cursor, Goose, Amp, and any Agent Skills-compliant client.
+    - **`cyberskill-vn` pack shipped.** Six Vietnamese-market skills in production: `vietnam-mst-validate`, `vietnam-bank-transfer` (VietQR), `vietnam-vat-invoice` (hóa đơn), and supporting utilities.
+    - **Universal-protocol skills.** `memory-capture@1`, `memory-sync@1`, and `synthesis-author@1` form the memory-protocol skill bundle — invocable by any persona that needs to read from or write to BRAIN.
+    - **Distribution roadmap:** R0 (local cache) → R1 (.skill bundles) → R2 (OCI registry) → R3 (agentskills.io citizen) → R4 (own marketplace, gated on ≥50 paying tenants) → R5 (enterprise white-label).
+  </Accordion>
+
+  <Accordion title="CUO — ship-tasks Hardened, Dream Loop Shipped">
+    - **47 active personas, 221+ workflows.** All persona folders use the `chief-*-officer` slug convention. 1,447 substitutions across 241 files in the normalisation pass.
+    - **Phase 4 supervisor (v3.0.0-a4).** Five special-case handler subclasses: `LinearHandler` (default), `TimeCriticalHandler` (SLA-bypass + breach audit), `PerInstanceHandler` (fan-out ×N + summary), `MultiOutputHandler` (per-recipient fan-out), `SequentialApprovalHandler` (gate chain B on approval of chain A), `PersonaPairHandler` (interleaved chains with shared artefact ownership). Dispatched by `pattern:` frontmatter.
+    - **Single-backlog model.** The improvement track was merged into the product track. One backlog, one `ship-tasks` flow.
+    - **Dream loop (propose mode).** `cyberos dream` ships as a CUO-adjacent command. Agents propose memory consolidations; the loop defers writes until human acceptance.
+    - **Gate autodetect (TASK-CUO-207).** Supports Go, JVM, .NET, PHP, Ruby, Rust, Python, TypeScript, Bun. Per-repo overrides via `.cyberos/config.yaml`.
+    - **Backlog-state-update@2.** One audited write path to `BACKLOG.md` — all state transitions go through this skill, never direct file edits.
+  </Accordion>
+
+  <Accordion title="Claude Plugin — Commands and Marketplace">
+    - **Slash commands:** `/install`, `/uninstall`, `/version`, `/status`, `/help` — full parity with the CLI surface.
+    - **Claude Code marketplace listing.** The CyberOS plugin is listed on the Claude Code marketplace. A `.plugin` file enables one-click install from Claude Desktop.
+    - **`/status` opens the status hub** (`docs/status/index.html`) in the default browser, showing the board/table/releases view of the current task corpus.
+    - **Soft update-check on any `.cyberos` use.** If a newer version is available and the user confirms, `install` re-vendors the payload. No separate `apply` path.
+  </Accordion>
+</AccordionGroup>
+
+## Module Status
+
+<Note>
+  For full technical changelogs, see the `CHANGELOG.md` in each module directory in the open-source repository at `modules/<slug>/CHANGELOG.md`.
+</Note>
+
+| Module | Status |
+|---|---|
+| memory (BRAIN) | Shipped — P0 |
+| Skill library | Shipped — P0 |
+| CUO workflow engine | Shipped — P0 |
+| AUTH | In progress — P0 |
+| AI Gateway | In progress — P0 |
+| MCP Gateway | Planned — P0 |
+| OBS (Observability) | Planned — P0 |
+| CHAT | Planned — P0 |
+| PROJ | Planned — P1 |
+| TIME | Planned — P1 |
+| CRM | Planned — P1 |
+| KB (Knowledge Base) | Planned — P1 |
+| HR | Planned — P1 |
+| EMAIL | Planned — P1 |
+| REW (Rewards/Compensation) | Planned — P1 |
+| LEARN | Planned — P1 |
+| INV (Invoicing) | Planned — P2 |
+| ESOP | Planned — P2 |
+| RES (Resources) | Planned — P3 |
+| OKR | Planned — P3 |
+| DOC (Documents) | Planned — P4 |
+| PORTAL | Planned — P4 |
+| TEN (Tenancy) | Planned — P4 |

@@ -1,0 +1,158 @@
+---
+title: 'CyberOS Glossary: Terms, Acronyms, and Concepts'
+sidebarTitle: 'Glossary'
+description: 'Definitions for CyberOS-specific terms, acronyms, module names, and Vietnamese business concepts used throughout the platform documentation.'
+---
+
+This glossary covers CyberOS-specific terms, platform module acronyms, and Vietnamese market terminology referenced throughout the documentation. If you encounter a term in a guide or reference page that is not defined inline, look it up here first.
+
+## CyberOS Platform Terms
+
+<AccordionGroup>
+  <Accordion title="BRAIN">
+    The conceptual alias for the CyberOS memory module. Technically, BRAIN refers to the memory store located at `.cyberos/memory/store/` within an installed repository. The store is a local-first, append-only, cryptographically chained record of every memory operation. When documentation refers to "writing to BRAIN" or "querying BRAIN," it means interacting with this Layer 1 memory store.
+  </Accordion>
+
+  <Accordion title="SKILL.md">
+    The normative contract file for a CyberOS skill. Every skill folder contains a `SKILL.md` that defines the skill's name, description, supported invocation modes (author, audit, MCP tool, CLI), and the input/output schema. `SKILL.md` conforms to the Anthropic Agent Skills open standard, meaning skills authored for CyberOS are compatible with Claude, Codex, Cursor, Goose, Amp, and any other Agent Skills-compliant client.
+  </Accordion>
+
+  <Accordion title="CUO — Central Unified Orchestrator">
+    The workflow engine that routes tasks to the right persona and skill chain. CUO is a rule-based router (Phase 1, shipped) with LLM-augmented routing (Phase 2) and multi-skill chain execution (Phases 3–4) in design. CUO reads a task's domain and intent, selects the matching persona and workflow, and dispatches it to the appropriate invoker (subprocess, LLM, or mock). Every routing decision and invocation result is emitted as a memory audit row.
+  </Accordion>
+
+  <Accordion title="ship-tasks">
+    The single CyberOS workflow that drives tasks through the 10-state lifecycle. `ship-tasks` is the canonical way to move a task from `backlog` through `ready_to_implement`, `implementing`, `gates`, `human_gate_1`, `done`, and the remaining states. The workflow enforces two mandatory human-acceptance gates (HITL) and runs automated gate checks (build, lint, test, coverage) before each gate. Use the Claude plugin `/ship-tasks` command or `cyberos-cuo execute` to run it.
+  </Accordion>
+
+  <Accordion title="HITL — Human-in-the-Loop">
+    The two mandatory human-acceptance gates in the `ship-tasks` workflow. The first HITL gate occurs after automated gates pass and before a task is marked `human_gate_1` (typically a spec review). The second occurs before final `done` marking. No task can transition past either gate without an explicit human approval signal — CUO cannot self-approve. The HITL model is documented in `AGENTS.md` and enforced in `ship-tasks` at the workflow level.
+  </Accordion>
+
+  <Accordion title="Task">
+    A markdown file under `docs/tasks/` with YAML frontmatter defining a unit of work. Task frontmatter specifies at minimum: `id`, `title`, `status`, `priority`, `module`, `owner`, and `acceptance_criteria`. Tasks are the atomic unit of the CyberOS backlog — every feature, fix, and improvement is a task file. The `task-author` and `task-audit` skills produce and verify tasks conforming to the `engineering-spec@1` contract.
+  </Accordion>
+
+  <Accordion title="Skill">
+    A versioned, auditable agent capability packaged as a folder with a `SKILL.md` contract file. A skill may include a `RUBRIC.md` (for audit skills), a `template.md` (output template), a `CHANGELOG.md`, and a `CONTRACT.md` (inter-skill dependency contract). Skills are invoked by CUO via the Skill module's WASM host (Rust + Wasmtime + Bun toolchain). The CyberOS skill library currently contains 100+ author/audit pairs.
+  </Accordion>
+
+  <Accordion title="Persona">
+    A named C-role in CUO — for example, `chief-technology-officer`, `chief-financial-officer`, or `chief-revenue-officer` — with its own suite of workflows. Each persona folder under `modules/cuo/` contains one or more workflow markdown files that define multi-skill chains for that role's recurring responsibilities. CUO currently has 47 active personas and 221+ workflows.
+  </Accordion>
+
+  <Accordion title="MMR — Merkle Mountain Range">
+    The cryptographic audit-chain structure used in memory binlogs. Every memory write appends a new leaf to the MMR, producing a Merkle root that covers all prior entries. This means any retrospective modification to a memory entry would produce a detectable root mismatch. CyberOS uses MMR to make the memory store tamper-evident. Long-term, the root is intended to anchor to Sigstore Rekor for external verifiability.
+  </Accordion>
+
+  <Accordion title="Layer 1 / Layer 2">
+    The two storage layers of the CyberOS memory architecture. **Layer 1** is the local append-only protocol store — the `.cyberos/memory/store/` directory containing the binlog and MMR. Layer 1 is the source of truth. **Layer 2** is the Rust semantic search service that indexes Layer 1 content for fast vector-similarity queries. Reads that require semantic recall go through Layer 2; all writes go directly to Layer 1.
+  </Accordion>
+
+  <Accordion title="Agent">
+    Any AI system operating under the `AGENTS.md` protocol within a CyberOS-installed repository. This includes Claude (Anthropic), Codex (OpenAI), Cursor, Goose, and Amp. The `AGENTS.md` file at the repo root (a thin pointer to `.cyberos/AGENT-ENTRY.md`) defines the rules all agents must follow: memory protocol, task lifecycle, skill invocation, audit chain emission, and HITL gate behaviour. Agents are treated as equal participants in the task workflow — "agent-equal" means an agent can log activities, submit tasks, and run skills with the same permissions as a human member, subject to scope grants.
+  </Accordion>
+
+  <Accordion title="Gates">
+    Automated verification checks run before a human gate in `ship-tasks`. Gates include build (does the code compile?), lint (does it pass style checks?), test (do all tests pass?), and coverage (does coverage meet the threshold?). CUO's gate autodetect (`TASK-CUO-207`) supports Go, JVM, .NET, PHP, Ruby, Rust, Python, TypeScript, and Bun. Per-repo gate configuration lives in `.cyberos/config.yaml`. All gates must be green before the workflow advances to the next HITL gate.
+  </Accordion>
+
+  <Accordion title=".cyberos/">
+    The gitignored vendor folder created by `cyberos install` in your repository. It contains the memory store (`memory/store/`), the agent entry point (`AGENT-ENTRY.md`), the installed version (`VERSION`), the runtime config (`config.yaml`), and the vendored skill bundles. The `.cyberos/` directory is never committed to your repository — it is recreated by `cyberos install` and updated by `cyberos version`.
+  </Accordion>
+</AccordionGroup>
+
+## Module Acronyms
+
+| Acronym | Full Name | Status |
+|---|---|---|
+| AUTH | Authentication & Identity | In progress — P0 |
+| AI | AI Gateway | In progress — P0 |
+| MCP | MCP Gateway | Planned — P0 |
+| OBS | Observability | Planned — P0 |
+| CHAT | Chat & Messaging | Planned — P0 |
+| memory / BRAIN | Memory Store | Shipped — P0 |
+| CUO | Central Unified Orchestrator (workflow engine) | Shipped — P0 |
+| PROJ | Projects & Engagements | Planned — P1 |
+| TIME | Time Tracking & Expenses | Planned — P1 |
+| CRM | Customer Relationship Management | Planned — P1 |
+| KB | Knowledge Base | Planned — P1 |
+| HR | Human Resources | Planned — P1 |
+| EMAIL | Email Integration | Planned — P1 |
+| REW | Rewards & Compensation | Planned — P1 |
+| LEARN | Learning & Development | Planned — P1 |
+| INV | Invoicing | Planned — P2 |
+| ESOP | Employee Stock Option Plan | Planned — P2 |
+| RES | Resources | Planned — P3 |
+| OKR | Objectives & Key Results | Planned — P3 |
+| DOC | Documents | Planned — P4 |
+| PORTAL | Client Portal | Planned — P4 |
+| TEN | Tenancy & Administration | Planned — P4 |
+
+## Vietnamese Terms
+
+<AccordionGroup>
+  <Accordion title="MST — Mã số thuế">
+    Vietnamese business tax identification number issued by the General Department of Taxation (GDT). Standard format is 10 digits for the head office; branch offices append a 3-digit suffix (13 digits total). MST is required on every B2B invoice (hóa đơn) and is the primary identifier for business accounts in CRM. CyberOS validates MST against the live GDT registry on every CRM account write.
+  </Accordion>
+
+  <Accordion title="Hóa đơn">
+    Vietnamese VAT invoice. Under Decree 123/2020/NĐ-CP, all businesses in Vietnam must issue electronic hóa đơn (hóa đơn điện tử) in the GDT-specified XML schema. CyberOS emits compliant hóa đơn via the INV module on deal close, using the `vietnam-vat-invoice` skill. Standard VAT rate is 10%; reduced rate is 5% for specified goods; export rate is 0%.
+  </Accordion>
+
+  <Accordion title="BHXH — Bảo hiểm xã hội">
+    Social insurance (Bảo hiểm xã hội). Employee contribution is **10.5%** of monthly base salary; employer contribution is 17.5%. Governed by Decree 152/2020. REW computes and reports both sides of the BHXH contribution on every payroll run.
+  </Accordion>
+
+  <Accordion title="BHYT — Bảo hiểm y tế">
+    Health insurance (Bảo hiểm y tế). Employee contribution is **1.5%** of monthly base salary; employer contribution is 3%. Governed by Decree 152/2020. Computed alongside BHXH in REW.
+  </Accordion>
+
+  <Accordion title="BHTN — Bảo hiểm thất nghiệp">
+    Unemployment insurance (Bảo hiểm thất nghiệp). Employee contribution is **1%** of monthly base salary; employer contribution is 1%. Governed by Labour Code 2019. Computed in REW as part of the full statutory deductions block.
+  </Accordion>
+
+  <Accordion title="PIT — Thuế thu nhập cá nhân">
+    Personal Income Tax (Thuế thu nhập cá nhân). Progressive tax rates from 5% to 35% applied to taxable income after statutory deductions (BHXH, BHYT, BHTN) and personal exemptions. REW computes PIT on each payroll run and provides a breakdown of taxable income per bracket.
+  </Accordion>
+
+  <Accordion title="VietQR">
+    The Napas247 open QR payment standard used by Vietnamese banks and banking apps for interbank transfers. A VietQR code encodes bank BIN, account number, transfer amount, and payment reference in the EMVCo QR format. Any Napas-connected banking app can scan and pre-fill a transfer from a VietQR code. CyberOS generates VietQR codes from CRM deals via the `vietnam-bank-transfer` skill.
+  </Accordion>
+
+  <Accordion title="PDPL — Personal Data Protection Law">
+    Vietnam's primary data privacy law (Law 91/2025/QH15, building on Decree 13/2023/NĐ-CP). Key obligations for CyberOS tenants include: data localisation for `vn-1` tenants (Decree 53/2022), cross-border transfer approval (Art. 38), Data Subject Access Request fulfilment (Art. 14), DPO designation for high-risk processing (Art. 28), and processing logs (Art. 17). All PDPL obligations are managed in the TEN module.
+  </Accordion>
+
+  <Accordion title="Hội đồng Chuyên môn — Specialist Council">
+    A peer-review body of 3–5 specialist judges who evaluate Member skill promotion decisions in the LEARN module. When a Member submits evidence for a promotion (degree, certification, project record), the Specialist Council reviews the submission and votes. A majority vote is required for promotion. The council composition and voting records are stored in LEARN and linked to the Member's HR profile.
+  </Accordion>
+
+  <Accordion title="Bằng cấp">
+    Academic degree certificate (Bằng cấp). A formal tertiary academic credential — bachelor's, master's, or doctorate. In the LEARN module, bằng cấp records are one of the two primary evidence types a Member can submit for skill promotion or qualification verification.
+  </Accordion>
+
+  <Accordion title="Chứng chỉ">
+    Professional certification (Chứng chỉ). An industry or professional body certification — AWS certifications, CPA, PMP, and similar. In LEARN, chứng chỉ records are the second primary evidence type for skill promotion submissions, alongside bằng cấp.
+  </Accordion>
+</AccordionGroup>
+
+## Business Terms
+
+<AccordionGroup>
+  <Accordion title="Engagement">
+    A client project record in the PROJ module that links a CRM deal, a rate card, a team roster, and billable hours. When an AM clicks **Convert to Engagement** on a won CRM deal, PROJ creates an Engagement pre-populated with the deal's pricing, contract URL, and client account. TIME entries flow into the Engagement; INV invoices are generated from it. The Engagement is the operational unit that connects sales (CRM) to delivery (PROJ + TIME) to billing (INV).
+  </Accordion>
+
+  <Accordion title="BP — Bonus Points">
+    CyberOS's inflation-indexed compensation unit, accruing in the REW module. Bonus Points are awarded quarterly from the BP fund and accumulate in each Member's BP ledger. The ledger accrues interest at the ACB benchmark rate (vn-acb-rate) to index against inflation. BP can be converted to cash or rolled over. BP forms the P3 (performance pay) component of the 3P compensation model.
+  </Accordion>
+
+  <Accordion title="VP — Voting Power">
+    A quarterly score computed in the LEARN module used for REW bonus distribution. VP rolls up contributions from PROJ (issues closed, engagement quality), TIME (billable hours, utilisation), and KB (knowledge articles authored and rated). Members with higher VP receive a larger share of the quarterly BP distribution. VP resets each quarter so recent contributions always matter.
+  </Accordion>
+
+  <Accordion title="3P — P1/P2/P3 Pay Components">
+    The three-component pay model in REW: **P1 (Base pay / Lương cơ bản)** is the floor salary, protected by a DB CHECK constraint that prevents reduction; **P2 (Allowance / Phụ cấp)** covers fixed allowances such as transport, meals, and phone; **P3 (Performance pay / Lương hiệu suất)** is the variable quarterly component distributed from the BP fund proportional to each Member's VP score. Total compensation = P1 + P2 + P3.
+  </Accordion>
+</AccordionGroup>

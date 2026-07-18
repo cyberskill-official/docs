@@ -1,0 +1,149 @@
+---
+title: 'ESOP: Equity Grants, Vesting, and Cap Table'
+sidebarTitle: 'ESOP'
+description: 'CyberOS ESOP manages employee stock option plan grants, vesting schedules, and cap table visibility — integrated with HR lifecycle events.'
+---
+
+CyberOS ESOP is the synthetic equity plane — a tracked-on-books economic interest in the company that vests over time, accrues value through annual valuations, and can be partially cashed out through put-option windows. It is used by founding members tracking their vesting curve, HR admins managing lifecycle-triggered grant events, and the finance team running the annual valuation cycle and cap-table reporting. ESOP implements a **Phantom Stock** structure: no share certificates are ever issued, and no Vietnamese securities-regulation filing applies — the grants are treated as deferred compensation under Decree 38/2020. Every grant and every valuation is append-only and requires multi-party co-sign, giving the cap table an auditable, tamper-evident history from day one.
+
+<Note>
+  ESOP is a **P2 module** — it is currently in design phase and is not yet generally available. Refer to the [platform changelog](/reference/changelog) for the GA timeline. Features described here reflect the planned P2 design.
+</Note>
+
+## Grant Management
+
+A grant represents a member's allocation of Synthetic Phantom (SP) units. Grants are issued by the CEO, CFO, and a Board designate together — no single party can create a grant unilaterally.
+
+### Grant Types
+
+| Kind | When Issued | Default Schedule | Notes |
+|---|---|---|---|
+| `founding` | At hire for eligible members | 4 years, 12-month cliff, monthly thereafter | Largest single grant; reflects the offer-letter ESOP allocation. Triggered automatically for eligible members when HR transitions them to `active`. |
+| `milestone` | Achievement-based (promotion, project, leadership) | 2 years, 6-month cliff, monthly | Issued at HR/Ops or CEO discretion after a qualifying event. |
+| `retention` | Annual top-up | 4 years, no cliff, monthly | Keeps forward-vesting trajectory smooth; prevents fully-vested members from losing equity incentive. |
+| `special` | Board-designated | Custom schedule | Requires extra approval step; used sparingly for ad-hoc situations. |
+
+### Issuing a Grant
+
+<Steps>
+  <Step title="HR Onboarding Trigger (Founding Grants)">
+    When a new member is eligible for a founding grant, HR's onboarding orchestrator emits an `hr.member.joined` event. ESOP receives this event and opens a draft grant record for the CEO and CFO to review.
+  </Step>
+  <Step title="Three-Way Co-Sign">
+    The CEO, CFO, and a Board designate each submit a WebAuthn assertion. All three signatures must arrive within a 24-hour window. Any single-signer attempt is rejected by `cosign_guard.rs`.
+  </Step>
+  <Step title="Grant Committed">
+    Once all three signatures are recorded, ESOP inserts the immutable grant row, renders a deterministic PDF (SHA-256 archived to S3 with a 10-year object-lock), and updates `pool_balance.issued_sp`.
+  </Step>
+</Steps>
+
+<Warning>
+  Grant rows are append-only. The database application role has no `UPDATE` or `DELETE` grant on the `grant` table. Corrections require a supersession row with `superseded_by` pointing to the original. Attempting to mutate a published grant is a sev-0 integrity violation.
+</Warning>
+
+## Vesting Tracking
+
+Vesting is computed by a deterministic pure function. The same inputs — `(grant, as_of_date)` — always produce the same vested SP count, making the vesting curve auditable and replayable at any point in history.
+
+### Default Vesting Schedule
+
+- **Cliff:** 12 months from `grant_date`. Zero SP vest before the cliff.
+- **Monthly vesting:** After the cliff, SP vests monthly over the remaining 36 months.
+- **Full vest:** 48 months from `grant_date`.
+
+### Vesting State Machine
+
+```
+Issued → Cliffed → Vesting → FullyVested
+                ↘ Accelerated  (M&A; Board trigger)
+                ↘ TerminatedGL (Good Leaver branch)
+                ↘ TerminatedBL (Bad Leaver branch)
+                ↘ Flipped      (HoldCo conversion)
+```
+
+ESOP runs a monthly cron job that materialises `vesting_event` rows for all active grants. Each row is idempotent — re-running the cron for a period that already has a vesting event is a no-op, protecting against double-accrual.
+
+<Tip>
+  Members can view their own vesting curve, upcoming vest dates, and next put-option window directly from the member portal or by asking the CUO agent (`cyberos.esop.explain_my_vesting`). The narrator never reveals aggregate cap-table data — it shows only the member's own grants.
+</Tip>
+
+## HR Lifecycle Integration
+
+ESOP is tightly integrated with HR's member lifecycle. Several HR state transitions automatically propagate to ESOP.
+
+<Tabs>
+  <Tab title="New Hire (Active)">
+    When HR transitions a member to `active`, ESOP evaluates founding-grant eligibility. If the member's offer letter includes an ESOP allocation, a draft grant is queued for the three-way co-sign flow.
+  </Tab>
+  <Tab title="Leave of Absence">
+    Statutory leaves (annual, maternity, paternity, sick, bereavement) **do not pause vesting**. Unpaid leave beyond statutory entitlements **may pause vesting** depending on the leave duration — the specific threshold is a versioned parameter. Sabbatical leave vesting treatment follows the Total Rewards Appendix.
+  </Tab>
+  <Tab title="Suspension">
+    HR's `suspended` status pauses the monthly vesting cron for the affected member. Vesting resumes automatically when HR transitions the member back to `active`.
+  </Tab>
+  <Tab title="Termination">
+    HR's offboarding orchestrator triggers the Good/Bad Leaver branch in ESOP. The branch decision is **never automatic** — the offboarding orchestrator surfaces a recommendation, but the actual classification requires CEO + CFO co-sign inside ESOP.
+  </Tab>
+</Tabs>
+
+### Good Leaver vs Bad Leaver
+
+| Outcome | Good Leaver | Bad Leaver |
+|---|---|---|
+| Vested SP | Retained at face valuation | Retained at appendix discount (typically 50–60% of valuation) |
+| Unvested SP | Forfeited; returned to pool | Forfeited; returned to pool |
+| Put rights | Preserved — exercisable in future annual windows | Frozen — no future put exercises |
+| HoldCo flip eligibility | Eligible if pre-flip | Excluded from flip |
+| Typical trigger | Voluntary resignation, redundancy, mutual exit, retirement | Termination for cause, gross misconduct, covenant breach |
+| Required approvals | CFO confirms | CEO + CFO co-sign (mandatory) |
+
+<Warning>
+  The Good/Bad Leaver branch is a human-only decision. No system path selects the branch automatically. The `leaver.rs` component waits for explicit CEO + CFO WebAuthn signatures before writing the `GRANT_TERMINATION` row. Any attempt to automate this decision is a sev-0 compliance violation.
+</Warning>
+
+## Cap Table Visibility
+
+ESOP enforces strict access controls on cap-table data. Members can see their own grants and put schedule; only the CEO, CFO, and Board roles can view the aggregate cap table.
+
+<Tabs>
+  <Tab title="Member View">
+    You see your own grants, vesting events, SP balance, and the schedule of upcoming put-option windows. You can simulate a put exercise (how much cash at the current valuation for N SP) without committing — the narrator surface runs the calculation against the published valuation without writing any records.
+  </Tab>
+  <Tab title="CFO / CHRO View">
+    CFO and CHRO can access the full cap table (`esop.cap_table_read` scope required), which shows all members' SP allocations, vested totals, and pool utilisation. Every cap-table read generates an audit row.
+  </Tab>
+  <Tab title="Board View">
+    Board designates have the same `esop.cap_table_read` scope as CFO/CHRO, plus access to the valuation reports and the M&A acceleration trigger surface.
+  </Tab>
+</Tabs>
+
+## Annual Valuation Cycle
+
+The SP unit value is set once per year by a tri-party process: CFO provides the base valuation, the Board chair applies the industry multiplier, and an external auditor (e.g. KPMG, EY, or PwC) attests. The resulting `sp_unit_value_vnd` is published as an immutable versioned row — put exercises during the year are priced at the most recent published valuation.
+
+<Accordion title="How the Valuation Formula Works">
+  `sp_unit_value_vnd = base_value_vnd × industry_multiplier ÷ total_outstanding_sp`
+
+  For example: a base value of ₫50 billion, a multiplier of 8×, and 100,000 outstanding SP produces an SP unit value of ₫4,000,000 per SP. This formula is versioned — the parameters used for each year's valuation are frozen at publish time and never retroactively altered.
+</Accordion>
+
+## Vietnamese Corporate Law Context
+
+ESOP operates under the **Vietnamese Joint-Stock Company (JSC) structure** established by Law on Enterprises 59/2020/QH14. The Phantom Stock design deliberately avoids share issuance (Art. 114) and public-offering regulation (Securities Law Art. 30) by classifying grants as deferred compensation under employment contracts, governed by Decree 38/2020 corporate-governance rules.
+
+Tax obligations at put exercise: cash received from a put option is treated as deferred-compensation income subject to Vietnamese PIT (Circular 111/2013 Art. 7). REW generates the corresponding PIT line item when a put exercise settles.
+
+<Note>
+  A **Singapore HoldCo structure** is planned for platform phase P3. When the company's ARR reaches USD 1.5 million, the CEO can designate a HoldCo flip — phantom SP units convert to real Singapore HoldCo shares under the Singapore Companies Act, processed through ACRA with DOC-managed paperwork. Until the flip is executed, all grants remain Vietnamese-law phantom deferred compensation.
+</Note>
+
+## Related Modules
+
+<CardGroup cols={2}>
+  <Card title="HR" icon="users" href="/modules/hr">
+    Member lifecycle events (hire, leave, termination) are the primary triggers for ESOP grant issuance and the Good/Bad Leaver branch. HR is the authoritative Member directory that ESOP reads for roster sync.
+  </Card>
+  <Card title="REW" icon="coins" href="/modules/rew">
+    BP fund and Voting Power context from LEARN feeds REW's quarterly P3 distribution. ESOP put-option cash payouts are separate from the REW payroll cycle but share the same Vietnamese PIT reporting requirements.
+  </Card>
+</CardGroup>

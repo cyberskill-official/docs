@@ -1,0 +1,173 @@
+---
+title: 'Install CyberOS into Any Repository'
+sidebarTitle: 'Installation'
+description: 'Install CyberOS into your project repository using npx, the Claude plugin, a curl bootstrap, or Docker. Supports Claude, Codex, Cursor, Gemini, and more.'
+---
+
+Installing CyberOS vendors a self-contained `.cyberos/` folder into your repository. The folder is gitignored — it holds the workflow engine, memory protocol, agent entry files, and gate runner — so it never pollutes your tracked code. A single command handles everything: it auto-detects your build, lint, and test commands, scaffolds your `docs/tasks/BACKLOG.md`, writes per-agent instruction files, and stamps a `VERSION` file you can check later. Re-running the installer is always safe: it applies updates and never overwrites your existing tasks, `BACKLOG.md`, `AGENTS.md`, or `gates.env`.
+
+## Installation channels
+
+Choose the channel that fits your setup. All channels produce the same `.cyberos/` layout.
+
+| Channel | Command | Best for |
+|---|---|---|
+| **npx CLI** | `npx cyberos install` | Most repos |
+| **Claude plugin** | `/install` command | Claude users |
+| **MCP stdio** | `task_install` tool | MCP agents |
+| **Docker image** | Docker image | CI / containerized |
+| **Git subtree** | `git subtree add` | Advanced / offline |
+
+---
+
+## Install via npx (recommended)
+
+<Steps>
+  <Step title="Run the installer">
+    In your project root, run:
+
+    ```bash
+    npx cyberos install
+    ```
+
+    The CLI auto-detects your build, lint, and test commands, vendors `.cyberos/` into your repo, scaffolds `docs/tasks/BACKLOG.md`, and writes agent entry files.
+  </Step>
+
+  <Step title="Verify the installation">
+    Confirm everything is wired correctly:
+
+    ```bash
+    python -m cyberos doctor
+    ```
+
+    A healthy installation prints `READY`. If any gate command is missing, the output tells you exactly which `gates.env` line to fix.
+  </Step>
+
+  <Step title="Check the installed folder">
+    Confirm `.cyberos/` was created in your repo root:
+
+    ```bash
+    ls -la .cyberos/
+    ```
+
+    You should see `cuo/`, `memory/`, `plugin/`, `AGENT-ENTRY.md`, `gates.env`, and `VERSION`.
+  </Step>
+</Steps>
+
+---
+
+## Install via the Claude plugin
+
+<Steps>
+  <Step title="Add the plugin to Claude">
+    In Claude, go to **Settings → Plugins → Add** and pick `dist/cyberos/cyberos.plugin` (the `.plugin` file, not the folder). For Claude Code, run:
+
+    ```
+    /plugin marketplace add <path to dist/cyberos>
+    /plugin install cyberos@cyberos
+    ```
+  </Step>
+
+  <Step title="Run the install command">
+    Open a session in your repository and type:
+
+    ```
+    /install
+    ```
+
+    The plugin detects your repo root, runs the installer, and reports what it wrote.
+  </Step>
+
+  <Step title="Follow the prompts">
+    If the plugin can't auto-detect a gate command (build, lint, or test), it asks you to confirm or supply it. Review the output and confirm to proceed. Installation completes in seconds.
+  </Step>
+</Steps>
+
+<Tip>
+  Install the Claude plugin to unlock the `/ship-tasks` one-command workflow — the fastest way to drive a task from `ready_to_implement` to `done`.
+</Tip>
+
+---
+
+## What gets installed
+
+Every channel produces the same `.cyberos/` tree:
+
+```
+.cyberos/
+├── cuo/                        # Workflow engine
+│   ├── ship-tasks.md           # Workflow doctrine
+│   ├── EXECUTION-DISCIPLINE.md # How agents behave
+│   ├── STATUS-REFERENCE.md     # The 10 task states
+│   ├── gates/
+│   │   └── run-gates.sh        # Gate runner
+│   ├── skills/                 # Bundled skills
+│   └── templates/              # Task scaffolding templates
+├── memory/
+│   ├── AGENTS.md               # Layer-1 memory protocol
+│   └── store/                  # Gitignored BRAIN store
+├── plugin/                     # Claude plugin commands + skills
+├── AGENT-ENTRY.md              # Full agent one-pager (any agent)
+├── gates.env                   # Your repo's build/lint/test commands
+├── manifest.yaml               # Pack profile (reduced or full)
+└── VERSION                     # Installed CyberOS version
+```
+
+---
+
+## What installation does NOT touch
+
+Installation is strictly additive. It never modifies:
+
+- Your existing source code
+- `BACKLOG.md` if it already exists (content is preserved)
+- `gates.env` if already configured (a timestamped backup is made, then it is regenerated)
+- `AGENTS.md` if it already exists (a marked append is made at most once)
+- Any existing tasks under `docs/tasks/`
+
+<Note>
+  Installation is idempotent. Re-running `npx cyberos install` (or `/install`) applies the latest CyberOS updates to `.cyberos/` but never touches your `BACKLOG.md`, task files, `AGENTS.md`, or `gates.env`. Use it freely to keep your repo current.
+</Note>
+
+---
+
+## Updating CyberOS
+
+To update an already-installed repo, use any of the following:
+
+<CodeGroup>
+```bash npx
+npx cyberos update
+```
+
+```bash Re-run installer
+bash /path/to/dist/cyberos/install.sh /path/to/your/repo
+```
+
+```bash Version check (interactive)
+bash .cyberos/version.sh
+# prints installed=, payload=, latest= and prompts to update
+```
+</CodeGroup>
+
+From the Claude plugin, type `/update` in your repo session. The command compares your `.cyberos/VERSION` against the available payload and applies the update only after you confirm.
+
+---
+
+## Multi-agent support
+
+CyberOS wires every major agent in a single install run. Per-agent instruction files and native skill directories are created if absent — your existing files are never clobbered.
+
+| Agent | Instruction file | Native skill dir |
+|---|---|---|
+| Claude Code | `CLAUDE.md` | `.claude/skills/` |
+| Codex | `AGENTS.md` | `.codex/skills/` |
+| Cursor | `.cursorrules`, `.cursor/rules/` | — |
+| Gemini CLI | `GEMINI.md` | — |
+| Grok CLI | `.grok/GROK.md` | `.grok/skills/` |
+| Command Code | `AGENTS.md` | `.commandcode/skills/` |
+| OpenCode | `AGENTS.md` | `.opencode/skill/` |
+| Copilot | `.github/copilot-instructions.md` | — |
+| Windsurf | `.windsurfrules` | — |
+
+Any agent pointed at `AGENTS.md` or `.cyberos/AGENT-ENTRY.md` drives the same workflow, the same gates, and the same required human verdicts — no plugin required.

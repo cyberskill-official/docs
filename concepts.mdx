@@ -1,0 +1,244 @@
+---
+title: 'Core Concepts: How CyberOS Works'
+sidebarTitle: 'Concepts'
+description: 'Understand the CyberOS model: BRAIN memory, Skills, CUO workflows, tasks, human-in-the-loop gates, and the .cyberos/ module tree.'
+---
+
+CyberOS is built on five interlocking ideas: a BRAIN that remembers everything with cryptographic provenance, a Skills system that packages what agents can do into auditable capabilities, a CUO workflow engine that governs how work moves from idea to done, a task format that makes every unit of work legible to both agents and humans, and a human-in-the-loop model that ensures agents never make final decisions on their own. Understanding how these five concepts fit together will help you use every part of the platform confidently.
+
+---
+
+## BRAIN / Memory
+
+The BRAIN is CyberOS's memory layer. When you talk to it as a user you call it BRAIN; in code, file paths, and environment variables it is `memory`. Both names coexist by design.
+
+### Layer 1 — the local protocol store
+
+The Layer-1 store lives at `.cyberos/memory/store/` at the root of every CyberOS-initialised repository. It is **append-only**: once a memory file is written, its content is immutable. Subsequent mutations are expressed as new file operations, never as in-place edits to existing files. This is not a choice made for convenience — it is a hard protocol invariant enforced by the spec (`AGENTS.md`).
+
+Every mutation is one of four canonical operations:
+
+| Operation | What it does |
+|-----------|-------------|
+| `put` | Write a new memory file at the given path |
+| `move` | Relocate a memory file (recorded as a new operation, not a rename) |
+| `delete` | Soft-tombstone a memory file (body preserved in `conflicts/`) |
+| `put_if` | Conditional write — only commits if a precondition holds |
+
+Rows chain by hash into monthly binary log segments (`audit/current.binlog`) with a Merkle Mountain Range cross-check, so any byte of history can be replayed or cryptographically proved. The store also carries a `HEAD` counter (an 8-byte little-endian `u64` sequence number written atomically) and a `.lock` file for coordination.
+
+Run `python -m cyberos doctor` at any time to walk the full invariant set and confirm store health. Run `cyberos export` to produce a deterministic, portable zip of the entire store.
+
+### Layer 2 — the brain service
+
+`services/memory` is a Rust service that reads Layer 1 and derives higher-level structure from it:
+
+- **Per-event embeddings** stored in pgvector for semantic similarity search.
+- **Rolling summaries** that compress long histories into retrievable snapshots.
+- **Hot/warm/cold tiering** keyed on each interaction's `occurred_at` timestamp — recent memories are fast to retrieve; older memories are tiered but still provable.
+
+Recall queries answer over the hot index with provenance pointers back to the exact Layer-1 rows. Access is consent-gated and tenant-scoped with fail-closed row-level security.
+
+<Note>
+  Stores are tenant data — always gitignored, never committed to version control. The `.cyberos/` folder's managed `.gitignore` block enforces this automatically on every `install` run.
+</Note>
+
+---
+
+## Skills
+
+A Skill is a versioned, auditable agent capability. It is not a prompt template or a function call — it is a folder that packages everything an agent needs to execute a specific capability and leave evidence behind.
+
+### Anatomy of a Skill
+
+Every Skill contains:
+
+- **`SKILL.md` contract** — the normative specification: trigger (how to invoke it), inputs, outputs, and verification steps. This is the document both the agent and the auditor read.
+- **Author component** — the implementation logic that does the work.
+- **Audit component** — a separate component that verifies the author's output independently. The author and audit components are always a pair; no Skill ships without both.
+
+This author/audit split is fundamental. The audit component cannot be the same code as the author; it is an independent verifier. This means every Skill run leaves two pieces of evidence: what was done and whether it was done correctly.
+
+### How Skills are invoked
+
+Skills are invoked by name. With the Claude plugin, type `/skill-name` directly. Without it, tell any file-and-shell agent to follow the Skill's `SKILL.md` contract. `npx cyberos install` vendors the author/audit Skills into every initialised project under `.cyberos/cuo/skills/` and installs native skill symlinks into each agent's preferred directory (`.claude/skills/`, `.codex/skills/`, `.grok/skills/`, etc.).
+
+### The 104 built-in Skills
+
+CyberOS ships 104 Skills covering the full software delivery pipeline — from task authoring (`task-author`, `task-audit`) and code review (`code-review-audit`, `code-review-author`) through coverage gating, observability injection, and backlog state management. Specialized Skills include Vietnamese-market tools (`vietnam-vat-invoice`, `vietnam-bank-transfer`, `vietnam-mst-validate`) and business-domain Skills for strategy documents, board decks, hiring decisions, SOC 2 evidence, and more.
+
+All Skills conform to the **Anthropic Agent Skills open standard**, which means they are compatible with Claude, Codex, Cursor, Gemini, Grok, Command Code, Windsurf, and any other agent that has adopted the standard.
+
+---
+
+## CUO / Workflow Engine
+
+CUO is the workflow engine. Its job is to orchestrate every unit of work — a task — through a single governed lifecycle, with machine gates verifying what can be verified and human gates deciding what cannot.
+
+### The ship-tasks workflow
+
+There is exactly one workflow: `ship-tasks`. It picks the first eligible task from `docs/tasks/BACKLOG.md` (the first task in `ready_to_implement` status) and drives it end to end. Both new-capability tasks (`class: product`) and hardening tasks (`class: improvement`) run through the identical machinery — there is no separate backlog or separate workflow for improvements.
+
+### Task states
+
+A task carries exactly one status at any point in time. The full lifecycle has 10 valid values:
+
+<Accordion title="The full task lifecycle (10 states)">
+
+**Lifecycle states (in order):**
+
+| # | Status | Who sets it | Meaning |
+|---|--------|-------------|---------|
+| 1 | `draft` | task author | Spec is being written; not yet audited or queue-eligible |
+| 2 | `ready_to_implement` | task-audit Skill / rework path | Spec passes audit at 10/10; eligible for the build queue. **Also the state any in-cycle failure returns to** |
+| 3 | `implementing` | ship-tasks workflow | Build is in flight |
+| 4 | `ready_to_review` | ship-tasks | Implementation finished; awaiting reviewer pickup |
+| 5 | `reviewing` | ship-tasks | Reviewer is reading the diff against normative clauses |
+| 6 | `ready_to_test` | **human verdict** | Review accepted; awaiting tester pickup |
+| 7 | `testing` | ship-tasks | Tester is running coverage and acceptance criterion checks |
+| 8 | `done` | **human verdict** | All clauses traced to passing tests AND human accepted. Terminal success |
+
+**Off-ramps (operator-decided):**
+
+| Status | Meaning |
+|--------|---------|
+| `on_hold` | Deliberately deferred — skipped by the queue, stays in backlog as a future candidate |
+| `closed` | Terminal kill — won't be built (rejected, superseded, or won't-do). Stays for audit-trail purposes |
+
+</Accordion>
+
+### Why failures loop back, not fail terminally
+
+When something goes wrong — a circuit-breaker fires after five consecutive test failures, a reviewer finds a blocker, or a coverage gate comes back red — the task status drops back to `ready_to_implement` with `routed_back_count` incremented by one. There are no terminal failure states. The reason for the failure is recorded in an audit row; the task is simply ready to be tried again with the failure context available. This design means work never disappears into a dead end: every task is either in progress, on hold, done, or closed by a deliberate operator decision.
+
+---
+
+## Tasks
+
+A task is a markdown file that describes one unit of work precisely enough for an agent to implement it and a human to verify that the implementation is correct.
+
+### Task file format
+
+Every task file lives under `docs/tasks/<module>/` and follows this frontmatter + body structure:
+
+```markdown
+---
+id: TASK-MODULE-001
+title: Short imperative description of the work
+module: module-name
+class: product          # product = new capability; improvement = hardening/refactor/fix
+status: ready_to_implement
+priority: MUST          # MUST | SHOULD | COULD
+depends_on: []
+routed_back_count: 0
+---
+
+# TASK-MODULE-001 — Short imperative description
+
+## Context
+Why this task matters, in 2–4 sentences.
+
+## 1. Normative clauses
+1. The system MUST do X.
+2. A failure MUST return Y.
+
+## 2. Acceptance criteria
+- [ ] Clause 1 is covered by a passing test named `test_x`.
+- [ ] Clause 2 is covered by a passing test named `test_y`.
+```
+
+### The BACKLOG.md index
+
+`docs/tasks/BACKLOG.md` is the flat index of all tasks. It is kept in lockstep with the task files — every task that exists gets one row in the appropriate module section. The `status:` field in the task file's frontmatter is the record of truth; the backlog row is the index entry. Improvement-class tasks carry an `(improvement)` tag on their backlog row so the type is visible at a glance; product-class rows are untagged.
+
+<Tip>
+  Keep tasks small enough to ship in one sitting. A task with more than roughly five normative clauses is a signal to split it. Smaller tasks move faster through the lifecycle, produce cleaner evidence at each gate, and are easier to route back and retry when something goes wrong.
+</Tip>
+
+---
+
+## Human-in-the-Loop
+
+Human-in-the-loop (HITL) is not a feature you can turn off — it is a required invariant of the CyberOS governance model. Two transitions in the task lifecycle are acceptance gates that agents must never cross by themselves:
+
+### Gate 1 — Review acceptance
+
+**Transition: `reviewing → ready_to_test`**
+
+The agent presents a code-review packet: the diff, a review against every normative clause, and an edge-case matrix. You read the evidence and decide. Your options:
+
+- **Approve** — say "approved" and the task advances to `ready_to_test`.
+- **Route back** — describe what is wrong in one sentence. The task returns to `ready_to_implement` with the reason recorded and `routed_back_count` incremented.
+
+### Gate 2 — Final acceptance
+
+**Transition: `testing → done`**
+
+The agent presents test evidence: gate output (build, lint, test, coverage all green), and proof that each acceptance criterion in the task file has a passing named test. You read the evidence and decide:
+
+- **Accept** — say "done" and the task reaches terminal success.
+- **Route back** — the task returns to `ready_to_implement` for another pass.
+
+### Why agents cannot set `done`
+
+Machine gates — green builds, passing tests, full coverage — are necessary but never sufficient. The final verdict requires a human to read the evidence and make a recorded decision. This is a deliberate design choice: it prevents agents from certifying their own work, preserves the full audit chain, and keeps humans accountable for everything that ships.
+
+Every human verdict and every operator override emits an audit row (`memory.status_overridden`) capturing the actor, task ID, prior status, new status, and reason. The BRAIN stores these rows in the audit chain, so the full lifecycle story is always provable.
+
+<Warning>
+  If an agent marks its own work `done` without your recorded verdict, that is broken behavior. Do not accept it — report it. The `ship-tasks` workflow is designed to halt at both gates and present evidence; an agent that skips a gate has deviated from the workflow.
+</Warning>
+
+---
+
+## The `.cyberos/` folder tree
+
+CyberOS vendors everything it needs into a single gitignored `.cyberos/` folder at the root of your repository. The folder structure separates the three core modules cleanly:
+
+```
+.cyberos/
+├── cuo/                    # CUO workflow engine
+│   ├── ship-tasks.md       # The normative workflow doctrine
+│   ├── EXECUTION-DISCIPLINE.md
+│   ├── STATUS-REFERENCE.md # The 10-state lifecycle contract
+│   ├── gates/
+│   │   └── run-gates.sh    # Machine gate runner
+│   ├── skills/             # Vendored author/audit Skills
+│   └── templates/          # Task file templates
+├── memory/                 # BRAIN memory protocol
+│   ├── store/              # The live audit-chained store (tenant data)
+│   │   ├── manifest.json
+│   │   ├── HEAD
+│   │   ├── .lock
+│   │   ├── audit/          # Monthly binlog segments
+│   │   └── memories/       # Memory files by kind
+│   └── (protocol docs)     # AGENTS.md spec, schema, invariants
+├── plugin/                 # Claude plugin and agent entry files
+│   └── AGENT-ENTRY.md      # The canonical cross-agent trigger
+├── mcp/                    # MCP server (Node stdio, zero dependencies)
+│   └── cyberos-mcp.mjs
+├── gates.env               # Auto-detected gate commands for this repo
+├── config.yaml             # Per-repo gate overrides (all-commented by default)
+└── VERSION                 # Installed CyberOS version
+```
+
+The `store/` subdirectory under `memory/` is the only part of `.cyberos/` that contains live data you cannot regenerate. Everything else is rebuilt on every `install` run. The `VERSION` file tells you what version of CyberOS is currently vendored, and `npx cyberos install --check` tells you whether a newer version is available.
+
+---
+
+## Explore further
+
+<CardGroup cols={2}>
+  <Card title="Memory BRAIN" icon="brain" href="/modules/memory">
+    Full Layer-1 protocol spec, the four canonical ops, Layer-2 semantic service, and the `doctor` / `export` commands.
+  </Card>
+  <Card title="Workflow Engine" icon="gears" href="/modules/cuo">
+    Complete ship-tasks doctrine, execution discipline, machine gates, and the 10-state status contract in detail.
+  </Card>
+  <Card title="Skills Library" icon="puzzle-piece" href="/modules/skill">
+    The 104 built-in Skills, the SKILL.md contract format, the author/audit pattern, and how to publish your own Skills.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Step-by-step: install CyberOS, write a task, trigger the agent, and hold the two gates.
+  </Card>
+</CardGroup>

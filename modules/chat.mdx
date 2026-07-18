@@ -1,0 +1,214 @@
+---
+title: 'CHAT: Threaded Messaging with AI Teammates'
+sidebarTitle: 'Chat'
+description: 'CyberOS CHAT is a threaded messaging module where Members and AI agents share workspaces. @genie call-outs invoke CUO-powered AI responses inline.'
+---
+
+CyberOS CHAT is the built-in messaging layer for your whole team — channels, direct messages, threads, and voice/video calls, all in one place without needing Slack, Zalo, or any external tool. It is designed for CyberOS-native teams: every message lives inside your tenant, feeds the same audit chain your other modules use, and connects directly to the AI capabilities, CRM records, and HR onboarding flows that power the rest of the platform. When you @mention a colleague or invoke `@genie` in any thread, CHAT knows who you are, what channels you belong to, and which contacts your team is tracking — no copy-pasting context between apps.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Channels and Threads" icon="messages">
+    Organise conversations into named group channels (public or private) and direct messages. Every message can spawn a thread, keeping replies focused without cluttering the main timeline.
+  </Card>
+  <Card title="@genie AI Call-outs" icon="sparkles">
+    Type `@genie` anywhere in a message to invoke the CUO-powered AI persona inline. Genie replies in the thread, grounded in your tenant's Knowledge Base and Memory, and cites its sources.
+  </Card>
+  <Card title="Voice and Video Calls" icon="video">
+    Start a call directly from any DM or channel header. Calls run peer-to-peer through WebRTC signalling handled by CHAT — no separate conferencing app needed.
+  </Card>
+  <Card title="CRM Activity Logging" icon="address-book">
+    Messages and calls involving tracked domain contacts auto-log as CRM activities. Your sales and account-management timeline stays current without manual entry.
+  </Card>
+</CardGroup>
+
+---
+
+## Working with Channels and Threads
+
+CHAT organises conversations at two levels: **channels** for ongoing topics, and **threads** for focused replies within a channel.
+
+### Channels
+
+A channel is either a **group** channel (named, visible in the sidebar, with one or more members) or a **direct message** (a private conversation between two people). Group channels can be **public** (anyone in the tenant can browse and join) or **private** (invite-only).
+
+<Steps>
+  <Step title="Create a channel">
+    Click the **+** icon next to **Channels** in the sidebar. Give the channel a name and an optional topic line. Set visibility to **Public** if you want any teammate to be able to find and join it, or **Private** to keep it invite-only.
+  </Step>
+  <Step title="Browse and join public channels">
+    Click **Browse Channels** (the compass icon in the sidebar) to see all public channels in your tenant. Click **Join** to add any channel to your sidebar.
+  </Step>
+  <Step title="Start a direct message">
+    Click the **+** icon next to **Direct Messages** and pick a teammate from the directory. A DM opens immediately.
+  </Step>
+  <Step title="Open or reply in a thread">
+    Hover over any message and click the **Reply in thread** icon. The thread panel opens on the right side. All replies stay nested under the original message.
+  </Step>
+</Steps>
+
+### @Mentions
+
+Type `@` followed by any teammate's name to mention them. They receive a notification badge in their sidebar, a desktop notification if they have granted permission, and a distinct highlight when they view the message. A badge distinguishes a **mention** (your name was invoked) from an ordinary **unread** message.
+
+### Attaching Files
+
+Drag a file onto the message pane, paste from your clipboard, or click the **paperclip** icon in the composer to attach files. Images render inline; other files appear as downloadable cards. The file size and count limits are set by your admin.
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl/Cmd + K` | Open the quick switcher — jump to any channel, DM, or person |
+| `Enter` | Send message |
+| `Shift + Enter` | New line in composer |
+| `Escape` | Close the sidebar drawer (narrow viewport) |
+
+---
+
+## Using @genie
+
+`@genie` is the CUO-powered AI teammate available in every channel. Invoking `@genie` in a message causes the AI to read the recent thread context, query your tenant's Knowledge Base and Memory, and post a grounded reply inline — directly in the thread, visible to everyone in the channel.
+
+### Example Interaction
+
+> **Minh Tran** → `#project-alpha`  
+> `@genie can you summarise where we left off on the Q3 CRM integration? I've been out this week.`
+>
+> **@genie**  
+> Sure! Based on the last 12 messages in this thread and the KB article *CRM Integration Runbook v2* (updated 14 Jun):
+> - The API auth handshake was completed by Linh on Tuesday.
+> - The contact-sync job is running but has a field-mapping issue on `phone_type` — tracked in PROJ-412.
+> - Next step: Linh is resolving PROJ-412 before end of week; the full sync is planned for Monday.
+>
+> *Sources: #project-alpha thread (last 12 messages), KB: CRM Integration Runbook v2*
+
+<Tip>
+  Genie's replies are grounded in your tenant's actual content — it reads the current thread, your KB articles, and team Memory. Always check the cited sources for full detail. You can ask Genie to go deeper: `@genie can you pull the open issues from PROJ-412?`
+</Tip>
+
+### What @genie Can Help With
+
+<AccordionGroup>
+  <Accordion title="Catch-me-up summaries">
+    Ask `@genie summarise this channel` or `@genie what did I miss?` and Genie reads the most recent messages and returns a concise bullet summary with speaker attribution.
+  </Accordion>
+  <Accordion title="Action-item extraction">
+    Ask `@genie what are the open action items from this thread?` and Genie lists the outstanding tasks it finds in the conversation, ready for you to convert into PROJ tickets.
+  </Accordion>
+  <Accordion title="Smart reply suggestions">
+    Click the **✨ Suggest replies** button in the composer toolbar. Genie proposes three short reply options based on the thread context. Click one to drop it into the composer, then edit or send.
+  </Accordion>
+  <Accordion title="Inline translation">
+    Hover over any message and click the **Translate** icon to render it in your browser language. Translations are cached per message for the session.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Meeting Notes and CRM Integration
+
+CHAT is wired into the CRM activity feed. When your team communicates with or about a **tracked domain contact** — a person or company your CRM is following — those interactions are automatically logged as CRM activities, so the account record stays current without anyone manually copying notes.
+
+**How it works from your perspective:**
+
+- When you send a message in a channel that includes a tracked contact's domain (e.g. a client's email domain), the message is logged as a CRM activity against that contact.
+- Calls made through CHAT to a tracked contact's phone number or user profile are also logged, including the call duration.
+- Meeting summaries and action items that `@genie` extracts from a thread can be saved directly to the CRM contact record by clicking **Save to CRM** in Genie's reply.
+
+<Note>
+  CRM activity auto-logging applies to contacts whose domain is marked **tracked** in your CRM module. Conversations between internal teammates only are never logged to CRM. Your admin controls which domains are tracked in **CRM → Settings → Tracked Domains**.
+</Note>
+
+---
+
+## Notification Preferences
+
+You control how each channel notifies you. Click the **bell** icon in the channel header to choose:
+
+| Setting | Behaviour |
+|---|---|
+| **All messages** (default) | Notify for every new message in this channel |
+| **@mentions only** | Notify only when someone mentions you by name |
+| **Mute** | No notifications; unread badges still appear |
+
+Desktop notifications appear when your browser tab is in the background and you have granted notification permission. CyberOS asks for permission the first time you select a channel.
+
+---
+
+## Message Actions
+
+Hover over any message to reveal the action bar, or long-press on touch devices to open the action sheet.
+
+<CardGroup cols={2}>
+  <Card title="React" icon="face-smile">
+    Click the emoji icon to add a reaction. The full emoji picker opens from the **+** button on the reaction bar.
+  </Card>
+  <Card title="Reply in thread" icon="reply">
+    Open a focused thread for the message. Thread reply counts appear on the message bubble.
+  </Card>
+  <Card title="Edit" icon="pen">
+    Edit your own messages. An **edited** label appears alongside the timestamp after you save.
+  </Card>
+  <Card title="Delete" icon="trash">
+    Soft-delete your message. An **Undo** toast appears for a few seconds before the deletion is committed. Channel owners and admins can delete any member's message.
+  </Card>
+</CardGroup>
+
+### Reporting a Message
+
+If you see content that violates your workspace's conduct standards, hover over the message and click **Report**. Select the reason (spam, harassment, illegal content, etc.) and an optional note. The report is filed privately; the sender is not notified. Admins review reports in the moderation queue.
+
+<Note>
+  Reports are completely private. The sender does not know you filed one. Your report is a snapshot of the message at the time you filed it — it is preserved even if the sender later edits or deletes the message.
+</Note>
+
+---
+
+## Admin Configuration
+
+### Workspace Setup
+
+Tenant Admins configure CHAT at **Admin → CHAT → Settings**:
+
+<ParamField path="default_channels" type="string[]">
+  List of channel names that every new member is automatically added to when their account is created. Typically includes `#general` and `#announcements`.
+</ParamField>
+
+<ParamField path="attachment_max_bytes" type="integer">
+  Maximum file size per attachment in bytes. Defaults to 5 MB. Increase for tenants that regularly share large design files or recordings.
+</ParamField>
+
+<ParamField path="attachment_max_files" type="integer">
+  Maximum number of files that can be attached to a single message. Defaults to 10.
+</ParamField>
+
+### Creating and Managing Channels
+
+Admins can create, archive, and manage all channels from **Admin → CHAT → Channels**. Archiving a channel makes it read-only and removes it from active sidebars, but the full message history is retained.
+
+### Moderation Queue
+
+Admins and members with the moderator role can access the moderation queue at **Admin → CHAT → Moderation**. Reports are ranked by severity (self-harm > illegal content > violence > harassment > spam) and presented oldest-first within each severity tier. When reviewing a report about a direct message, only the single reported message is shown — not the surrounding DM thread.
+
+<Tip>
+  CHAT is integrated with HR onboarding — new Members are automatically added to all default channels the moment their account is created during the onboarding workflow. No manual invite is needed.
+</Tip>
+
+---
+
+## Presence and Read Receipts
+
+CHAT shows live presence for members who are viewing the same channel as you. A small coloured dot next to an avatar indicates:
+
+- 🟢 **Online** — active in CHAT right now
+- ⚫ **Offline** — not connected
+
+**Read receipts** appear below the last message you sent in a DM or small group channel. When your message has been seen, the names of the readers appear below it. In large channels, only the count is shown.
+
+---
+
+## Blocks
+
+You can block another member to prevent them from sending you direct messages. In a group channel, their messages are still present (so the conversation makes sense to others) but their content is hidden for you. To block someone, open their profile card and click **Block**. To unblock, return to the same profile card.

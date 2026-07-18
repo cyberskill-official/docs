@@ -1,0 +1,168 @@
+---
+title: 'LEARN: Skills Catalogue and Career Growth'
+sidebarTitle: 'LEARN'
+description: 'CyberOS LEARN tracks what each team member can do, computes Voting Power for bonus distribution, and runs the peer-review promotion council workflow.'
+---
+
+CyberOS LEARN is the capability ledger — what each member can do, how good they are at it, and how that translates into promotions, bonus-pool weighting, and sabbatical readiness. It plays three distinct roles in the platform. As a **skills catalogue**, it maintains an evidence-backed, closed-enum skill tree across all disciplines. As the **VP (Voting Power) engine**, it computes a deterministic quarterly score per member that REW uses to weight the bonus-pool distribution. As the **Hội đồng Chuyên môn (Specialist Council)**, it runs the structured peer-review workflow that makes every promotion decision transparent, human-driven, and defensible under EU AI Act Art. 14.
+
+## Skills Catalogue
+
+LEARN maintains a closed skill catalogue — members cannot invent free-text skills. Every skill belongs to a discipline, carries a 1–5 mastery scale, and requires concrete evidence before a level claim is accepted.
+
+### Disciplines and Skill Tree
+
+<CardGroup cols={3}>
+  <Card title="Engineering" icon="code">
+    Languages, frameworks, infrastructure, security, and architecture skills. ~60 skills at P1.
+  </Card>
+  <Card title="Design" icon="pen-ruler">
+    UX research, visual design, motion, and design systems. ~25 skills at P1.
+  </Card>
+  <Card title="Operations" icon="gears">
+    Project management, process design, compliance, and people ops. ~25 skills at P1.
+  </Card>
+  <Card title="Business" icon="briefcase">
+    Sales, partnerships, customer success, and strategy. ~20 skills at P1.
+  </Card>
+  <Card title="Finance" icon="calculator">
+    Accounting, FP&A, tax, and corporate governance. ~20 skills at P1.
+  </Card>
+</CardGroup>
+
+### Mastery Levels and Evidence Requirements
+
+Each level from 1 to 5 requires at least one piece of linked evidence. The system accepts four evidence types:
+
+| Evidence Type | Description | Vietnamese Context |
+|---|---|---|
+| `proj_contribution` | A closed PROJ issue or project artifact where the member played a substantive role. | Primary evidence at levels 1–3. |
+| `kb_post` | A KB document authored or substantially revised by the member, subsequently cited by peers. | Counts toward level 3–4 authorship requirements. |
+| `external_cert` | A verifiable external certification with issuer and expiry date. | **bằng cấp** (degrees) and **chứng chỉ** (professional certifications) are first-class evidence types with issuer + recognition-status fields. |
+| `endorsement` | A peer endorsement from another member at the target level or above. | Two endorsements at the target level are required before a claim can advance without a council review. |
+
+<Tip>
+  For level-4 to level-5 jumps, a council review is mandatory regardless of how many endorsements you have. The threshold is a versioned parameter — your manager can confirm the current requirement for your discipline.
+</Tip>
+
+### Certification Expiry Alerts
+
+LEARN monitors the `expires_at` field on every external certification and fires `learn.cert.expiring` events at **90, 30, and 7 days** before expiry. The CUO/CHRO-skill agent surfaces these as proactive notifications to the member. Renewing a certification before it lapses preserves continuity of the mastery level it supports.
+
+## Voting Power (VP)
+
+VP is a quarterly score that quantifies each member's concrete contribution to the company. REW reads VP at quarter close to weight the BP bonus-pool distribution.
+
+### What VP Measures
+
+VP is a deterministic pure function of three input dimensions:
+
+```
+VP = (mastery × discipline_weight × skill_weight)
+   + (PROJ contributions × complexity × peer_rating × project_weight)
+   + (KB authorship × kb_weight)
+```
+
+All weights are versioned parameters — changing them requires a three-way CEO + CFO + CHRO co-sign, and the change cannot retroactively re-score historical quarters.
+
+<Tabs>
+  <Tab title="PROJ Dimension">
+    Closed issues, their complexity tags, and the peer ratings attached to each contribution. A member who leads high-complexity work scores higher than one who closes an equal number of low-complexity tasks.
+  </Tab>
+  <Tab title="TIME Dimension">
+    Presence data from TIME — billable and non-billable hours in the period. TIME presence contributes to VP as a signal of sustained engagement, not as a pure hour count.
+  </Tab>
+  <Tab title="KB Dimension">
+    Documents authored or substantially revised, weighted by how often they are cited by other members. Writing one widely-cited reference document scores higher than writing many uncited stubs.
+  </Tab>
+</Tabs>
+
+### VP Roll-Up and REW Integration
+
+LEARN recomputes VP for all members monthly. The `vp_snapshot` table records each member's total and per-discipline breakdown alongside the `parameter_version_id` used for that computation. A CI replay job asserts byte-identical output for the last 12 snapshots on every parameter change — if any snapshot drifts, the change is rejected.
+
+<Note>
+  VP roll-up is automatic and deterministic. You cannot manually override a VP score. If you believe an input signal is wrong (e.g. a PROJ contribution was miscategorised), correct the source record in PROJ or KB — the next monthly recompute will pick it up.
+</Note>
+
+## Hội đồng Chuyên môn (Specialist Council)
+
+The Specialist Council is CyberOS's adaptation of the Vietnamese academic peer-review format for professional promotion decisions. It ensures every promotion is backed by structured evidence and multiple independent judgements — not a single manager's opinion.
+
+### Council Workflow
+
+<Steps>
+  <Step title="Manager Nomination">
+    Promotion cases are opened manually by a manager nomination or a member's own submission. The system never auto-triggers a promotion case, regardless of how high a member's VP score is.
+  </Step>
+  <Step title="Parameter Version Snapshot">
+    At submission, LEARN snapshots the current promotion gate criteria (VP threshold, mastery requirements, minimum endorsements, time-in-level) into the case record. Even if parameters are updated mid-review, this case is judged against the criteria that were in effect when it was submitted.
+  </Step>
+  <Step title="Panel Assignment">
+    HR/Ops assigns 3–5 peer judges plus a council chair. The system applies a diversity heuristic — panels should span at least two teams and two seniority levels. The CHRO confirms the final panel before deliberations open.
+  </Step>
+  <Step title="Individual Scoring (Private)">
+    Each judge scores the candidate across five dimensions in a private workspace. Judges cannot see each other's scores during deliberation — this mirrors the Vietnamese academic hội đồng format and prevents anchoring bias.
+  </Step>
+  <Step title="Aggregate Computation">
+    Once all judges submit, LEARN computes the median score. The median is robust to a single extreme outlier on a small panel. The aggregate score and a recommendation (`ADVANCE`, `HOLD`, or `REFINE`) are written to the `PROMOTION_OUTCOME` row.
+  </Step>
+  <Step title="Outcome Forwarded to HR">
+    HR receives **only** the `{summary, recommendation}` pair — no per-judge scores, no individual feedback text. This is a structural guarantee: HR's database role lacks `SELECT` on the `council_vote` table in LEARN's vault schema.
+  </Step>
+  <Step title="CEO Final Approval">
+    The CEO reviews the outcome summary and makes the final promotion decision. The CEO can override the council's recommendation, but must record a written rationale — the audit log distinguishes `council-approved` from `override` outcomes.
+  </Step>
+</Steps>
+
+<Warning>
+  Per-judge individual scores **never leave LEARN**. This is the psychological-safety contract that makes honest peer review possible. Do not attempt to retrieve per-judge data via the admin REST API — the `/admin/vault/{case_id}` endpoint is restricted to the LEARN admin role and is explicitly blocked for HR's read role.
+</Warning>
+
+### Promotion Gate Criteria — Example (L2 → L3 Engineering)
+
+| Criterion | Threshold | Source |
+|---|---|---|
+| VP total | ≥ 140 points | `vp_snapshot` |
+| Skills at mastery ≥ 4 | ≥ 3 skills | `mastery_claim` |
+| Lead role on project | ≥ 1 project | PROJ `contribution.role` |
+| Peer endorsements (from members ≥ L2) | ≥ 5 | `endorsement` |
+| Council median score | ≥ 4 / 5 | `council_vote` (vault) |
+| Time in current level | ≥ 18 months | HR contract / level history |
+| Sabbatical knowledge-share post (if eligible) | ≥ 1 | KB authorship |
+
+<Note>
+  **EU AI Act Art. 14 — Human Oversight:** The Specialist Council is the decision-maker for promotions, not an algorithm. LEARN's computation (VP score, criteria checking) is advisory evidence. The human council deliberates, and the CEO issues the final decision. This design satisfies the human-oversight requirement for high-risk employment-decision systems under Annex III §4.
+</Note>
+
+## Career Path Visualisation
+
+Every member can view their own skill progression and exactly what remains to qualify for the next level.
+
+<Tabs>
+  <Tab title="Member View">
+    Your career-path dashboard shows each gate criterion for your target level, whether you currently meet it, and which specific evidence gaps remain. You can click through to the relevant PROJ issues, KB posts, or certification records that count toward each criterion.
+  </Tab>
+  <Tab title="Manager View">
+    Managers see the career-path readiness of each of their direct reports. Skill-level proposals surface automatically when evidence accumulates; the manager confirms or returns for revision. Opening a promotion case is always a deliberate manual act.
+  </Tab>
+</Tabs>
+
+## Manager Workflow
+
+Skill-level proposals are evidence-driven and surface automatically — you confirm or return them, you do not initiate them from scratch.
+
+<Steps>
+  <Step title="Evidence Accumulates">
+    As a member closes PROJ issues, authors KB posts, earns certifications, and collects endorsements, LEARN automatically updates the evidence record attached to their mastery claims.
+  </Step>
+  <Step title="Proposal Surfaces">
+    When evidence crosses the threshold for the next mastery level, LEARN surfaces a proposal to the member's manager: "Evidence supports upgrading Mai's `postgres` skill from level 3 to level 4."
+  </Step>
+  <Step title="Manager Confirms">
+    The manager reviews the linked evidence and either confirms the upgrade or returns it with a note explaining what additional evidence is needed.
+  </Step>
+  <Step title="Promotion Case (Manual Nomination)">
+    When you believe a member is ready for a level change (e.g. L2 → L3), you open a promotion case manually. The system checks current gate-criteria readiness and flags any gaps before the case is submitted to the council.
+  </Step>
+</Steps>

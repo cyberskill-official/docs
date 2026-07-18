@@ -1,0 +1,193 @@
+---
+title: 'AI Gateway: Multi-Provider AI with Cost Controls'
+sidebarTitle: 'AI Gateway'
+description: 'CyberOS AI Gateway routes AI requests across providers (Anthropic, OpenAI, Bedrock) with per-tenant cost caps, PII redaction, and a full cost ledger.'
+---
+
+Every AI feature in CyberOS — Genie/CUO responses, skill runs, KB Q&A, and `@genie` in CHAT — flows through the AI Gateway. You never manage per-feature API keys or worry about which model an individual feature uses. Instead, the gateway handles provider routing, enforces your plan's token budget, redacts PII before any data leaves your tenant, and writes a cost row for every request so you always know what you spent and why.
+
+<Note>
+  All CyberOS AI features (Genie/CUO, skill runs, KB Q&A, CHAT @genie) use the AI Gateway — there is no separate API key to manage per feature.
+</Note>
+
+## Model routing and providers
+
+The gateway routes every inference request across three provider families based on your data residency setting and the capability required.
+
+<CardGroup cols={3}>
+  <Card title="Anthropic Claude" icon="brain">
+    Claude models (Haiku, Sonnet, Opus) for conversational reasoning and long-context tasks. Used for chat-smart and chat-reason alias classes.
+  </Card>
+  <Card title="OpenAI" icon="sparkles">
+    GPT family for chat-fast and image generation alias classes. Available in us-1 and sg-1 residencies.
+  </Card>
+  <Card title="AWS Bedrock" icon="aws">
+    Regional Bedrock endpoints for sg-1, eu-1, us-1, and vn-1 tenants. Keeps data inside your compliance region when Bedrock is the provider in scope.
+  </Card>
+</CardGroup>
+
+### Model alias resolution
+
+You and your agents reference models by **alias**, not by raw model ID. The gateway resolves aliases to the specific endpoint appropriate for your residency.
+
+| Alias | Purpose | Example resolved model |
+|---|---|---|
+| `chat.smart` | Best available chat model for complex reasoning | Claude Sonnet or GPT-4o |
+| `chat.fast` | Low-latency chat for interactive responses | Claude Haiku or GPT-4o-mini |
+| `chat.reason` | Extended thinking / chain-of-thought tasks | Claude 3.5 Sonnet (extended thinking) |
+| `embed.standard` | Text embeddings for BRAIN / KB search | BGE-M3 or Bedrock Titan embed |
+| `rerank.standard` | Re-ranking for KB retrieval quality | BGE reranker or Bedrock Rerank |
+| `image.standard` | Image generation (P2+) | Stable Diffusion or DALL-E |
+
+### Residency × provider
+
+Your data residency setting (chosen at signup and locked thereafter) determines which provider endpoints the gateway uses, keeping data in your compliance region.
+
+| Residency | AI providers in scope |
+|---|---|
+| **sg-1** (Singapore) | Bedrock AP-SE-1 · Anthropic · OpenAI |
+| **eu-1** (Frankfurt) | Bedrock EU-CENTRAL · Anthropic EU · Vertex EU |
+| **us-1** | Bedrock US-EAST · Anthropic · OpenAI · Vertex US |
+| **vn-1** (Vietnam) | Bedrock AP-SE-1 + PDPL DPA · Anthropic with VN DPA |
+
+<Warning>
+  Requests are never automatically re-routed to a provider outside your residency — even during a provider outage. The gateway enters degraded mode and returns a clear error rather than silently crossing a data boundary.
+</Warning>
+
+## Per-tenant cost controls
+
+### Monthly AI token quota
+
+Your token budget is set by your plan tier. The gateway checks your remaining quota **before** every request, not after.
+
+| Plan | AI tokens / month | Behaviour when cap reached |
+|---|---|---|
+| **Starter** | 500,000 | Requests blocked until the next billing cycle |
+| **Team** | 3,000,000 | Requests blocked until the next billing cycle |
+| **Enterprise** | Custom (negotiated) | Alert at threshold; hard-stop at agreed cap |
+
+<Note>
+  When your monthly quota is exhausted, requests return a `402 COST_CAP_EXCEEDED` error with a clear message. Requests are never silently dropped or charged — the cap is a hard block, not a soft warning.
+</Note>
+
+### Cost cap enforcement
+
+The gateway uses a two-step accounting model:
+
+<Steps>
+  <Step title="Pre-call check">
+    Before forwarding a request to the provider, the gateway checks your tenant's cost ledger. If the estimated token cost would exceed your remaining budget, the request is refused immediately and no provider call is made.
+  </Step>
+  <Step title="Cost hold">
+    For requests that pass the pre-check, the gateway places a 60-second cost hold on the estimated amount. This prevents concurrent requests from collectively overshooting the cap before reconciliation.
+  </Step>
+  <Step title="Post-call reconcile">
+    After the provider responds, the gateway reconciles the actual token usage against the hold and writes a final cost row to the ledger. The hold is released and your running balance is updated.
+  </Step>
+</Steps>
+
+### Cost ledger
+
+Every AI request produces a cost row you can inspect in your billing dashboard. Each row records:
+
+- **Tenant and module** — which CyberOS module triggered the request (e.g. `chat`, `skill`, `kb`)
+- **Agent persona** — the CUO variant or skill that authored the call
+- **Model used** — the resolved alias and provider
+- **Token counts** — input tokens, output tokens, and total cost in USD
+- **Failover path** — whether the request hit the primary provider or a fallback
+- **Cache state** — whether the response was served from cache (no cost charged for cache hits)
+
+## PII redaction
+
+The gateway automatically scans every prompt and every provider response for PII before logging, caching, or writing an audit row. Redaction happens in-process — PII never reaches Loki logs or the LangSmith AI trace store in unredacted form.
+
+### What counts as PII
+
+<Tabs>
+  <Tab title="Vietnamese PII">
+    | PII type | Example | Redacted as |
+    |---|---|---|
+    | CCCD / CMND (national ID) | `012345678901` | `[REDACTED:vn.cccd]` |
+    | MST (tax code) | `0123456789` | `[REDACTED:vn.mst]` |
+    | Vietnamese phone number | `0912 345 678` | `[REDACTED:vn.phone]` |
+    | Vietnamese bank account | `1234 5678 9012 3456` | `[REDACTED:vn.bank_account]` |
+    | Vietnamese address | `123 Nguyễn Du, Q1, TP.HCM` | `[REDACTED:vn.address]` |
+  </Tab>
+  <Tab title="International PII">
+    | PII type | Redacted as |
+    |---|---|
+    | Email address | `[REDACTED:email]` |
+    | Phone number (E.164) | `[REDACTED:phone]` |
+    | Credit card number (PAN) | `[REDACTED:pcc]` |
+    | Passport number | `[REDACTED:passport]` |
+    | Date of birth | `[REDACTED:dob]` |
+  </Tab>
+</Tabs>
+
+<Tip>
+  PII redaction recall target is ≥ 99.5%. The redaction rule set is the same one used in the OBS log pipeline, so your AI audit rows and your operational logs have consistent PII handling.
+</Tip>
+
+## Usage dashboard
+
+Open **Settings → AI Usage** in your CyberOS dashboard to see:
+
+<CardGroup cols={2}>
+  <Card title="Token consumption" icon="chart-bar">
+    Your running token total for the current billing cycle, how much of your quota remains, and a daily breakdown chart.
+  </Card>
+  <Card title="Cost by module" icon="table">
+    Token spend broken down by CyberOS module (chat, skill, kb, etc.) so you can see which features drive the most AI cost.
+  </Card>
+  <Card title="Cost by skill" icon="bolt">
+    For tenants using custom skills, a per-skill cost breakdown lets you identify expensive automation workflows.
+  </Card>
+  <Card title="Top consumers" icon="users">
+    A ranked list of members (or agent personas) by token consumption for the period — useful for spotting runaway agent sessions.
+  </Card>
+</CardGroup>
+
+### Viewing the cost ledger
+
+You can query individual cost rows from the billing dashboard or via the GraphQL API:
+
+```graphql
+query AiUsage {
+  aiCostLedger(period: "2026-05") {
+    rows {
+      module
+      agentPersona
+      modelAlias
+      tokensIn
+      tokensOut
+      costUsd
+      cacheState
+      failoverPath
+      ts
+    }
+    totalCostUsd
+    quotaUsed
+    quotaRemaining
+  }
+}
+```
+
+## Provider failover
+
+The gateway automatically handles provider degradation so your workflows keep running.
+
+<Accordion title="Failover behaviour">
+  | Condition | Gateway action |
+  |---|---|
+  | Provider returns 5xx | Retry once, then mark provider degraded for 60 s |
+  | Three consecutive 5xx errors | Circuit-breaker trips; route to fallback provider |
+  | Provider returns 429 (rate limit) | Exponential backoff up to 30 s; then fallback |
+  | Both primary and fallback degraded | Return `503 PROVIDER_UNAVAILABLE`; never cross residency boundary |
+  | Provider recovers | Circuit-breaker resets after 60 s; primary restored automatically |
+
+  The `failoverPath` field in every cost row records whether the request used the primary provider or a fallback, so you can see the impact of provider outages in your cost ledger.
+</Accordion>
+
+## Zero-data-retention (ZDR)
+
+For tenants on plans that include ZDR (Enterprise), the gateway routes requests to providers under a ZDR agreement, meaning the provider does not retain your prompt or completion data for training or logging on their side. The ZDR routing decision is recorded in every audit row.

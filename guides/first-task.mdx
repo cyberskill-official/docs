@@ -1,0 +1,165 @@
+---
+title: 'Ship Your First CyberOS Task'
+sidebarTitle: 'First Task'
+description: 'Create a task file, trigger the AI agent, and land your first CyberOS-managed change with the two human acceptance gates in under 30 minutes.'
+---
+
+This guide walks you through the full CyberOS task lifecycle from scratch — from writing a task file to landing the finished change. No prior CyberOS knowledge is assumed. By the end you will have written a task, triggered an agent, held both human acceptance gates, and understood exactly what you are responsible for versus what the agent handles.
+
+## Two roles in every step
+
+Before you start, understand the split:
+
+| Role | Responsibilities |
+|---|---|
+| **You** | Decide what to build, trigger the agent, approve or route back at both gates, commit, push, and open the PR. Only you can set `ready_to_test` and `done`. |
+| **The agent** | Does all the implementation work between your decisions — writes code, runs gates, reviews its own output, and halts at each gate to wait for your verdict. |
+
+The agent never pushes, merges, deploys, or marks its own work done.
+
+---
+
+<Steps>
+  <Step title="Ensure CyberOS is installed">
+    If you have not yet installed CyberOS, follow the [Installation guide](/guides/install) first. Installation is a one-time setup per repo and takes under two minutes.
+
+    To confirm your repo is ready, run:
+
+    ```bash
+    python -m cyberos doctor
+    ```
+
+    The output should read `READY`.
+  </Step>
+
+  <Step title="Write the task file">
+    Create one file at `docs/tasks/<module>/task-<MODULE>-<NNN>-<slug>.md`. You can copy the template from `.cyberos/cuo/templates/` or start from this skeleton:
+
+    ```markdown
+    ---
+    id: TASK-MYAPP-001
+    title: Add login rate limit
+    module: myapp
+    class: product
+    status: ready_to_implement
+    priority: MUST
+    depends_on: []
+    routed_back_count: 0
+    ---
+
+    # TASK-MYAPP-001 — Add login rate limit
+
+    ## Context
+    The login endpoint is vulnerable to brute-force attacks.
+    It needs rate limiting to protect user accounts.
+
+    ## 1. Normative clauses
+    1. The login endpoint MUST reject more than 5 attempts per minute per account.
+    2. A rejected attempt MUST return 429 with a Retry-After header.
+
+    ## 2. Acceptance criteria
+    - [ ] 6th attempt within a minute returns 429.
+    - [ ] Tests cover the limit and the reset.
+    ```
+
+    Use `class: product` for new capabilities and `class: improvement` for hardening, refactors, or fixes.
+
+    <Tip>
+      A task should be shippable in one sitting. If yours has more than roughly five normative clauses, split it into smaller tasks. Smaller tasks move faster and are easier to review.
+    </Tip>
+  </Step>
+
+  <Step title="Add the task to BACKLOG.md">
+    Open `docs/tasks/BACKLOG.md` and add one line in your module's section:
+
+    ```markdown
+    | TASK-MYAPP-001 | Add login rate limit | ready_to_implement | MUST |
+    ```
+
+    For `class: improvement` tasks, add an `(improvement)` tag to the row. The task file's `status:` field is the record of truth; `BACKLOG.md` is the index kept in lockstep.
+  </Step>
+
+  <Step title="Trigger the agent">
+    With the Claude plugin installed, type this in your repo session:
+
+    ```
+    /ship-tasks
+    ```
+
+    Without the plugin, paste this prompt to any agent:
+
+    ```
+    Follow .cyberos/AGENT-ENTRY.md and drive the next eligible task in
+    docs/tasks/BACKLOG.md. HITL required. repo_root = this repo.
+    ```
+
+    The agent picks the first eligible task (respecting `depends_on`), moves it to `implementing`, writes code, runs `bash .cyberos/cuo/gates/run-gates.sh`, reviews its own output, and advances to `reviewing` — then halts and waits for you.
+  </Step>
+
+  <Step title="Gate 1 — Review acceptance">
+    The agent presents:
+    - What it built (a summary of changes)
+    - Its review findings (how the change maps to each normative clause)
+    - Any deviations or open questions
+
+    **What you check:** read each normative clause in the task file against the actual change. Is every clause satisfied? Is the review packet complete?
+
+    - **To approve:** say `approved` (or equivalent). The agent advances the task to `ready_to_test`.
+    - **To route back:** give one sentence explaining what is wrong, for example: _"Clause 2 is not implemented — the endpoint returns 400, not 429."_ The agent drops the task back to `ready_to_implement` and `routed_back_count` increments by 1.
+  </Step>
+
+  <Step title="Gate 2 — Final acceptance">
+    The agent presents:
+    - Test evidence — gate output, proof per acceptance criterion
+    - Green gates (build, lint, test all passing)
+
+    **What you check:** go through each acceptance criterion one by one. Is every checkbox satisfied? Are all gates green?
+
+    - **To approve:** say `done` (or equivalent). The task status becomes `done`.
+    - **To route back:** give one sentence explaining what is wrong. `routed_back_count` increments again.
+  </Step>
+
+  <Step title="Land the change">
+    Once you have accepted at Gate 2, the change is yours to land:
+
+    ```bash
+    git add .
+    git commit -m "feat(myapp): add login rate limit (TASK-MYAPP-001)"
+    git push origin my-branch
+    # open a PR in your usual flow
+    ```
+
+    Agents never commit, push, merge, or deploy on your behalf. That is always your step.
+  </Step>
+</Steps>
+
+---
+
+## When things go wrong
+
+<Accordion title="Gates fail — agent presents red output">
+  The agent must fix failing gates and re-run them before it can request your review at either gate. If an agent asks you to accept with red gate output, refuse. Send it back with: _"Gates are not green. Fix and re-run before requesting review."_
+</Accordion>
+
+<Accordion title="The task itself was wrong">
+  Route back at either gate with one sentence explaining what the task got wrong. The `routed_back_count` field in the task frontmatter tracks how many rework loops have happened. There is no limit to how many times you can route back.
+</Accordion>
+
+<Accordion title="Not sure what a status means">
+  `.cyberos/cuo/STATUS-REFERENCE.md` defines all 10 states, who may set each one, and what the transition rules are. When in doubt, check that file first.
+</Accordion>
+
+<Accordion title="CyberOS itself is outdated">
+  Re-run the installer to update:
+
+  ```bash
+  npx cyberos install
+  # or: /install via the Claude plugin
+  ```
+
+  The installer applies updates to `.cyberos/` and never touches your existing tasks or `BACKLOG.md`.
+</Accordion>
+
+<Warning>
+  An agent that marks its own work `done` — without halting for your verdict — is broken behaviour. Refuse to accept the output and report the incident. Only you can set `done`.
+</Warning>

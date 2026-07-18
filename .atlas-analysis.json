@@ -1,0 +1,126 @@
+{
+  "projectType": "saas",
+  "projectName": "CyberOS",
+  "projectDescription": "CyberOS is CyberSkill's AI-native internal operations platform — a federated set of modules covering memory, workflows, skills, HR, CRM, project management, and more — that agents and people operate together inside any organisation.",
+  "theme": "almond",
+  "primaryColor": "#efb714",
+  "lightColor": "#45250c",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "concepts"
+            ]
+          },
+          {
+            "group": "Core Modules",
+            "pages": [
+              "modules/memory",
+              "modules/cuo",
+              "modules/skill",
+              "modules/auth",
+              "modules/chat"
+            ]
+          },
+          {
+            "group": "Productivity Modules",
+            "pages": [
+              "modules/proj",
+              "modules/time",
+              "modules/crm",
+              "modules/kb",
+              "modules/email"
+            ]
+          },
+          {
+            "group": "People & Finance",
+            "pages": [
+              "modules/hr",
+              "modules/rew",
+              "modules/learn",
+              "modules/esop"
+            ]
+          },
+          {
+            "group": "Platform",
+            "pages": [
+              "modules/ai-gateway",
+              "modules/mcp-gateway",
+              "modules/obs",
+              "modules/ten",
+              "modules/portal"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Installation",
+            "pages": [
+              "guides/install",
+              "guides/plugin-setup",
+              "guides/first-task"
+            ]
+          },
+          {
+            "group": "Skills & Workflows",
+            "pages": [
+              "guides/authoring-skills",
+              "guides/ship-tasks-workflow",
+              "guides/human-in-the-loop"
+            ]
+          },
+          {
+            "group": "Vietnamese Market",
+            "pages": [
+              "guides/vn-compliance",
+              "guides/vietqr-invoicing"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/glossary",
+              "reference/changelog"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Append-only, cryptographically audit-chained BRAIN memory store (Layer 1 protocol + Layer 2 semantic search)",
+    "Anthropic Agent Skills open-standard compliant skill library with 100+ author/audit skill pairs",
+    "CUO workflow engine driving tasks through a governed lifecycle with mandatory human-acceptance gates",
+    "MCP (Model Context Protocol) gateway — speak natively to any MCP-compatible agent",
+    "AI Gateway with LiteLLM, cost ledger, PII redaction, and multi-provider routing",
+    "Multi-module HR, REW, PROJ, TIME, CRM, KB, LEARN, ESOP, INV operations platform",
+    "Vietnamese-market-first: MST validation, VietQR/VnPay, hóa đơn, Decree 145 labour-law guardrails",
+    "Multi-tenant SaaS isolation (Postgres RLS, NATS subject scoping, S3 prefix ACLs)",
+    "Agent-independent: works with Claude, Codex, Cursor, Gemini, Grok, and any file-and-shell agent",
+    "npx / Claude plugin / MCP stdio / Docker install channels"
+  ],
+  "publicApiSurface": [
+    "python -m cyberos doctor  — verify store health",
+    "python -m cyberos export  — deterministic portable zip of the BRAIN store",
+    "npx cyberos install <repo>  — vendor CyberOS into a repository",
+    "npx cyberos update <repo>  — apply CyberOS updates",
+    "/install, /update, /changelog, /help, /ship-tasks  — Claude plugin commands",
+    "cyberos-cuo list-personas  — list active CUO personas",
+    "bash .cyberos/cuo/gates/run-gates.sh  — run repo verification gates",
+    "MCP tools: task_install, task_gates, task_status, ship_task",
+    "memory.put / memory.move / memory.delete / memory.put_if  — Layer-1 store operations",
+    "cyberos-ten provision <tenant>  — provision a new tenant (ops CLI)",
+    "services/auth REST endpoints: list_tenants, list_subjects, revoke, unrevoke, travel_admin",
+    "Skill SKILL.md frontmatter contract (name, description, invocation_modes, expects, produces)"
+  ]
+}

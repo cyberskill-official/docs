@@ -1,0 +1,119 @@
+---
+title: 'REW: Compensation, Payroll, and Bonus Points'
+sidebarTitle: 'REW'
+description: 'CyberOS REW is the compensation ledger: append-only payslips, Vietnamese social insurance deductions, BP bonus points, and a CFO+CHRO co-sign gate.'
+---
+
+CyberOS REW is the compensation computation and ledger plane — the place where Total Rewards parameters become payslips, and where every payslip is reproducible byte-for-byte from the inputs that were effective at period end. Three hard invariants govern everything REW does: the ledger is **append-only** (corrections are supersession rows, never edits), the **P1 base salary floor is inviolable** (no evaluation, no agent, and no buggy code path can propose a P1 reduction — violation is sev-0), and **parameters are anti-retroactive** (publishing a new rate schedule cannot change the output of any historical payslip). Compensation data lives in REW's own encrypted KMS keyspace and is structurally excluded from every other module, including the BRAIN memory store.
+
+## The 3P Compensation Structure
+
+REW decomposes every member's cash compensation into three components, each governed by distinct rules.
+
+<CardGroup cols={3}>
+  <Card title="P1 Base" icon="shield">
+    **Contractually protected base salary.** Paid monthly in cash. REW enforces a hard floor: no evaluation outcome, parameter change, or agent action can result in a P1 value smaller than the prior period's P1. This constraint is enforced at both the application layer (`p1_guard.rs`) and the database layer (`CHECK` constraint). **Violation = sev-0.**
+  </Card>
+  <Card title="P2 Allowance" icon="sliders">
+    **Role-tier cash allowance.** Tied to position and level (e.g. mentorship allowance for L3+, leadership allowance for managers). P2 can be adjusted upward or downward when a member's tier changes, subject to CHRO approval. Unlike P1, P2 is not contractually floored.
+  </Card>
+  <Card title="P3 Performance" icon="chart-line">
+    **Quarterly performance distribution from the BP fund.** Variable; can be zero in any period without violating the P1 invariant. Distributed via `POOL_DISTRIBUTION` rows weighted by each member's Voting Power (VP), computed by LEARN. CEO + CFO sign-off is required before any P3 distribution is committed.
+  </Card>
+</CardGroup>
+
+## BP (Bonus Points) Ledger
+
+BP is an inflation-indexed unit of account that accumulates over time and converts to P3 cash at designated windows.
+
+<Tabs>
+  <Tab title="What BP Is">
+    BP is a synthetic unit pegged to the ACB savings rate for inflation protection. Every member with an active grant earns BP credits monthly. Unlike salary, BP accrues interest automatically — the ACB rate is a versioned parameter, so historical accrual is always replayable.
+  </Tab>
+  <Tab title="How BP Accrues">
+    BP credits come from two sources: monthly system accrual (automated, deterministic) and founder-approval BP awards for exceptional contributions. Each credit or debit is an immutable row in the `bp_ledger_entry` table — the balance is always derivable by summing the ledger, never stored as a mutable field.
+  </Tab>
+  <Tab title="How BP Is Distributed">
+    At quarter close, REW's bonus orchestrator reads each member's VP score from LEARN, applies the BP fund weighting, and produces a P3 distribution proposal. CEO + CFO sign off before any P3 cash is committed to payslips.
+  </Tab>
+</Tabs>
+
+## Monthly Payroll Cycle
+
+The close cycle runs from D-3 (three days before month end) through D+3 (publish day). Each stage has a defined owner and gate.
+
+<Steps>
+  <Step title="Timesheet Approval (D-1)">
+    TIME enforces a hard freeze. All hours for the period must be approved by the member's manager before the freeze deadline. Late timesheet entries are rejected until the next cycle.
+  </Step>
+  <Step title="3P Computation (D)">
+    REW's pure-function compute kernel ingests the approved timesheet, leave records, current BP balance, and the parameter version effective at period end. It produces P1, P2, P3, SI, PIT, and net values. No I/O, no clock, no randomness — the same inputs always produce the same output.
+  </Step>
+  <Step title="Vietnamese Statutory Deductions (D)">
+    The `si_pit.rs` component applies the versioned statutory deductions per Decree 152/2020 and Circular 111/2013:
+    - BHXH (employee): **10.5%** of capped base
+    - BHYT (employee): **1.5%**
+    - BHTN (employee): **1%**
+    - PIT: progressive schedule per Circular 111/2013
+
+    Employer contributions (BHXH 17.5%, BHYT 3%, BHTN 1%) are tracked separately for remittance reporting.
+  </Step>
+  <Step title="Anomaly Surface (D)">
+    REW surfaces any payslip where the net value moved more than ±20% versus the prior month. HR/Ops reviews and either confirms or adjusts inputs before proceeding.
+  </Step>
+  <Step title="CFO + CHRO Co-Sign (D+2)">
+    Both the CFO and CHRO must submit WebAuthn assertions within a 5-minute window to commit the cycle. A single-signer commit is rejected by `cosign_guard.rs`. If either signature lapses, both must re-authenticate.
+  </Step>
+  <Step title="CEO Publish + Payslip Archive (D+2 → D+3)">
+    CEO gives final approval. REW renders deterministic PDF payslips via the tectonic LaTeX engine with frozen fonts and fixed timestamp metadata. Each PDF's SHA-256 is stored alongside the payslip row. PDFs are archived to S3 with a 10-year object-lock. Members receive a notification; the payslip portal shows the new entry.
+  </Step>
+  <Step title="VietQR Payroll Batch (D+3)">
+    REW dispatches the payroll batch to Vietnamese banks via VietQR. Multi-currency support covers VND and USD. CFO confirms the batch before wires are sent.
+  </Step>
+</Steps>
+
+<Warning>
+  Compensation data is structurally excluded from the BRAIN memory store. No agent can read or write payslip data. The memory module receives only opaque event references (e.g. `rew.payslip.published:<opaque_id>`) — never amounts, rates, or component breakdowns. This is enforced by DEC-036 and verified by a CI gate on every pull request.
+</Warning>
+
+## Payslip Immutability
+
+Every published payslip is reproducible byte-for-byte from its inputs. REW's replay-check CI job recomputes the full retained payslip history against the historical parameter versions on every parameter change. If any historical payslip's SHA-256 drifts, the parameter change is rejected and rolled back.
+
+<Accordion title="How Anti-Retroactive Versioning Works">
+  Parameter rows carry `effective_from`, `effective_to`, `superseded_by`, and a `version_hash`. The database application role has no `UPDATE` or `DELETE` grant on parameter tables — only `INSERT`. When a new rate schedule is published, the prior row receives an `effective_to` timestamp; it is never overwritten. A payslip computed for January 2024 will always reproduce against the parameters effective on 2024-01-31 23:59:59 UTC, regardless of what rate changes have been published since.
+</Accordion>
+
+## Compensation Privacy
+
+REW maintains strict structural isolation from all other modules.
+
+| Boundary | Enforcement |
+|---|---|
+| HR cannot read compensation numbers | REW and HR use separate encrypted KMS keyspaces; no JOIN is possible across module schemas. |
+| Agents cannot ingest compensation data | DEC-036 structural exclusion; CI gate inspects every memory-bridge emission against a numeric blocklist. |
+| Managers cannot see other members' payslips | `rew.payslip_read` scope is member-self-bound; no manager-scoped read path exists. |
+| Memory stores only opaque references | `memory_bridge.rs` emits `rew.payslip.published:<opaque_id>` — never amounts, rates, or breakdowns. |
+
+## Quarterly Bonus Orchestration
+
+<Steps>
+  <Step title="BP Fund Lock">
+    At quarter close, the bonus-pool balance is locked. REW reads each member's current VP score from LEARN.
+  </Step>
+  <Step title="P3 Distribution Proposal">
+    The compute kernel allocates the fund proportionally to VP scores, applying any performance factors from HR's calibration signals. The result is a draft `POOL_DISTRIBUTION` for each member.
+  </Step>
+  <Step title="CEO + CFO Sign-Off">
+    Both the CEO and CFO review the proposal and co-sign. Neither can approve individually — the same 5-minute WebAuthn window predicate applies.
+  </Step>
+  <Step title="P3 Commits to Payslips">
+    Once signed, the P3 amounts append to the current period's payslip rows and flow through the normal publish cycle.
+  </Step>
+</Steps>
+
+## EU AI Act Classification
+
+<Note>
+  REW is classified as **high-risk** under EU AI Act Annex III §4 (employment and worker management). A full conformity pack — covering risk management, data governance, transparency documentation, and human oversight evidence — is planned for the P2 release. Members retain the right to a human review of any automated computation via the CEO-adjudicated dispute path (SLO: 5 working days).
+</Note>

@@ -1,0 +1,108 @@
+---
+title: 'The ship-tasks Workflow: End-to-End Task Lifecycle'
+sidebarTitle: 'Ship Tasks'
+description: 'ship-tasks is the CyberOS workflow that drives every task from draft to done. Learn the 10 task states, gate rules, and failure-recovery loops.'
+---
+
+`ship-tasks` is the single CyberOS workflow that drives every unit of work from specification to delivery. There is no separate workflow for net-new features versus hardening or fixes — all work goes through the same machinery. A `class: product` task and a `class: improvement` task follow identical lifecycle rules, share one `BACKLOG.md`, and both require the same two mandatory human-acceptance gates. The workflow lives in `.cyberos/cuo/ship-tasks.md` inside any CyberOS-initialised repo and is also bundled inside the `/ship-tasks` plugin skill.
+
+## The 10 task states
+
+A task carries exactly one status at any point in time. The states form a single linear lifecycle with two off-ramps.
+
+| # | Status | Who can set it | What it means |
+|---|---|---|---|
+| 1 | `draft` | Author or agent | Spec is being written; not yet audited. |
+| 2 | `ready_to_implement` | Author or agent | Spec passes audit at 10/10; eligible for the agent to pick up. Also the state a task returns to when an in-cycle step fails. |
+| 3 | `implementing` | Agent | Agent is actively writing code and tests. |
+| 4 | `ready_to_review` | Agent | Implementation complete; awaiting reviewer pickup. |
+| 5 | `reviewing` | Agent or human | Reviewer is checking the diff against normative clauses and acceptance criteria. |
+| 6 | `ready_to_test` | **Human only (Gate 1)** | Human reviewer accepted the code-review packet. |
+| 7 | `testing` | Agent or human | Agent is running gates and proving each acceptance criterion. |
+| 8 | `done` | **Human only (Gate 2)** | Human accepted the shipped task after all machine gates are green. Terminal success. |
+| 9 | `on_hold` | Human | Deliberately deferred — skipped by the default queue. |
+| 10 | `closed` | Human | Abandoned, rejected, or superseded — stays in BACKLOG.md for audit trail. |
+
+The authoritative definition of all states lives in `.cyberos/cuo/STATUS-REFERENCE.md`.
+
+---
+
+## The BACKLOG.md index
+
+`docs/tasks/BACKLOG.md` is the single index for all work. One file covers every module and every class of task — there is never a second backlog file.
+
+**To add a task**, append one row in your module's section:
+
+```markdown
+| TASK-MYAPP-001 | Add login rate limit | ready_to_implement | MUST |
+```
+
+For `class: improvement` tasks, add the `(improvement)` tag:
+
+```markdown
+| TASK-MYAPP-002 | Refactor auth middleware | ready_to_implement | SHOULD | (improvement) |
+```
+
+The task file's `status:` frontmatter field is the record of truth. `BACKLOG.md` is the index kept in lockstep with it. Never update one without updating the other.
+
+---
+
+## How the agent picks tasks
+
+When you trigger `ship-tasks`, the agent:
+
+1. Reads `BACKLOG.md` and finds all tasks with `status: ready_to_implement`
+2. Filters out tasks whose `depends_on` list contains any task not yet in `done`
+3. Picks the first eligible task (by order in `BACKLOG.md`)
+4. Moves it to `implementing` and begins work
+
+If no eligible tasks exist, the agent reports the block and stops. Check `depends_on` fields and the status of dependency tasks if this happens.
+
+---
+
+## Failure and routing back
+
+There are no terminal failure states in the CyberOS lifecycle. When a task fails at any in-cycle step, the workflow routes it back:
+
+- The task status returns to `ready_to_implement`
+- `routed_back_count` in the task frontmatter increments by 1
+- The reason is recorded in an audit row
+
+On the next `ship-tasks` run, the task is picked up again from the start. The `routed_back_count` field is your signal that a task has looped — if it is high, the spec or the implementation approach may need rethinking.
+
+---
+
+## Gates
+
+Gates are the machine verification layer between implementation and human review. They must be green before the agent can request your review at either human gate.
+
+Your repo's gate commands are stored in `.cyberos/gates.env` and run with:
+
+```bash
+bash .cyberos/cuo/gates/run-gates.sh
+```
+
+The installer auto-detects your build, lint, and test commands and writes them to `gates.env`. Edit that file if the auto-detected commands are wrong. A standard `gates.env` looks like:
+
+```bash
+GATE_BUILD="npm run build"
+GATE_LINT="npm run lint"
+GATE_TEST="npm test"
+```
+
+Gates run automatically as part of `ship-tasks`. You can also run them manually at any time to check repo health.
+
+---
+
+<Note>
+  `ship-tasks` is agent-independent — the same workflow, the same gate runner, and the same two human gates work with Claude, Codex, Cursor, Gemini, Grok, or any agent that can read files and run shell commands. Point the agent at `AGENTS.md` or `.cyberos/AGENT-ENTRY.md` and it drives the workflow correctly.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Human Gates" icon="shield-check" href="/guides/human-in-the-loop">
+    Understand exactly what to check at Gate 1 and Gate 2, and how to approve or route back.
+  </Card>
+  <Card title="Ship Your First Task" icon="rocket" href="/guides/first-task">
+    Step-by-step walkthrough from writing a task file to landing the finished change.
+  </Card>
+</CardGroup>

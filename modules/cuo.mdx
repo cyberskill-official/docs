@@ -1,0 +1,145 @@
+---
+title: 'CUO: Persona-Aware Workflow Orchestration'
+sidebarTitle: 'CUO'
+description: 'CUO is the CyberOS workflow engine. It drives every task through a governed lifecycle with human-in-the-loop gates, C-suite persona routing, and audit-chained evidence.'
+---
+
+CUO is the CyberOS workflow engine — the layer that transforms a task file into a shipped, audited change. It drives work through a single governed lifecycle, routing each task to the right C-suite persona, running agent steps between two mandatory human-acceptance gates, and recording every transition in an audit chain. Whether you are building a new feature or hardening an existing one, all work moves through the same machinery.
+
+## The Single Workflow: `ship-tasks`
+
+The `ship-tasks` workflow (v2.3.x) picks the first eligible task from `docs/tasks/BACKLOG.md` and drives it end to end. There is exactly one workflow — improvement work and net-new product work both run the same chain, keeping your backlog and audit trail unified.
+
+### Task Lifecycle
+
+```
+draft → ready_to_implement → implementing → ready_to_review
+      → reviewing → ready_to_test → testing → done
+```
+
+Off-ramps at any phase: `on_hold` (paused by operator), `closed` (cancelled).
+
+The task file's `status` frontmatter field is the **record of truth**. `BACKLOG.md` is the index kept in lockstep — it never diverges from the individual task files.
+
+<Note>
+  Failures never result in a terminal state. A blocked or failed task routes back to `ready_to_implement` with `routed_back_count` incremented by one. The agent documents the reason and picks the next eligible task.
+</Note>
+
+### Task File Anatomy
+
+Every task is a markdown file with structured frontmatter. Create one in `docs/tasks/<module>/task-<MODULE>-<NNN>-<slug>.md`:
+
+```yaml
+---
+id: TASK-SHOP-001
+title: Add a login rate limit
+module: shop
+class: product          # product = new capability; improvement = hardening/refactor/fix
+status: ready_to_implement
+priority: MUST
+depends_on: []
+routed_back_count: 0
+---
+```
+
+Add a matching line to `docs/tasks/BACKLOG.md`. Improvement-class rows carry an `(improvement)` tag; product rows are untagged. There is never a second backlog file.
+
+## Human-Acceptance Gates
+
+CUO requires two human verdicts per task. The agent runs continuously between them — it never stops to ask for confirmation on work it can verify itself.
+
+<Steps>
+  <Step title="Gate 1 — Review acceptance">
+    The agent stops at the `reviewing → ready_to_test` transition and presents its code-review packet: the implementation diff, review findings, edge-case matrix, and any architecture decision records. Read the task's normative clauses against the change, then say **"approved"** to advance or route it back with one sentence explaining what is wrong.
+  </Step>
+  <Step title="Gate 2 — Final acceptance">
+    The agent stops at the `testing → done` transition and presents its test evidence: gate output (build, lint, coverage, CAF, AWH), and proof per acceptance criterion. Once every machine gate is green and you are satisfied, say **"done"** to close the task. Route back if anything is missing or incorrect.
+  </Step>
+</Steps>
+
+<Warning>
+  An agent that marks its own work `done` — or transitions `reviewing → ready_to_test` without a human verdict — is exhibiting broken behavior. Refuse the action, route the task back, and report the incident. Only you can set `ready_to_test` (Gate 1) and `done` (Gate 2).
+</Warning>
+
+## Persona Routing
+
+CUO is built on a catalog of C-suite personas. Each persona represents a named executive role with its own area of expertise, knowledge inputs, and set of workflows. When a task arrives, CUO identifies the best-fit persona by matching the task's domain, module, and keywords against the persona catalog — then selects the most appropriate workflow within that persona's folder and invokes the declared skill chain.
+
+Example personas in the CUO catalog:
+
+| Persona folder | Disambiguated title | Primary domain |
+|---|---|---|
+| `chief-technology-officer` | Chief Technology Officer | Engineering, architecture, security |
+| `chief-revenue-officer` | Chief Revenue Officer | Sales, pipeline, go-to-market |
+| `chief-financial-officer` | Chief Financial Officer | Budgeting, forecasting, reporting |
+| `chief-product-officer` | Chief Product Officer | Roadmap, requirements, backlog |
+| `chief-legal-officer` | Chief Legal Officer | Contracts, compliance, risk |
+
+When no persona scores above the confidence threshold, CUO escalates to you with the top-three candidates and their applicability rationales. When a workflow references a skill that has not yet shipped, CUO emits a `MISSING_SKILL_REQUEST` block and halts at that step.
+
+## Triggering CUO
+
+You can trigger the `ship-tasks` workflow from three entry points. All three execute the same workflow, the same gates, and the same required human verdicts.
+
+<CodeGroup>
+
+```text Claude Plugin
+/ship-tasks
+```
+
+```text Plain Text (any agent)
+Follow .cyberos/AGENT-ENTRY.md and drive the next eligible task in
+docs/tasks/BACKLOG.md. HITL required. repo_root = this repo.
+```
+
+```json MCP Tool
+{
+  "tool": "ship_task",
+  "arguments": {
+    "repo_root": "/path/to/your-repo"
+  }
+}
+```
+
+</CodeGroup>
+
+<Note>
+  Install the Claude plugin once via **Settings → Plugins → Add**, pointing at `dist/cyberos/cyberos.plugin`. The `/ship-tasks` command becomes available in every session.
+</Note>
+
+## Machine Gates
+
+Between the two human gates, the agent runs your repo's machine gates automatically via `bash .cyberos/cuo/gates/run-gates.sh`. Gates are derived from the touched module's `audit-profile.yaml` and include:
+
+- **Build and lint** — the repo's standard compile and style checks
+- **Tests and coverage** — 90% coverage floor on all files touched by the task
+- **CAF gate** — code-audit floor across the change
+- **AWH gate** — independent golden-set rerun against the sealed baseline in `modules/<m>/.awh/`
+
+Green machine gates are necessary but never sufficient — you still decide at each human-acceptance gate.
+
+## Dream Loop (Propose Mode)
+
+CUO includes an optional self-improvement feature called the **dream loop**. When enabled, it evaluates candidate improvements to skill prompts, audit rubric wording, workflow step ordering, and golden-set thresholds — and records what it would do without applying anything.
+
+The shipped default is `mode: propose`. Moving to `auto-apply` requires four explicit locks to be satisfied simultaneously:
+
+1. `enabled: true` in `modules/cuo/config/dream.yaml` with the kill switch unset
+2. `mode: auto` set in the config
+3. The explicit runtime flag `--allow-auto-apply` passed to the runner
+4. You are on a dedicated dream branch whose name contains `"dream"`
+
+Even in `auto` mode the loop never commits, pushes, or deploys. You review the applied diff and commit it yourself. Override everything at any time:
+
+```bash
+export CYBEROS_DREAM_KILL=1   # hard stop, regardless of config
+```
+
+<CardGroup cols={2}>
+  <Card title="Ship Tasks Workflow" icon="rocket" href="/guides/ship-tasks-workflow">
+    Step-by-step walkthrough of the full `ship-tasks` lifecycle, from writing your first task file to landing the change.
+  </Card>
+  <Card title="Human-in-the-Loop" icon="user-check" href="/guides/human-in-the-loop">
+    Deep dive into the two acceptance gates: what evidence the agent presents, how to route back, and what counts as a valid verdict.
+  </Card>
+</CardGroup>

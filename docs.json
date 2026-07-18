@@ -1,72 +1,107 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mintlify Starter Kit",
-  "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
-  },
+  "theme": "almond",
+  "name": "Os Cyberskill",
   "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#efb714",
+    "light": "#45250c"
+  },
   "navigation": {
-    "pages": [
+    "tabs": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "concepts"
+            ]
+          },
+          {
+            "group": "Core Modules",
+            "pages": [
+              "modules/memory",
+              "modules/cuo",
+              "modules/skill",
+              "modules/auth",
+              "modules/chat"
+            ]
+          },
+          {
+            "group": "Productivity Modules",
+            "pages": [
+              "modules/proj",
+              "modules/time",
+              "modules/crm",
+              "modules/kb",
+              "modules/email"
+            ]
+          },
+          {
+            "group": "People & Finance",
+            "pages": [
+              "modules/hr",
+              "modules/rew",
+              "modules/learn",
+              "modules/esop"
+            ]
+          },
+          {
+            "group": "Platform",
+            "pages": [
+              "modules/ai-gateway",
+              "modules/mcp-gateway",
+              "modules/obs",
+              "modules/ten",
+              "modules/portal"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Installation",
+            "pages": [
+              "guides/install",
+              "guides/plugin-setup",
+              "guides/first-task"
+            ]
+          },
+          {
+            "group": "Skills & Workflows",
+            "pages": [
+              "guides/authoring-skills",
+              "guides/ship-tasks-workflow",
+              "guides/human-in-the-loop"
+            ]
+          },
+          {
+            "group": "Vietnamese Market",
+            "pages": [
+              "guides/vn-compliance",
+              "guides/vietqr-invoicing"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/glossary",
+              "reference/changelog"
+            ]
+          }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
     ]
   },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/cyberskill-official/cyberos"
     }
   }
 }

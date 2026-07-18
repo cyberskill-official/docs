@@ -1,0 +1,150 @@
+---
+title: 'EMAIL: Inbox, Threading, and CRM Auto-Log'
+sidebarTitle: 'Email'
+description: 'CyberOS EMAIL integrates your inbox with CRM activity logging, threaded conversations, and AI drafting — without leaving the CyberOS workspace.'
+---
+
+EMAIL brings your inbox into CyberOS so that reading a client message, logging it as a CRM activity, and drafting a reply can happen in a single workspace without switching applications. It is the capture surface for the CRM activity feed: inbound and outbound emails for tracked domains appear automatically on the matching Contact and Deal timeline without any manual logging. Threads are organised like CHAT conversations so the context of a client relationship is always at hand. When you need to draft a reply, CUO (Genie) can compose it grounded in the CRM account history, open deals, and relevant KB documents — a contextual draft rather than a blank page. EMAIL also plays a role in outbound defence: DKIM, ARC, and BIMI signing ensure your messages reach inboxes and carry your brand's visual trust signal.
+
+<Note>
+  EMAIL is a P1 module currently in design phase. This page describes the designed functionality from the user perspective. Refer to the platform roadmap for GA availability details.
+</Note>
+
+---
+
+## Core features
+
+<CardGroup cols={2}>
+  <Card title="Unified inbox" icon="inbox">
+    Read and respond to all your email from within CyberOS. Threads from tracked-domain contacts surface alongside their CRM context — account name, open deals, recent activities — so you never need to switch to a separate email client for client correspondence.
+  </Card>
+  <Card title="CRM auto-logging" icon="bolt">
+    Inbound and outbound emails to and from tracked domains are automatically logged as CRM activities on the matching Contact and Deal. No manual entry — the activity timeline updates the moment the email is sent or received.
+  </Card>
+  <Card title="Threaded conversations" icon="comments">
+    Email threads are organised like CHAT threads. Replies, forwards, and inline quotes are collapsed into a single conversation view. You can @mention a CyberOS member within a thread to loop them in via CHAT without leaving the email.
+  </Card>
+  <Card title="AI drafting" icon="wand-magic-sparkles">
+    CUO drafts outbound replies grounded in the sanitised email thread, the CRM account and deal context, and relevant KB documents. The draft is always a proposal — you review, edit, and send. CUO never sends email autonomously.
+  </Card>
+</CardGroup>
+
+---
+
+## CRM activity auto-logging
+
+When an email arrives from a tracked domain, EMAIL identifies the matching CRM Contact and Account by the sender's email address and domain. The email is logged as an activity with kind `email` on the Contact and any open Deals linked to that Contact.
+
+<Steps>
+  <Step title="Email arrives">
+    An inbound email arrives from `buyer@acme.com`. EMAIL checks whether `acme.com` is in your tenant's tracked-domain list.
+  </Step>
+  <Step title="Contact and Deal matched">
+    CRM looks up the Contact matching `buyer@acme.com` and any open Deals where that Contact is the primary contact.
+  </Step>
+  <Step title="Activity logged">
+    An activity row is inserted with `kind = email`, `source = email`, and the source event ID as the idempotency key. If a retry delivers the same email event twice, the deduplication constraint ensures only one activity appears on the timeline.
+  </Step>
+  <Step title="Deal timeline updated">
+    The Deal's activity timeline shows the email with subject, timestamp, and direction (inbound or outbound). The Account Manager sees it the next time they open the deal — no notification unless they are mentioned.
+  </Step>
+</Steps>
+
+<Warning>
+  CRM auto-logging only fires for **tracked domains** you have explicitly configured. Personal email addresses and domains not on your tracked list are never auto-attached to CRM records. This boundary is enforced at the API level and is audited — misconfigurations that would auto-log personal email are blocked.
+</Warning>
+
+---
+
+## Configuration
+
+### Connecting your email account
+
+<Tabs>
+  <Tab title="Gmail / Google Workspace">
+    <Steps>
+      <Step title="Open Email settings">
+        Go to **Settings → EMAIL → Connect account**.
+      </Step>
+      <Step title="Authorise with Google OAuth">
+        Click **Connect Google account** and complete the OAuth flow. CyberOS requests the minimum required scopes: read, send, and modify (for archiving).
+      </Step>
+      <Step title="Select the inbox to sync">
+        Choose which labels or folders to sync. CyberOS recommends syncing your primary inbox and Sent folder at minimum.
+      </Step>
+      <Step title="Confirm">
+        Your email account is now connected. Existing threads from tracked domains will appear in the unified inbox within minutes.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="IMAP / SMTP">
+    <Steps>
+      <Step title="Open Email settings">
+        Go to **Settings → EMAIL → Connect account → IMAP / SMTP**.
+      </Step>
+      <Step title="Enter server details">
+        Provide your IMAP host, port, and security settings, plus your SMTP host and port. Enter your email address and password (or app-specific password if two-factor authentication is enabled).
+      </Step>
+      <Step title="Test the connection">
+        Click **Test connection**. CyberOS will attempt to authenticate and retrieve the last 10 messages as a connectivity check.
+      </Step>
+      <Step title="Save">
+        Once the test passes, save the configuration. Your inbox will sync within a few minutes.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+### Setting up domain tracking for CRM auto-log
+
+Domain tracking controls which email domains trigger automatic CRM activity logging.
+
+<Steps>
+  <Step title="Open domain tracking settings">
+    Go to **Settings → CRM → Tracked domains**.
+  </Step>
+  <Step title="Add domains">
+    Enter the client or partner domain (for example, `acme.com`). You can add multiple domains. Only emails to or from addresses at tracked domains will auto-log to CRM.
+  </Step>
+  <Step title="Review and save">
+    Review the list carefully. Every change to tracked-domain configuration is audited. Confirm and save.
+  </Step>
+</Steps>
+
+<Note>
+  Tracked-domain configuration is itself audited — every add, change, or removal writes a memory row. The CSO can review the full configuration history at any time.
+</Note>
+
+### Email templates
+
+Create reusable email templates for common outbound scenarios (for example, proposal follow-up, meeting confirmation, payment request). Templates support merge fields that pull from CRM context: `{{contact.salutation}}`, `{{deal.name}}`, `{{deal.amount_vnd}}`, and `{{account.name}}`.
+
+Access templates at **EMAIL → Templates → New template**. Templates are available to all members in your workspace and can be scoped to specific pipelines or deal stages.
+
+---
+
+## Integration with CRM
+
+The EMAIL → CRM integration is bidirectional:
+
+- **Inbound emails** from tracked domains appear as `email` activities on the matching Contact and Deal within seconds of arrival.
+- **Outbound emails** you send from the CyberOS unified inbox are logged immediately on send.
+- **Thread history** is available from the Deal timeline — click any email activity to expand the full thread without leaving the deal view.
+
+When EMAIL cannot match an inbound message to a known Contact (for example, a new lead from a tracked domain with no existing Contact record), it surfaces a **Create Contact** prompt on the message. Accept the prompt to create a new Contact pre-filled with the sender's name, email, and domain-inferred Account.
+
+---
+
+## Integration with CHAT (AI drafting via @genie)
+
+From any email thread, type `@genie` in the reply composer to ask CUO to draft a response. Genie has access to:
+
+- The **sanitised email thread** (CaMeL quarantine prevents prompt-injection from inbound message content)
+- The **CRM account and deal context** for the matched Contact
+- **Relevant KB documents** (for example, pricing references, service descriptions, policy pages)
+
+Genie returns a draft reply in the composer. You review, edit, and send — Genie never sends autonomously. The draft and any edits you make before sending are not stored in CRM context, only the final sent message.
+
+<Tip>
+  For complex proposals or sensitive client communications, use **@genie summarise thread** first to get a CRM-grounded summary of the conversation history before asking Genie to draft a reply. This ensures the draft reflects the full relationship context, not just the most recent email.
+</Tip>
