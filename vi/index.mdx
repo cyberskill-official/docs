@@ -1,0 +1,46 @@
+---
+title: 'Nền tảng CyberOS: Bộ nhớ, Kỹ năng và Module quy trình'
+sidebarTitle: 'Trang chủ'
+description: 'CyberOS mang bộ nhớ, kỹ năng AI và tự động hóa quy trình đến với mọi đội ngũ — các module liên kết cho HR, CRM, dự án, tài chính và nhiều lĩnh vực khác.'
+---
+
+CyberOS là nền tảng vận hành nội bộ AI-native của CyberSkill — 22 module liên kết, 104 Skill agent và 223 quy trình CUO cùng vận hành để agent và con người trong đội ngũ của bạn hoàn thành công việc trong một vòng lặp có quản trị và có chuỗi kiểm toán. Tài liệu này bao trùm mọi thứ, từ cách cài đặt CyberOS vào repository đầu tiên của bạn cho đến việc hiểu cách kho bộ nhớ BRAIN, engine quy trình CUO và thư viện Skills phối hợp với nhau.
+
+<CardGroup cols={2}>
+  <Card title="Giới thiệu" icon="book-open" href="/introduction">
+    Tìm hiểu CyberOS là gì, các vấn đề nó giải quyết và cách các module hoạt động cùng nhau như một nền tảng vận hành thống nhất.
+  </Card>
+  <Card title="Bắt đầu nhanh" icon="rocket" href="/quickstart">
+    Cài đặt CyberOS vào repo của bạn, viết nhiệm vụ đầu tiên và triển khai nó với trợ giúp AI trong chưa đầy 15 phút.
+  </Card>
+  <Card title="Khái niệm cốt lõi" icon="lightbulb" href="/concepts">
+    Hiểu về bộ nhớ BRAIN, Skills, quy trình CUO, các trạng thái nhiệm vụ và mô hình quản trị có con người trong vòng lặp.
+  </Card>
+  <Card title="Hướng dẫn cài đặt" icon="download" href="/guides/install">
+    Các lựa chọn cài đặt từng bước: npx, plugin Claude, curl, Docker, GitHub Action và nhiều hơn nữa.
+  </Card>
+</CardGroup>
+
+## Các module nền tảng
+
+Ba module đã phát hành tạo thành nền tảng vận hành mà mọi module cấp cao hơn được xây dựng trên đó. Hãy bắt đầu từ đây trước khi khám phá HR, CRM, Projects hay Finance.
+
+<CardGroup cols={3}>
+  <Card title="Memory BRAIN" icon="brain" href="/modules/memory">
+    Một kho bộ nhớ cục bộ append-only, có chuỗi kiểm toán, kèm dịch vụ tìm kiếm ngữ nghĩa Layer-2. Mọi quyết định của agent đều được ghi lại và có thể chứng minh.
+  </Card>
+  <Card title="Workflow Engine" icon="gears" href="/modules/cuo">
+    Engine CUO điều phối các nhiệm vụ từ ý tưởng đến hoàn thành thông qua một vòng đời có quản trị duy nhất với hai cổng chấp nhận của con người bắt buộc.
+  </Card>
+  <Card title="Thư viện Skills" icon="puzzle-piece" href="/modules/skill">
+    104 năng lực agent có phiên bản, có thể kiểm toán — từ soạn thảo nhiệm vụ và review code cho đến các công cụ tuân thủ cho thị trường Việt Nam.
+  </Card>
+</CardGroup>
+
+## Điểm nổi bật của nền tảng
+
+CyberOS được xây dựng trên ba module đã phát hành (memory, skill, CUO) với tổng cộng 22 module trải dài các giai đoạn P0–P4. Nền tảng chạy một phiên bản duy nhất trên toàn bộ các module, cài đặt vào bất kỳ repository nào dưới một thư mục `.cyberos/` duy nhất được đưa vào gitignore, và hoạt động với Claude, Codex, Cursor, Gemini, Grok cùng mọi agent file-and-shell khác.
+
+<Note>
+  CyberOS được **thiết kế ưu tiên cho thị trường Việt Nam**. Thư viện Skills cung cấp gói `cyberskill-vn` chuyên biệt bao gồm tuân thủ pháp lý Việt Nam, hóa đơn điện tử, API ngân hàng và các yêu cầu pháp luật — mang đến cho các đội ngũ tại TP. Hồ Chí Minh và Hà Nội bộ công cụ sẵn sàng cho production trước khi nền tảng mở rộng ra khu vực Đông Nam Á và toàn cầu.
+</Note>

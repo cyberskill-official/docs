@@ -1,0 +1,149 @@
+---
+title: 'Module ESOP: Grant Phantom Stock, Vesting và Cap Table'
+sidebarTitle: 'ESOP'
+description: 'CyberOS ESOP quản lý các grant kế hoạch quyền chọn cổ phiếu cho nhân viên, lịch trình vesting và khả năng thấy được cap table — tích hợp với các sự kiện vòng đời HR.'
+---
+
+CyberOS ESOP là mặt phẳng vốn chủ sở hữu tổng hợp — một lợi ích kinh tế được theo dõi trên sổ sách trong công ty, vest theo thời gian, tích lũy giá trị qua các định giá hàng năm và có thể được thanh toán một phần qua các cửa sổ put-option. Nó được sử dụng bởi các thành viên sáng lập theo dõi đường cong vesting của họ, HR admin quản lý các sự kiện grant kích hoạt bởi vòng đời và đội tài chính chạy chu kỳ định giá hàng năm và báo cáo cap-table. ESOP triển khai cấu trúc **Phantom Stock**: không có chứng chỉ cổ phần nào được phát hành và không có đơn từ quy định chứng khoán Việt Nam nào áp dụng — các grant được coi là lương thưởng hoãn lại theo Nghị định 38/2020. Mỗi grant và mỗi định giá đều chỉ append và yêu cầu đồng ký đa bên, mang lại cho cap table một lịch sử có thể kiểm toán, chống giả mạo từ ngày đầu tiên.
+
+<Note>
+  ESOP là một **module P2** — hiện đang trong giai đoạn thiết kế và chưa sẵn sàng phổ biến. Tham khảo [changelog nền tảng](/reference/changelog) để biết timeline GA. Các tính năng được mô tả ở đây phản ánh thiết kế P2 đã lên kế hoạch.
+</Note>
+
+## Quản lý grant
+
+Một grant đại diện cho việc phân bổ các đơn vị Synthetic Phantom (SP) cho một thành viên. Các grant được phát hành bởi CEO, CFO và một Board designate cùng nhau — không bên nào có thể tạo grant đơn phương.
+
+### Loại grant
+
+| Kind | Khi phát hành | Lịch trình mặc định | Ghi chú |
+|---|---|---|---|
+| `founding` | Khi tuyển dụng cho các thành viên đủ điều kiện | 4 năm, cliff 12 tháng, hàng tháng sau đó | Grant đơn lẻ lớn nhất; phản ánh phân bổ ESOP trong thư mời. Kích hoạt tự động cho các thành viên đủ điều kiện khi HR chuyển họ sang `active`. |
+| `milestone` | Dựa trên thành tựu (thăng chức, dự án, lãnh đạo) | 2 năm, cliff 6 tháng, hàng tháng | Phát hành theo quyết định của HR/Ops hoặc CEO sau một sự kiện đủ điều kiện. |
+| `retention` | Bổ sung hàng năm | 4 năm, không cliff, hàng tháng | Giữ quỹ đạo vesting tiến về phía trước mượt mà; ngăn các thành viên đã vest hoàn toàn mất động lực vốn chủ sở hữu. |
+| `special` | Do Board chỉ định | Lịch trình tùy chỉnh | Yêu cầu bước phê duyệt bổ sung; dùng thận trọng cho các tình huống đặc biệt. |
+
+### Phát hành một grant
+
+<Steps>
+  <Step title="Kích hoạt onboarding HR (grant sáng lập)">
+    Khi một thành viên mới đủ điều kiện cho grant sáng lập, bộ điều phối onboarding của HR phát sự kiện `hr.member.joined`. ESOP nhận sự kiện này và mở một bản ghi grant nháp để CEO và CFO xem xét.
+  </Step>
+  <Step title="Đồng ký ba bên">
+    CEO, CFO và một Board designate mỗi bên gửi một assertion WebAuthn. Cả ba chữ ký phải đến trong cửa sổ 24 giờ. Bất kỳ nỗ lực một người ký nào đều bị từ chối.
+  </Step>
+  <Step title="Grant được commit">
+    Khi cả ba chữ ký được ghi nhận, ESOP chèn hàng grant bất biến, render một PDF có tính xác định (SHA-256 lưu trữ vào S3 với object-lock 10 năm) và cập nhật `pool_balance.issued_sp`.
+  </Step>
+</Steps>
+
+<Warning>
+  Các hàng grant chỉ append. Vai trò ứng dụng cơ sở dữ liệu không có quyền `UPDATE` hoặc `DELETE` trên bảng `grant`. Chỉnh sửa cần một hàng thay thế với `superseded_by` trỏ đến hàng gốc. Nỗ lực thay đổi một grant đã công bố là vi phạm toàn vẹn sev-0.
+</Warning>
+
+## Theo dõi Vesting
+
+Vesting được tính bởi một hàm thuần túy có tính xác định. Cùng đầu vào — `(grant, as_of_date)` — luôn tạo ra cùng số SP đã vest, làm cho đường cong vesting có thể kiểm toán và phát lại tại bất kỳ thời điểm nào trong lịch sử.
+
+### Lịch trình vesting mặc định
+
+- **Cliff:** 12 tháng kể từ `grant_date`. Không SP nào vest trước cliff.
+- **Vesting hàng tháng:** Sau cliff, SP vest hàng tháng qua 36 tháng còn lại.
+- **Vest đầy đủ:** 48 tháng kể từ `grant_date`.
+
+### Máy trạng thái vesting
+
+```
+Issued → Cliffed → Vesting → FullyVested
+                ↘ Accelerated  (M&A; Board trigger)
+                ↘ TerminatedGL (Good Leaver branch)
+                ↘ TerminatedBL (Bad Leaver branch)
+                ↘ Flipped      (HoldCo conversion)
+```
+
+ESOP chạy một công việc cron hàng tháng vật chất hóa các hàng `vesting_event` cho mọi grant đang hoạt động. Mỗi hàng là idempotent — chạy lại cron cho kỳ đã có sự kiện vesting là no-op, bảo vệ khỏi tích lũy kép.
+
+<Tip>
+  Các thành viên có thể xem đường cong vesting của chính mình, các ngày vest sắp tới và cửa sổ put-option tiếp theo trực tiếp từ cổng thành viên hoặc bằng cách hỏi agent CUO (`cyberos.esop.explain_my_vesting`). Trình tường thuật không bao giờ tiết lộ dữ liệu cap-table tổng hợp — nó chỉ hiển thị các grant của chính thành viên đó.
+</Tip>
+
+## Tích hợp vòng đời HR
+
+ESOP được tích hợp chặt chẽ với vòng đời thành viên của HR. Một số chuyển trạng thái HR tự động lan truyền sang ESOP.
+
+<Tabs>
+  <Tab title="Tuyển dụng mới (Active)">
+    Khi HR chuyển một thành viên sang `active`, ESOP đánh giá điều kiện grant sáng lập. Nếu thư mời của thành viên bao gồm phân bổ ESOP, một grant nháp được xếp hàng cho luồng đồng ký ba bên.
+  </Tab>
+  <Tab title="Nghỉ phép">
+    Các loại nghỉ phép luật định (nghỉ năm, thai sản, phụ trách, nghỉ ốm, tang chế) **không tạm dừng vesting**. Nghỉ không lương vượt quá quyền lợi luật định **có thể tạm dừng vesting** tùy thuộc vào thời gian nghỉ — ngưỡng cụ thể là một tham số có phiên bản. Cách xử lý vesting nghỉ sabbatical tuân theo Phụ lục Tổng Đãi ngộ.
+  </Tab>
+  <Tab title="Đình chỉ">
+    Trạng thái `suspended` của HR tạm dừng cron vesting hàng tháng cho thành viên bị ảnh hưởng. Vesting tự động tiếp tục khi HR chuyển thành viên trở lại `active`.
+  </Tab>
+  <Tab title="Chấm dứt">
+    Bộ điều phối offboarding của HR kích hoạt nhánh Good/Bad Leaver trong ESOP. Quyết định nhánh **không bao giờ tự động** — bộ điều phối offboarding hiển thị một khuyến nghị, nhưng việc phân loại thực tế yêu cầu đồng ký CEO + CFO bên trong ESOP.
+  </Tab>
+</Tabs>
+
+### Good Leaver vs Bad Leaver
+
+| Kết quả | Good Leaver | Bad Leaver |
+|---|---|---|
+| SP đã vest | Giữ ở định giá theo mặt | Giữ ở mức chiết khấu theo phụ lục (thường 50–60% định giá) |
+| SP chưa vest | Bị tịch thu; trả về pool | Bị tịch thu; trả về pool |
+| Quyền put | Được bảo toàn — có thể thực hiện trong các cửa sổ hàng năm tương lai | Đóng băng — không có quyền thực hiện put trong tương lai |
+| Điều kiện flip HoldCo | Đủ điều kiện nếu trước flip | Loại khỏi flip |
+| Kích hoạt điển hình | Từ chức tự nguyện, dư thừa, chia tay đồng thuận, nghỉ hưu | Chấm dứt vì lý do, vi phạm nghiêm trọng, vi phạm cam kết |
+| Phê duyệt bắt buộc | CFO xác nhận | CEO + CFO đồng ký (bắt buộc) |
+
+<Warning>
+  Nhánh Good/Bad Leaver là một quyết định chỉ do con người. Không có đường dẫn hệ thống nào chọn nhánh tự động. Nhánh không được ghi lại cho đến khi cả CEO và CFO đã gửi chữ ký WebAuthn của họ. Bất kỳ nỗ lực nào để tự động hóa quyết định này đều là vi phạm tuân thủ sev-0.
+</Warning>
+
+## Khả năng xem Cap Table
+
+ESOP thực thi các kiểm soát truy cập nghiêm ngặt trên dữ liệu cap-table. Các thành viên có thể xem các grant và lịch trình put của chính họ; chỉ có vai trò CEO, CFO và Board mới có thể xem cap table tổng hợp.
+
+<Tabs>
+  <Tab title="Xem của thành viên">
+    Bạn thấy các grant, sự kiện vesting, số dư SP và lịch trình các cửa sổ put-option sắp tới của chính mình. Bạn có thể mô phỏng một lần thực hiện put (bao nhiêu tiền mặt tại định giá hiện tại cho N SP) mà không cam kết — bề mặt trình tường thuật chạy tính toán so với định giá đã công bố mà không ghi bất kỳ bản ghi nào.
+  </Tab>
+  <Tab title="Xem của CFO / CHRO">
+    CFO và CHRO có thể truy cập cap table đầy đủ (cần scope `esop.cap_table_read`), hiển thị phân bổ SP của mọi thành viên, tổng đã vest và mức sử dụng pool. Mỗi lần đọc cap-table tạo ra một hàng audit.
+  </Tab>
+  <Tab title="Xem của Board">
+    Các Board designate có cùng scope `esop.cap_table_read` với CFO/CHRO, cộng thêm truy cập vào các báo cáo định giá và bề mặt kích hoạt tăng tốc M&A.
+  </Tab>
+</Tabs>
+
+## Chu kỳ định giá hàng năm
+
+Giá trị đơn vị SP được đặt một lần mỗi năm qua quy trình ba bên: CFO cung cấp định giá cơ sở, chủ tịch Board áp dụng bội số ngành, và một kiểm toán bên ngoài (ví dụ KPMG, EY, hoặc PwC) chứng thực. `sp_unit_value_vnd` kết quả được công bố như một hàng có phiên bản bất biến — các lần thực hiện put trong năm được định giá theo định giá gần nhất đã công bố.
+
+<Accordion title="Cách hoạt động của công thức định giá">
+  `sp_unit_value_vnd = base_value_vnd × industry_multiplier ÷ total_outstanding_sp`
+
+  Ví dụ: giá trị cơ sở ₫50 tỷ, bội số 8× và 100.000 SP đang lưu hành tạo ra giá trị đơn vị SP là ₫4.000.000 mỗi SP. Công thức này có phiên bản — các tham số được dùng cho định giá của mỗi năm được đóng băng khi công bố và không bao giờ bị thay đổi hồi tố.
+</Accordion>
+
+## Ngữ cảnh Luật Doanh nghiệp Việt Nam
+
+ESOP hoạt động theo **cấu trúc Công ty Cổ phần Việt Nam (JSC)** được thiết lập bởi Luật Doanh nghiệp 59/2020/QH14. Thiết kế Phantom Stock cố ý tránh phát hành cổ phần (Đ. 114) và quy định chào bán công khai (Luật Chứng khoán Đ. 30) bằng cách phân loại các grant là lương thưởng hoãn lại theo hợp đồng lao động, chịu sự điều chỉnh bởi các quy tắc quản trị doanh nghiệp Nghị định 38/2020.
+
+Nghĩa vụ thuế khi thực hiện put: tiền mặt nhận được từ một quyền chọn put được coi là thu nhập lương thưởng hoãn lại chịu PIT Việt Nam (Thông tư 111/2013 Đ. 7). REW tạo mục PIT tương ứng khi một lần thực hiện put được thanh toán.
+
+<Note>
+  Một **cấu trúc HoldCo Singapore** được lên kế hoạch cho giai đoạn nền tảng P3. Khi ARR của công ty đạt USD 1,5 triệu, CEO có thể chỉ định một flip HoldCo — các đơn vị SP phantom chuyển đổi thành cổ phần HoldCo Singapore thực tế theo Luật Công ty Singapore, được xử lý qua ACRA với giấy tờ do DOC quản lý. Cho đến khi flip được thực hiện, mọi grant vẫn là lương thưởng hoãn lại phantom theo luật Việt Nam.
+</Note>
+
+## Module liên quan
+
+<CardGroup cols={2}>
+  <Card title="HR" icon="users" href="/modules/hr">
+    Các sự kiện vòng đời thành viên (tuyển dụng, nghỉ phép, chấm dứt) là các kích hoạt chính cho việc phát hành grant ESOP và nhánh Good/Bad Leaver. HR là danh bạ Thành viên có thẩm quyền mà ESOP đọc để đồng bộ.
+  </Card>
+  <Card title="REW" icon="coins" href="/modules/rew">
+    Quỹ BP và ngữ cảnh Voting Power từ LEARN cung cấp cho phân phối P3 hàng quý của REW. Các khoản chi tiền mặt quyền chọn put ESOP tách biệt với chu kỳ payroll REW nhưng chia sẻ cùng yêu cầu báo cáo PIT Việt Nam.
+  </Card>
+</CardGroup>

@@ -1,0 +1,158 @@
+---
+title: 'Bảng thuật ngữ CyberOS: Thuật ngữ, từ viết tắt và khái niệm'
+sidebarTitle: 'Bảng thuật ngữ'
+description: 'Định nghĩa cho các thuật ngữ, từ viết tắt, tên module đặc thù của CyberOS và các khái niệm nghiệp vụ Việt Nam được sử dụng xuyên suốt tài liệu nền tảng.'
+---
+
+Bảng thuật ngữ này bao gồm các thuật ngữ đặc thù của CyberOS, các từ viết tắt module nền tảng và thuật ngữ thị trường Việt Nam được tham chiếu trong toàn bộ tài liệu. Nếu bạn gặp một thuật ngữ trong một hướng dẫn hoặc trang tham chiếu mà không được định nghĩa nội dòng, hãy tra cứu tại đây trước.
+
+## Thuật ngữ nền tảng CyberOS
+
+<AccordionGroup>
+  <Accordion title="BRAIN">
+    Bí danh khái niệm của module bộ nhớ CyberOS. Về mặt kỹ thuật, BRAIN tham chiếu đến kho bộ nhớ nằm tại `.cyberos/memory/store/` trong một repository đã được cài đặt. Kho này là bản ghi cục bộ, append-only, được móc xích bằng mật mã của mọi thao tác bộ nhớ. Khi tài liệu nhắc đến "ghi vào BRAIN" hay "truy vấn BRAIN", nó có nghĩa là tương tác với kho bộ nhớ Layer 1 này.
+  </Accordion>
+
+  <Accordion title="SKILL.md">
+    File hợp đồng định danh của một kỹ năng CyberOS. Mỗi thư mục kỹ năng chứa một `SKILL.md` định nghĩa tên kỹ năng, mô tả, các chế độ gọi được hỗ trợ (author, audit, MCP tool, CLI) và schema đầu vào/đầu ra. `SKILL.md` tuân thủ tiêu chuẩn mở Anthropic Agent Skills, có nghĩa các kỹ năng được viết cho CyberOS tương thích với Claude, Codex, Cursor, Goose, Amp và bất kỳ client tương thích Agent Skills nào khác.
+  </Accordion>
+
+  <Accordion title="CUO — Central Unified Orchestrator">
+    Engine quy trình định tuyến các nhiệm vụ đến đúng persona và chuỗi kỹ năng. CUO là một bộ định tuyến dựa trên luật (Phase 1, đã phát hành) với định tuyến tăng cường bằng LLM (Phase 2) và thực thi chuỗi đa kỹ năng (Phase 3–4) đang trong thiết kế. CUO đọc domain và intent của một nhiệm vụ, chọn persona và quy trình khớp, và điều phối nó đến invoker thích hợp (subprocess, LLM, hoặc mock). Mỗi quyết định định tuyến và kết quả gọi đều được phát ra như một hàng kiểm toán bộ nhớ.
+  </Accordion>
+
+  <Accordion title="ship-tasks">
+    Quy trình CyberOS duy nhất điều phối các nhiệm vụ qua vòng đời 10 trạng thái. `ship-tasks` là cách chuẩn để đưa một nhiệm vụ từ `backlog` qua `ready_to_implement`, `implementing`, `gates`, `human_gate_1`, `done` và các trạng thái còn lại. Quy trình bắt buộc hai cổng chấp nhận của con người (HITL) và chạy các kiểm tra cổng tự động (build, lint, test, coverage) trước mỗi cổng. Sử dụng lệnh plugin Claude `/ship-tasks` hoặc `cyberos-cuo execute` để chạy nó.
+  </Accordion>
+
+  <Accordion title="HITL — Human-in-the-Loop">
+    Hai cổng chấp nhận bắt buộc của con người trong quy trình `ship-tasks`. Cổng HITL đầu tiên xảy ra sau khi các cổng tự động đạt và trước khi một nhiệm vụ được đánh dấu `human_gate_1` (thường là spec review). Cổng thứ hai xảy ra trước khi đánh dấu `done` cuối cùng. Không nhiệm vụ nào có thể chuyển tiếp qua một trong hai cổng mà không có tín hiệu phê duyệt tường minh của con người — CUO không thể tự phê duyệt. Mô hình HITL được tài liệu hóa trong `AGENTS.md` và được bắt buộc trong `ship-tasks` ở cấp quy trình.
+  </Accordion>
+
+  <Accordion title="Task">
+    Một file markdown dưới `docs/tasks/` với frontmatter YAML định nghĩa một đơn vị công việc. Frontmatter nhiệm vụ chỉ định tối thiểu: `id`, `title`, `status`, `priority`, `module`, `owner` và `acceptance_criteria`. Các nhiệm vụ là đơn vị nguyên tử của backlog CyberOS — mọi tính năng, sửa lỗi và cải tiến đều là một file nhiệm vụ. Các kỹ năng `task-author` và `task-audit` tạo ra và xác minh các nhiệm vụ tuân theo hợp đồng `engineering-spec@1`.
+  </Accordion>
+
+  <Accordion title="Skill">
+    Một năng lực agent có phiên bản, có thể kiểm toán được đóng gói dưới dạng một thư mục với file hợp đồng `SKILL.md`. Một kỹ năng có thể bao gồm một `RUBRIC.md` (cho các kỹ năng audit), một `template.md` (template đầu ra), một `CHANGELOG.md` và một `CONTRACT.md` (hợp đồng phụ thuộc giữa các kỹ năng). Các kỹ năng được gọi bởi CUO thông qua host WASM của module Skill (Rust + Wasmtime + toolchain Bun). Thư viện kỹ năng CyberOS hiện chứa hơn 100 cặp author/audit.
+  </Accordion>
+
+  <Accordion title="Persona">
+    Một vai trò cấp C được đặt tên trong CUO — ví dụ như `chief-technology-officer`, `chief-financial-officer` hoặc `chief-revenue-officer` — với bộ quy trình riêng. Mỗi thư mục persona dưới `modules/cuo/` chứa một hoặc nhiều file markdown quy trình định nghĩa các chuỗi đa kỹ năng cho các trách nhiệm định kỳ của vai trò đó. CUO hiện có 47 persona đang hoạt động và hơn 221 quy trình.
+  </Accordion>
+
+  <Accordion title="MMR — Merkle Mountain Range">
+    Cấu trúc chuỗi kiểm toán mật mã được sử dụng trong các binlog bộ nhớ. Mỗi lần ghi bộ nhớ thêm một leaf mới vào MMR, tạo ra một Merkle root bao trùm mọi mục trước đó. Điều này có nghĩa bất kỳ sửa đổi hồi tố nào đối với một mục bộ nhớ sẽ tạo ra sự không khớp root có thể phát hiện được. CyberOS sử dụng MMR để làm cho kho bộ nhớ có khả năng phát hiện can thiệp. Về lâu dài, root được dự định neo vào Sigstore Rekor để có khả năng xác minh từ bên ngoài.
+  </Accordion>
+
+  <Accordion title="Layer 1 / Layer 2">
+    Hai lớp lưu trữ của kiến trúc bộ nhớ CyberOS. **Layer 1** là kho giao thức cục bộ append-only — thư mục `.cyberos/memory/store/` chứa binlog và MMR. Layer 1 là nguồn chân lý. **Layer 2** là dịch vụ tìm kiếm ngữ nghĩa Rust lập chỉ mục nội dung Layer 1 cho các truy vấn tương tự vector nhanh. Các lần đọc yêu cầu recall ngữ nghĩa đi qua Layer 2; mọi lần ghi đều đi thẳng vào Layer 1.
+  </Accordion>
+
+  <Accordion title="Agent">
+    Bất kỳ hệ thống AI nào hoạt động theo giao thức `AGENTS.md` trong một repository đã cài đặt CyberOS. Điều này bao gồm Claude (Anthropic), Codex (OpenAI), Cursor, Goose và Amp. File `AGENTS.md` tại thư mục gốc repo (một con trỏ mỏng đến `.cyberos/AGENT-ENTRY.md`) định nghĩa các quy tắc mà tất cả agent phải tuân theo: giao thức bộ nhớ, vòng đời nhiệm vụ, gọi kỹ năng, phát chuỗi kiểm toán và hành vi cổng HITL. Các agent được đối xử như những người tham gia bình đẳng trong quy trình nhiệm vụ — "agent-equal" có nghĩa một agent có thể ghi lại các hoạt động, gửi nhiệm vụ và chạy kỹ năng với cùng quyền như một thành viên là con người, tùy theo các quyền phạm vi được cấp.
+  </Accordion>
+
+  <Accordion title="Gates">
+    Các kiểm tra xác minh tự động chạy trước một cổng con người trong `ship-tasks`. Các cổng bao gồm build (code có biên dịch không?), lint (nó có đạt kiểm tra style không?), test (mọi test có đạt không?) và coverage (coverage có đạt ngưỡng không?). Tính năng gate autodetect của CUO (`TASK-CUO-207`) hỗ trợ Go, JVM, .NET, PHP, Ruby, Rust, Python, TypeScript và Bun. Cấu hình cổng theo repo nằm trong `.cyberos/config.yaml`. Tất cả các cổng phải xanh trước khi quy trình tiến tới cổng HITL tiếp theo.
+  </Accordion>
+
+  <Accordion title=".cyberos/">
+    Thư mục vendor được gitignore được tạo bởi `cyberos install` trong repository của bạn. Nó chứa kho bộ nhớ (`memory/store/`), điểm nhập của agent (`AGENT-ENTRY.md`), phiên bản đã cài đặt (`VERSION`), cấu hình runtime (`config.yaml`) và các bundle kỹ năng đã vendor. Thư mục `.cyberos/` không bao giờ được commit vào repository của bạn — nó được tái tạo bởi `cyberos install` và được cập nhật bởi `cyberos version`.
+  </Accordion>
+</AccordionGroup>
+
+## Từ viết tắt module
+
+| Từ viết tắt | Tên đầy đủ | Trạng thái |
+|---|---|---|
+| AUTH | Authentication & Identity | Đang tiến hành — P0 |
+| AI | AI Gateway | Đang tiến hành — P0 |
+| MCP | MCP Gateway | Kế hoạch — P0 |
+| OBS | Observability | Kế hoạch — P0 |
+| CHAT | Chat & Messaging | Kế hoạch — P0 |
+| memory / BRAIN | Memory Store | Đã phát hành — P0 |
+| CUO | Central Unified Orchestrator (workflow engine) | Đã phát hành — P0 |
+| PROJ | Projects & Engagements | Kế hoạch — P1 |
+| TIME | Time Tracking & Expenses | Kế hoạch — P1 |
+| CRM | Customer Relationship Management | Kế hoạch — P1 |
+| KB | Knowledge Base | Kế hoạch — P1 |
+| HR | Human Resources | Kế hoạch — P1 |
+| EMAIL | Email Integration | Kế hoạch — P1 |
+| REW | Rewards & Compensation | Kế hoạch — P1 |
+| LEARN | Learning & Development | Kế hoạch — P1 |
+| INV | Invoicing | Kế hoạch — P2 |
+| ESOP | Employee Stock Option Plan | Kế hoạch — P2 |
+| RES | Resources | Kế hoạch — P3 |
+| OKR | Objectives & Key Results | Kế hoạch — P3 |
+| DOC | Documents | Kế hoạch — P4 |
+| PORTAL | Client Portal | Kế hoạch — P4 |
+| TEN | Tenancy & Administration | Kế hoạch — P4 |
+
+## Thuật ngữ Việt Nam
+
+<AccordionGroup>
+  <Accordion title="MST — Mã số thuế">
+    Mã số thuế doanh nghiệp Việt Nam do Tổng cục Thuế (GDT) cấp. Định dạng chuẩn là 10 chữ số cho trụ sở chính; các chi nhánh thêm hậu tố 3 chữ số (tổng cộng 13 chữ số). MST bắt buộc trên mọi hóa đơn B2B và là định danh chính cho các tài khoản doanh nghiệp trong CRM. CyberOS xác thực MST đối với registry GDT trực tiếp trên mỗi lần ghi tài khoản CRM.
+  </Accordion>
+
+  <Accordion title="Hóa đơn">
+    Hóa đơn VAT Việt Nam. Theo Nghị định 123/2020/NĐ-CP, mọi doanh nghiệp tại Việt Nam phải phát hành hóa đơn điện tử theo schema XML do GDT quy định. CyberOS phát hành hóa đơn tuân thủ qua module INV khi chốt deal, sử dụng kỹ năng `vietnam-vat-invoice`. Thuế suất VAT chuẩn là 10%; thuế suất giảm là 5% cho hàng hóa được chỉ định; thuế suất xuất khẩu là 0%.
+  </Accordion>
+
+  <Accordion title="BHXH — Bảo hiểm xã hội">
+    Bảo hiểm xã hội. Đóng góp của nhân viên là **10,5%** lương cơ bản hàng tháng; đóng góp của người sử dụng lao động là 17,5%. Được quy định bởi Nghị định 152/2020. REW tính và báo cáo cả hai bên đóng góp BHXH trên mỗi lần chạy bảng lương.
+  </Accordion>
+
+  <Accordion title="BHYT — Bảo hiểm y tế">
+    Bảo hiểm y tế. Đóng góp của nhân viên là **1,5%** lương cơ bản hàng tháng; đóng góp của người sử dụng lao động là 3%. Được quy định bởi Nghị định 152/2020. Được tính cùng BHXH trong REW.
+  </Accordion>
+
+  <Accordion title="BHTN — Bảo hiểm thất nghiệp">
+    Bảo hiểm thất nghiệp. Đóng góp của nhân viên là **1%** lương cơ bản hàng tháng; đóng góp của người sử dụng lao động là 1%. Được quy định bởi Bộ luật Lao động 2019. Được tính trong REW như một phần của khối khấu trừ pháp định đầy đủ.
+  </Accordion>
+
+  <Accordion title="PIT — Thuế thu nhập cá nhân">
+    Thuế thu nhập cá nhân. Thuế suất lũy tiến từ 5% đến 35% áp dụng cho thu nhập chịu thuế sau các khấu trừ pháp định (BHXH, BHYT, BHTN) và miễn trừ cá nhân. REW tính PIT trên mỗi lần chạy bảng lương và cung cấp phân tích thu nhập chịu thuế theo từng bậc.
+  </Accordion>
+
+  <Accordion title="VietQR">
+    Tiêu chuẩn thanh toán QR mở Napas247 được các ngân hàng và ứng dụng ngân hàng Việt Nam sử dụng cho chuyển khoản liên ngân hàng. Một mã VietQR mã hóa BIN ngân hàng, số tài khoản, số tiền chuyển và tham chiếu thanh toán ở định dạng EMVCo QR. Bất kỳ ứng dụng ngân hàng nào được kết nối Napas đều có thể quét và tự điền một lệnh chuyển tiền từ mã VietQR. CyberOS tạo mã VietQR từ các deal CRM qua kỹ năng `vietnam-bank-transfer`.
+  </Accordion>
+
+  <Accordion title="PDPL — Personal Data Protection Law">
+    Luật bảo vệ dữ liệu cá nhân Việt Nam, được ban hành theo Nghị định 13/2023/NĐ-CP, có hiệu lực ngày 1 tháng 7 năm 2023. Các nghĩa vụ chính đối với các tenant CyberOS bao gồm: bản địa hóa dữ liệu cho các tenant `vn-1` (Nghị định 53/2022), phê duyệt chuyển giao xuyên biên giới (Điều 38), thực hiện Yêu cầu truy cập của chủ thể dữ liệu (Điều 14), chỉ định DPO cho việc xử lý rủi ro cao (Điều 28) và nhật ký xử lý (Điều 17). Tất cả các nghĩa vụ PDPL được quản lý trong module TEN.
+  </Accordion>
+
+  <Accordion title="Hội đồng Chuyên môn — Specialist Council">
+    Một hội đồng peer-review gồm 3–5 giám khảo chuyên môn đánh giá các quyết định thăng bậc kỹ năng của Thành viên trong module LEARN. Khi một Thành viên gửi chứng cứ cho việc thăng bậc (bằng cấp, chứng chỉ, hồ sơ dự án), Hội đồng Chuyên môn xem xét đơn nộp và bỏ phiếu. Cần một phiếu đa số để thăng bậc. Thành phần hội đồng và biên bản bỏ phiếu được lưu trữ trong LEARN và liên kết với hồ sơ HR của Thành viên.
+  </Accordion>
+
+  <Accordion title="Bằng cấp">
+    Bằng cấp học thuật. Một chứng nhận học thuật bậc đại học chính thức — cử nhân, thạc sĩ hoặc tiến sĩ. Trong module LEARN, các hồ sơ bằng cấp là một trong hai loại chứng cứ chính mà một Thành viên có thể gửi để thăng bậc kỹ năng hoặc xác minh trình độ.
+  </Accordion>
+
+  <Accordion title="Chứng chỉ">
+    Chứng chỉ chuyên môn. Một chứng nhận của cơ quan chuyên ngành hoặc chuyên môn — các chứng chỉ AWS, CPA, PMP và các chứng nhận tương tự. Trong LEARN, các hồ sơ chứng chỉ là loại chứng cứ chính thứ hai cho các đơn thăng bậc kỹ năng, cùng với bằng cấp.
+  </Accordion>
+</AccordionGroup>
+
+## Thuật ngữ nghiệp vụ
+
+<AccordionGroup>
+  <Accordion title="Engagement">
+    Một hồ sơ dự án khách hàng trong module PROJ liên kết một deal CRM, một biểu giá, một danh sách đội ngũ và số giờ có thể tính phí. Khi một AM nhấp **Convert to Engagement** trên một deal CRM đã thắng, PROJ tạo một Engagement được điền sẵn giá của deal, URL hợp đồng và tài khoản khách hàng. Các entry TIME chảy vào Engagement; các hóa đơn INV được tạo từ đó. Engagement là đơn vị vận hành kết nối bán hàng (CRM) với triển khai (PROJ + TIME) và với xuất hóa đơn (INV).
+  </Accordion>
+
+  <Accordion title="BP — Bonus Points">
+    Đơn vị bồi thường được chỉ số hóa theo lạm phát của CyberOS, tích lũy trong module REW. Bonus Points được cấp hàng quý từ quỹ BP và tích lũy trong sổ cái BP của mỗi Thành viên. Sổ cái tích lũy lãi theo lãi suất chuẩn ACB (vn-acb-rate) để chỉ số hóa chống lạm phát. BP có thể được quy đổi ra tiền mặt hoặc chuyển tiếp. BP tạo thành thành phần P3 (lương hiệu suất) của mô hình bồi thường 3P.
+  </Accordion>
+
+  <Accordion title="VP — Voting Power">
+    Một điểm số hàng quý được tính trong module LEARN được sử dụng cho việc phân phối tiền thưởng REW. VP tổng hợp đóng góp từ PROJ (issue đã đóng, chất lượng engagement), TIME (giờ có thể tính phí, tỷ lệ sử dụng) và KB (bài viết tri thức đã viết và được đánh giá). Các Thành viên có VP cao hơn nhận được phần lớn hơn của phân phối BP hàng quý. VP reset mỗi quý để các đóng góp gần đây luôn có ý nghĩa.
+  </Accordion>
+
+  <Accordion title="3P — Các thành phần lương P1/P2/P3">
+    Mô hình lương ba thành phần trong REW: **P1 (Lương cơ bản)** là lương sàn, được bảo vệ bởi ràng buộc DB CHECK ngăn giảm; **P2 (Phụ cấp)** bao gồm các phụ cấp cố định như đi lại, ăn uống và điện thoại; **P3 (Lương hiệu suất)** là thành phần biến đổi hàng quý được phân phối từ quỹ BP tỷ lệ với điểm VP của mỗi Thành viên. Tổng bồi thường = P1 + P2 + P3.
+  </Accordion>
+</AccordionGroup>

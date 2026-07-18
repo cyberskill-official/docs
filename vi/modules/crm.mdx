@@ -1,0 +1,158 @@
+---
+title: 'CRM: Pipeline bán hàng, Khách hàng và Thương mại Việt Nam'
+sidebarTitle: 'CRM'
+description: 'CyberOS CRM quản lý pipeline bán hàng của bạn với Account, Contact và Deal — kèm xác thực MST, thanh toán VietQR và hóa đơn.'
+---
+
+CRM là pipeline bán hàng, lớp thông tin khách hàng và lớp thương mại cho thị trường Việt Nam của CyberOS. Module được xây dựng trên ba nguyên tố cốt lõi — **Account**, **Contact** và **Deal** — theo mô hình phân cấp kiểu Salesforce, nhưng với thực tế thương mại Việt Nam được tích hợp sẵn như tính năng giao thức chứ không phải là plugin bổ sung. Việc xác thực MST tự động chạy đối chiếu với sổ đăng ký của Tổng cục Thuế (GDT) trên mỗi lần ghi tài khoản. VietQR tạo mã thanh toán Napas247 chỉ với một chạm trên bất kỳ deal nào. `hóa đơn` (hóa đơn VAT, lưu trữ theo Nghị định 123/2020) được phát hành tự động khi deal đóng thông qua INV. CRM cũng là nửa đầu nguồn của trục điều phối CyberOS: khi một deal thắng, Account Manager chuyển đổi thành PROJ Engagement với bảng giá đã được cấu hình sẵn, và toàn bộ chuỗi PROJ → TIME → INV → REW bắt đầu ngay từ cú nhấp đó.
+
+<Note>
+  CRM là module P1 hiện đang trong giai đoạn thiết kế. Trang này mô tả chức năng đã được lên kế hoạch từ góc nhìn người dùng. Tham khảo lộ trình nền tảng để biết chi tiết về thời điểm GA.
+</Note>
+
+---
+
+## Quản lý pipeline
+
+CRM cung cấp bốn dạng pipeline mặc định. Mỗi pipeline có các stage và quy tắc chuyển đổi hoàn toàn có thể cấu hình.
+
+<CardGroup cols={2}>
+  <Card title="Sales" icon="chart-line">
+    Phễu bán hàng B2B tiêu chuẩn. Các stage mặc định: Qualifying → Discovery → Proposal → Negotiation → Closed Won / Closed Lost.
+  </Card>
+  <Card title="Partner" icon="handshake">
+    Dành cho quan hệ đối tác kênh và giới thiệu. Các stage phản ánh quá trình thẩm định lẫn nhau và bán chéo.
+  </Card>
+  <Card title="Inbound" icon="arrow-down-to-line">
+    Dành cho biểu mẫu web và luồng lead inbound. Deal được CUO chấm điểm sẵn trước khi Account Manager tiếp nhận.
+  </Card>
+  <Card title="Outbound" icon="arrow-up-from-line">
+    Dành cho tiếp cận theo tài khoản (account-based). Các stage phản ánh nhịp prospecting và qualification.
+  </Card>
+</CardGroup>
+
+Bạn di chuyển deal giữa các stage bằng cách kéo-thả trên bảng pipeline. Việc chuyển stage được engine quy tắc pipeline xác thực trước khi commit — nếu một chuyển đổi không được phép (ví dụ nhảy từ Qualifying sang Closed Won mà không đi qua Proposal), hệ thống sẽ hoàn tác thẻ và hiển thị lý do cho bạn.
+
+Quản trị viên workspace có thể thêm stage tùy chỉnh, đổi tên stage mặc định và cấu hình quy tắc chuyển đổi theo từng pipeline từ **CRM → Settings → Pipelines**.
+
+---
+
+## Tính năng đặc thù Việt Nam
+
+CyberOS CRM coi các yêu cầu thương mại Việt Nam là tính năng hạng nhất, không phải các tích hợp cần cấu hình thêm.
+
+<Accordion title="Xác thực mã số thuế MST">
+  Mỗi lần bạn tạo hoặc cập nhật một Account có kèm mã số thuế Việt Nam (MST), CRM tự động xác thực với sổ đăng ký GDT. Nếu MST khớp, tài khoản được đánh dấu đã xác thực. Nếu sổ đăng ký trả về tên chính thức khác với tên bạn đã nhập, CRM sẽ chuẩn hóa tên tài khoản về giá trị GDT và hiển thị cảnh báo cho bạn.
+
+  Kết quả được cache trong bảy ngày, nên việc xác thực trên các tài khoản hiện có không gọi vào sổ đăng ký GDT mỗi lần tải trang. Cache được vô hiệu hóa tự động nếu bạn cập nhật trường MST.
+</Accordion>
+
+<Accordion title="VietQR để thu tiền">
+  Trên bất kỳ deal đang mở nào, nhấp **Generate VietQR** để tạo mã QR tuân thủ Napas247, đã điền sẵn ngân hàng, số tài khoản, số tiền và tham chiếu deal của bạn. Chia sẻ mã QR trong email, tin nhắn CHAT hoặc trên hóa đơn in. QR được cache 24 giờ — hãy tạo lại nếu số tiền deal thay đổi.
+
+  Danh sách tài khoản ngân hàng được phép của tenant quyết định các BIN ngân hàng khả dụng để tạo QR. Một Member phải xác nhận tài khoản ngân hàng ở lần dùng đầu tiên.
+</Accordion>
+
+<Accordion title="Hóa đơn (hóa đơn VAT)">
+  Khi bạn đóng một deal ở trạng thái **Won**, CRM tự động lắp ráp một hóa đơn XML tuân thủ GDT (template dựa trên loại pháp nhân của tài khoản). Account Manager phải xác nhận số tiền và người nhận trước khi hóa đơn được phát hành — đây là tài liệu thuế và yêu cầu bước xác nhận rõ ràng của con người. Khi được xác nhận, `hóa đơn` được đăng ký trong INV và XML được lưu trữ 10 năm theo Nghị định 123/2020.
+</Accordion>
+
+<Accordion title="Loại tài khoản và ánh xạ pháp nhân">
+  CRM ánh xạ các pháp nhân Việt Nam sang các loại tài khoản sau, quyết định template `hóa đơn` phù hợp:
+
+  | Code | Tiếng Việt | Tiếng Anh | Độ dài MST | Template hóa đơn |
+  |------|-----------|---------|-----------|-----------------| 
+  | `sole_proprietor` | Hộ kinh doanh | Sole proprietor | 10 chữ số | 06GTKT (đơn giản hóa) |
+  | `llc` | Công ty TNHH | LLC | 10 hoặc 13 chữ số | 01GTKT |
+  | `jsc` | Công ty cổ phần | JSC | 10 hoặc 13 chữ số | 01GTKT |
+  | `fdi` | FDI | Foreign-invested | 10 hoặc 13 chữ số | 01GTKT |
+  | `individual` | Cá nhân | Individual | 10 chữ số (liên kết CCCD) | 06GTKT |
+</Accordion>
+
+<Accordion title="Logic xưng hô">
+  Bản ghi Contact bao gồm trường `salutation` được điền sẵn dựa trên tín hiệu giới tính và độ tuổi: **Anh** (nam, ngang tuổi hoặc lớn hơn), **Chị** (nữ, ngang tuổi hoặc lớn hơn), **Em** (nhỏ tuổi hơn), hoặc **Bạn** (trung tính). Cách xưng hô được dùng trong các email do AI soạn thảo và mọi giao tiếp bên ngoài mà CyberOS tạo thay mặt bạn.
+</Accordion>
+
+---
+
+## Tự động ghi nhận hoạt động
+
+CRM tự động ghi nhận hoạt động từ EMAIL, CHAT và Calendar — bạn không bao giờ phải nhập thủ công rằng bạn đã gửi email hay tham dự cuộc họp.
+
+<CardGroup cols={3}>
+  <Card title="EMAIL" icon="envelope">
+    Email đến và đi từ và tới các **domain được theo dõi** được tự động ghi nhận là hoạt động CRM trên Contact và Deal tương ứng. Chỉ các domain được theo dõi mới kích hoạt tự động ghi nhận — địa chỉ email cá nhân không bao giờ được đính kèm.
+  </Card>
+  <Card title="CHAT" icon="message">
+    Ghi chú cuộc họp được ghi lại trong các thread CHAT được tự động ghi nhận là hoạt động họp trên Deal hoặc Contact liên quan dựa vào ngữ cảnh và khớp người tham gia.
+  </Card>
+  <Card title="Calendar" icon="calendar">
+    Việc tham dự lịch được tự động ghi nhận là hoạt động họp. Nếu cuộc họp liên kết với một Deal qua tiêu đề hoặc người tham gia, nó sẽ xuất hiện trong dòng thời gian hoạt động của Deal đó.
+  </Card>
+</CardGroup>
+
+<Note>
+  Tự động ghi nhận hoạt động sử dụng khóa idempotency lấy từ ID sự kiện nguồn. Nếu cùng một email hoặc sự kiện lịch được xử lý nhiều lần (ví dụ sau khi retry), CRM sẽ tự động khử trùng lặp — bạn sẽ không bao giờ thấy hoạt động trùng lặp trên một Deal.
+</Note>
+
+---
+
+## Tính năng AI
+
+CUO cung cấp bốn nhóm hỗ trợ AI trong CRM. Tất cả các đề xuất của AI đều là gợi ý — CUO không bao giờ tự động chuyển giai đoạn của deal hoặc tự động ghi nhận hoạt động mà không có hành động của con người.
+
+<Tabs>
+  <Tab title="Lead scoring">
+    Mỗi Contact mới đều được chấm điểm tự động (0–100, phân tầng nóng / ấm / nguội) sử dụng độ mới của hoạt động, quy mô tương tác, ngành của tài khoản và tín hiệu tỷ lệ thắng lịch sử. Điểm số được làm mới hàng đêm. Điểm số là tín hiệu ưu tiên cho hàng đợi tiếp cận của bạn — bạn quyết định liên hệ ai trước.
+  </Tab>
+  <Tab title="Next-best-action">
+    CUO xếp hạng nước đi giá trị nhất tiếp theo cho mỗi Deal đang mở. Các gợi ý bao gồm **call**, **send proposal**, **schedule demo**, và **request VietQR collection**. Mỗi gợi ý hiển thị phần trăm độ tin cậy và lý do đằng sau, dựa trên các tương tác trước đó với tài khoản và quỹ đạo các deal tương tự.
+  </Tab>
+  <Tab title="Dự báo có dải tin cậy">
+    CRO-skill tạo dự báo pipeline với ba dải tin cậy (50%, 80%, 95%) cho cả tổng VND và USD. Dự báo chạy theo từng pipeline và được cập nhật mỗi khi một deal chuyển stage hoặc ngày đóng dự kiến thay đổi.
+  </Tab>
+  <Tab title="Phân tích Win/Loss">
+    Sau khi một deal được đóng (thắng hoặc thua), CUO soạn thảo bản phân tích win/loss dựa trên lịch sử hoạt động của deal, tín hiệu đối thủ và các deal quá khứ tương tự. Account Manager xem xét và chấp nhận bản thảo, sau đó được lưu trữ như một bản ghi tri thức mà các deal tương lai với cùng tài khoản hoặc ngành có thể tham chiếu.
+  </Tab>
+</Tabs>
+
+---
+
+## Cầu nối Deal → Engagement
+
+Khi bạn nhấp **Convert to Engagement** trên một deal đã thắng, CRM kích hoạt việc chuyển đổi deal-thành-Engagement:
+
+<Steps>
+  <Step title="Tạo Engagement">
+    Một PROJ Engagement mới được tạo với URL hợp đồng và tài khoản khách hàng của deal được liên kết tự động.
+  </Step>
+  <Step title="Bảng giá được cấu hình sẵn">
+    Bảng giá được điền sẵn từ trang định giá của deal. Bạn chọn chế độ thanh toán (T&M, phí cố định, hoặc retainer) — lựa chọn này bị khóa khi Engagement được lưu.
+  </Step>
+  <Step title="Áp dụng quy tắc billable">
+    Các quy tắc cascade billable của PROJ được kết nối với các vai trò của Engagement. Các thành viên có thể bắt đầu ghi nhận entry TIME ngay lập tức.
+  </Step>
+  <Step title="Lưu trữ bản ghi deal">
+    Deal đã đóng được ghi lại như một entry win/loss, trở thành ngữ cảnh có thể trích dẫn cho các deal tương lai với cùng tài khoản hoặc ngành.
+  </Step>
+</Steps>
+
+<Warning>
+  Không phải mọi deal thắng đều nên trở thành PROJ Engagement. Với các deal bán lại thuần túy khi bạn thu tiền mà không cung cấp dịch vụ, hãy bỏ qua việc chuyển đổi. Hộp thoại chuyển đổi yêu cầu hành động rõ ràng của Account Manager — không có việc tạo Engagement tự động.
+</Warning>
+
+---
+
+## Vận hành tự động và thủ công
+
+| Hoạt động | Cách thực hiện | Lý do phân chia |
+|-----------|---------------|----------------|
+| Tự động ghi nhận hoạt động | **Tự động** từ EMAIL / CHAT / Calendar theo domain và khớp contact | Loại bỏ chi phí ghi nhận thủ công; không cần nhập thủ công cho các giao tiếp thuộc domain được theo dõi. |
+| Lead scoring | **Tự động** khi tạo Contact; làm mới hàng đêm | Điểm số là gợi ý, không phải hành động — AM quyết định thứ tự tiếp cận. |
+| Chuyển stage | **Thủ công** với bộ xác thực quy trình | Bán hàng là hoạt động quan hệ; AM sở hữu thời điểm deal tiến triển. |
+| Xác thực MST | **Tự động** trên mỗi lần ghi tài khoản có MST | Cơ quan có thẩm quyền về mã số thuế VN là sổ đăng ký GDT; CRM gọi tự động. |
+| Tạo VietQR | **Có sẵn tự động, kích hoạt thủ công** theo từng deal | Một nhấp chuột trên trang deal; cache 24 giờ. |
+| Phát hành hóa đơn | **Tự động** khi deal closed-won qua INV; **cần xác nhận thủ công** | Tài liệu thuế — AM phải xác nhận số tiền và người nhận trước khi phát hành. |
+| Chuyển đổi Deal → Engagement | **Thủ công** bằng nhấp chuột của AM | Không phải mọi deal thắng đều trở thành PROJ Engagement; cần chủ ý của AM. |
+| Phân tích Win/loss | **Tự động** soạn thảo qua CUO; **AM chấp nhận** | Tạo bản ghi tri thức cho các deal tương lai trích dẫn; AM sở hữu câu chuyện. |
+| Tạo deal từ biểu mẫu inbound | **Tự động** kèm lead scoring áp dụng sẵn | Giảm ma sát; AM phân loại từ hàng đợi đã được chấm điểm sẵn. |

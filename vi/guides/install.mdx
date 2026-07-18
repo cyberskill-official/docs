@@ -1,0 +1,168 @@
+---
+title: 'Cài đặt CyberOS: npx, Claude Plugin, curl, hoặc Docker'
+sidebarTitle: 'Cài đặt'
+description: 'Cài đặt CyberOS vào kho mã dự án của bạn bằng npx, Claude plugin, script khởi tạo curl, hoặc Docker. Hỗ trợ Claude, Codex, Cursor, Gemini và nhiều công cụ khác.'
+---
+
+Việc cài đặt CyberOS sẽ đưa thư mục `.cyberos/` độc lập vào kho mã của bạn. Thư mục này được gitignore — nó chứa engine quy trình, giao thức bộ nhớ, các file entry cho agent, và bộ chạy gate — nên không bao giờ làm ảnh hưởng đến mã nguồn được theo dõi của bạn. Một lệnh duy nhất xử lý mọi thứ: tự động phát hiện các lệnh build, lint và test, tạo khung `docs/tasks/BACKLOG.md`, ghi các file hướng dẫn cho từng agent, và ghi dấu file `VERSION` để bạn có thể kiểm tra sau này. Chạy lại trình cài đặt luôn an toàn: nó áp dụng các bản cập nhật và không bao giờ ghi đè lên các nhiệm vụ hiện có, `BACKLOG.md`, `AGENTS.md`, hay `gates.env` của bạn.
+
+## Các kênh cài đặt
+
+Chọn kênh phù hợp với thiết lập của bạn. Tất cả các kênh đều tạo ra cùng một cấu trúc `.cyberos/`.
+
+| Kênh | Lệnh / điểm vào | Phù hợp nhất cho |
+|---|---|---|
+| **npx CLI** | `npx cyberos install` | Hầu hết các kho mã |
+| **Claude plugin** | Lệnh `/install` | Người dùng Claude |
+| **MCP stdio** | Công cụ `task_install` | Các agent MCP |
+| **Docker image** | Docker image | CI / môi trường container |
+| **Git subtree / submodule** | `git subtree add` | Nâng cao / offline |
+| **Makefile target** | Target `make` | Dự án dùng Makefile |
+| **GitHub Action** | Bước trong workflow | Bộ chạy gate CI |
+| **`curl \| sh` bootstrap** | `curl \| sh` | Cài đặt từ xa một dòng |
+| **`create.sh` scaffolder** | `create.sh` | Thiết lập kho mẫu |
+
+---
+
+## Cài đặt qua npx (khuyến nghị)
+
+<Steps>
+  <Step title="Chạy trình cài đặt">
+    Tại thư mục gốc của dự án, chạy:
+
+    ```bash
+    npx cyberos install
+    ```
+
+    CLI tự động phát hiện các lệnh build, lint và test, đưa `.cyberos/` vào kho mã của bạn, tạo khung `docs/tasks/BACKLOG.md`, và ghi các file entry cho agent.
+  </Step>
+
+  <Step title="Xác minh cài đặt">
+    Xác nhận mọi thứ được kết nối đúng:
+
+    ```bash
+    python -m cyberos doctor
+    ```
+
+    Một cài đặt khỏe mạnh sẽ in ra `READY`. Nếu thiếu bất kỳ lệnh gate nào, đầu ra sẽ cho bạn biết chính xác dòng nào trong `gates.env` cần sửa.
+  </Step>
+
+  <Step title="Kiểm tra thư mục đã cài">
+    Xác nhận `.cyberos/` đã được tạo trong thư mục gốc kho mã:
+
+    ```bash
+    ls -la .cyberos/
+    ```
+
+    Bạn sẽ thấy `cuo/`, `memory/`, `plugin/`, `AGENT-ENTRY.md`, `gates.env`, và `VERSION`.
+  </Step>
+</Steps>
+
+---
+
+## Cài đặt qua Claude plugin
+
+<Steps>
+  <Step title="Thêm plugin vào Claude">
+    Trong Claude, vào **Settings → Plugins → Add** và chọn `dist/cyberos/cyberos.plugin` (file `.plugin`, không phải thư mục). Với Claude Code, chạy:
+
+    ```
+    /plugin marketplace add <path to dist/cyberos>
+    /plugin install cyberos@cyberos
+    ```
+  </Step>
+
+  <Step title="Chạy lệnh install">
+    Mở một phiên trong kho mã của bạn và gõ:
+
+    ```
+    /install
+    ```
+
+    Plugin sẽ phát hiện thư mục gốc kho mã, chạy trình cài đặt và báo cáo những gì đã được ghi.
+  </Step>
+
+  <Step title="Làm theo hướng dẫn">
+    Nếu plugin không thể tự động phát hiện một lệnh gate (build, lint, hoặc test), nó sẽ yêu cầu bạn xác nhận hoặc cung cấp lệnh đó. Xem lại kết quả và xác nhận để tiếp tục. Việc cài đặt hoàn tất trong vài giây.
+  </Step>
+</Steps>
+
+<Tip>
+  Cài đặt Claude plugin để mở khóa quy trình một lệnh `/ship-tasks` — cách nhanh nhất để đưa một nhiệm vụ từ `ready_to_implement` đến `done`.
+</Tip>
+
+---
+
+## Những gì được cài đặt
+
+Mọi kênh đều tạo ra cùng cây thư mục `.cyberos/`:
+
+```
+.cyberos/
+├── cuo/                        # Workflow engine
+│   ├── ship-tasks.md           # Workflow doctrine
+│   ├── EXECUTION-DISCIPLINE.md # How agents behave
+│   ├── STATUS-REFERENCE.md     # The 10 task states
+│   ├── gates/
+│   │   └── run-gates.sh        # Gate runner
+│   ├── skills/                 # Bundled skills
+│   └── templates/              # Task scaffolding templates
+├── memory/
+│   ├── AGENTS.md               # Layer-1 memory protocol
+│   └── store/                  # Gitignored BRAIN store
+├── plugin/                     # Claude plugin commands + skills
+├── AGENT-ENTRY.md              # Full agent one-pager (any agent)
+├── gates.env                   # Your repo's build/lint/test commands
+├── manifest.yaml               # Pack profile (reduced or full)
+└── VERSION                     # Installed CyberOS version
+```
+
+---
+
+## Những gì cài đặt KHÔNG đụng đến
+
+Việc cài đặt hoàn toàn mang tính bổ sung. Nó không bao giờ sửa đổi:
+
+- Mã nguồn hiện có của bạn
+- `BACKLOG.md` nếu đã tồn tại (nội dung được bảo toàn)
+- `gates.env` nếu đã được cấu hình (một bản sao lưu có dấu thời gian được tạo, sau đó nó được tạo lại)
+- `AGENTS.md` nếu đã tồn tại (chỉ nối thêm một lần duy nhất có đánh dấu)
+- Bất kỳ nhiệm vụ hiện có nào trong `docs/tasks/`
+
+<Note>
+  Việc cài đặt là idempotent. Chạy lại `npx cyberos install` (hoặc `/install`) sẽ áp dụng các bản cập nhật CyberOS mới nhất cho `.cyberos/` nhưng không bao giờ đụng đến `BACKLOG.md`, các file nhiệm vụ, `AGENTS.md`, hay `gates.env` của bạn. Hãy sử dụng thoải mái để giữ kho mã luôn cập nhật.
+</Note>
+
+---
+
+## Cập nhật CyberOS
+
+Để cập nhật một kho mã đã cài đặt, sử dụng một trong các cách sau:
+
+<CodeGroup>
+```bash npx
+npx cyberos update
+```
+</CodeGroup>
+
+Từ Claude plugin, gõ `/update` trong phiên làm việc với kho mã. Lệnh sẽ so sánh `.cyberos/VERSION` của bạn với payload có sẵn và chỉ áp dụng bản cập nhật sau khi bạn xác nhận.
+
+---
+
+## Hỗ trợ đa agent
+
+CyberOS kết nối mọi agent chính trong một lần chạy cài đặt. Các file hướng dẫn cho từng agent và các thư mục kỹ năng gốc sẽ được tạo nếu chưa có — các file hiện có của bạn không bao giờ bị ghi đè.
+
+| Agent | File hướng dẫn | Thư mục kỹ năng gốc |
+|---|---|---|
+| Claude Code | `CLAUDE.md` | `.claude/skills/` |
+| Codex | `AGENTS.md` | `.codex/skills/` |
+| Cursor | `.cursorrules`, `.cursor/rules/` | — |
+| Gemini CLI | `GEMINI.md` | — |
+| Grok CLI | `.grok/GROK.md` | `.grok/skills/` |
+| Command Code | `AGENTS.md` | `.commandcode/skills/` |
+| OpenCode | `AGENTS.md` | `.opencode/skill/` |
+| Copilot | `.github/copilot-instructions.md` | — |
+| Windsurf | `.windsurfrules` | — |
+
+Bất kỳ agent nào được trỏ đến `AGENTS.md` hoặc `.cyberos/AGENT-ENTRY.md` đều thực thi cùng một quy trình, cùng các gate, và cùng các phán quyết bắt buộc của con người — không cần plugin.

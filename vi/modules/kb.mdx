@@ -1,0 +1,171 @@
+---
+title: 'KB: Cơ sở tri thức Markdown, tìm kiếm và grounding cho AI'
+sidebarTitle: 'Knowledge Base'
+description: 'CyberOS KB là cơ sở tri thức markdown có phiên bản với tìm kiếm ba lớp (lexical, semantic, reranker) và Q&A AI được grounding trên tài liệu của chính bạn.'
+---
+
+KB là bề mặt tài liệu của CyberOS và là nguồn chính tắc cho việc truy xuất được grounding bởi AI. Nó đóng ba vai trò đồng thời: là kho ngữ liệu RAG cho phép CUO (Genie) có nguồn đáng tin để trích dẫn, là người bạn đồng hành bộ nhớ nơi lưu các tài liệu dài đã được kiểm chọn cùng với kho bộ nhớ có chuỗi audit, và là danh mục runbook mà router auto-runbook của OBS tham chiếu trong quá trình phân loại cảnh báo. Bỏ KB ra thì CUO không có gì để dựa vào khi trả lời — "hỏi tài liệu" trở thành "bịa ra." Mỗi tài liệu bạn viết trong KB là một nguồn trích dẫn hạng nhất, mỗi câu trả lời của AI trích dẫn ở cấp độ span quay về KB, và mỗi lần "Promote to canonical" nâng một tài liệu thành nguồn có thẩm quyền cao cho tổng hợp AI xuyên tenant. KB là nơi tri thức tổ chức trở thành thuộc tính của hệ thống, không phải thuộc tính của cá nhân.
+
+<Note>
+  KB là module P1 hiện đang trong giai đoạn thiết kế. Trang này mô tả chức năng đã được lên kế hoạch từ góc nhìn người dùng. Tham khảo lộ trình nền tảng để biết chi tiết về thời điểm GA.
+</Note>
+
+---
+
+## Mô hình tài liệu
+
+Mỗi tài liệu KB là một tạo phẩm có cấu trúc, không phải một trang wiki tự do.
+
+<CardGroup cols={2}>
+  <Card title="Slug" icon="link">
+    Một định danh URL duy nhất và ổn định trong mỗi tenant (ví dụ `how-to-file-leave`). Slug là bất biến khi đã được thiết lập — đổi tên bằng cách tạo một tài liệu mới và chuyển hướng từ slug cũ.
+  </Card>
+  <Card title="Nội dung markdown" icon="file-text">
+    Tài liệu được viết bằng markdown CommonMark + GFM. Máy chủ render HTML đã được vệ sinh mỗi lần đọc — không có mã chạy phía client, không có bề mặt XSS.
+  </Card>
+  <Card title="YAML frontmatter" icon="code">
+    Mỗi tài liệu mang frontmatter với `title`, `category`, `language` (`vi` hoặc `en`), `permission`, và tùy chọn `translation_of` (liên kết tới tài liệu tương ứng ở ngôn ngữ kia).
+  </Card>
+  <Card title="Category" icon="tag">
+    Một trong sáu danh mục đóng: `how-to`, `reference`, `decision-log`, `policy`, `runbook`, hoặc `trust-center`. Danh mục quyết định quy tắc lưu giữ và quyền mặc định.
+  </Card>
+</CardGroup>
+
+### Đánh phiên bản
+
+Mỗi lần lưu tạo ra một **phiên bản bất biến** mới. Con trỏ phiên bản hiện tại của tài liệu tiến đến phiên bản mới; các phiên bản trước không bao giờ bị sửa đổi. Các phiên bản được giữ lại trong lịch sử audit — bạn luôn có thể tái tạo chính xác nội dung tài liệu tại bất kỳ thời điểm nào.
+
+<Note>
+  Không có "chỉnh sửa tại chỗ" trong KB. Mỗi thao tác gõ dẫn đến lưu đều tạo ra một phiên bản mới. Điều này có chủ ý: tài liệu KB được trích dẫn bởi câu trả lời AI và tham chiếu bởi PROJ Issues. Nếu nội dung có thể thay đổi âm thầm, những trích dẫn đó sẽ trở nên không đáng tin.
+</Note>
+
+---
+
+## Tạo và chỉnh sửa tài liệu
+
+<Steps>
+  <Step title="Tạo tài liệu mới">
+    Mở **KB → New Document**. Đặt slug, tiêu đề, category, ngôn ngữ (`vi` hoặc `en`) và tầng quyền. Tài liệu được tạo ở trạng thái nháp — chưa thể tìm kiếm hay truy cập được bởi các thành viên khác.
+  </Step>
+  <Step title="Viết bằng markdown">
+    Sử dụng trình soạn thảo tích hợp (hoặc bất kỳ công cụ markdown nào qua REST API). Bao gồm YAML frontmatter ở đầu tệp. Tệp đính kèm (hình ảnh, PDF) được tải lên trực tiếp trong trình soạn thảo và lưu trữ an toàn.
+  </Step>
+  <Step title="Đặt quyền">
+    Chọn một trong các tầng quyền (xem bên dưới) trước khi công bố. Bạn có thể siết chặt quyền sau này, nhưng nới lỏng chúng yêu cầu một thay đổi quyền rõ ràng được ghi lại trong lịch sử audit.
+  </Step>
+  <Step title="Lưu và công bố">
+    Nhấp **Save**. CyberOS render markdown thành HTML đã vệ sinh, tạo một phiên bản bất biến, và xếp hàng công việc re-indexing. Tài liệu hoạt động và có thể tìm kiếm trong vài giây.
+  </Step>
+</Steps>
+
+### Các tầng quyền
+
+| Tầng | Ai nhìn thấy | Trường hợp sử dụng điển hình |
+|------|-----------|-------------|
+| `public` | Bất kỳ ai có URL, kể cả khách ẩn danh (nếu Trust Center được bật) | Các trang Trust Center, tài liệu marketing công khai |
+| `org` | Bất kỳ thành viên đã xác thực nào của tenant của bạn | Hướng dẫn how-to, tài liệu tham khảo, nhật ký quyết định (mặc định) |
+| `role-restricted` | Thành viên nắm giữ một trong các vai trò được phép | Chính sách HR, tham chiếu lương thưởng, runbook bảo mật |
+| `share-link` | Bất kỳ ai giữ một token có giới hạn thời gian hợp lệ | Khách hàng bên ngoài xem xét một tài liệu cụ thể |
+
+Để tạo share link cho truy cập bên ngoài, mở tài liệu và nhấp **Share → Create time-bound link**. Đặt ngày hết hạn và tùy chọn giới hạn số lượt xem. Link tự động hết hạn và có thể thu hồi bất kỳ lúc nào từ bảng **Share links** của tài liệu.
+
+### Hỗ trợ song ngữ
+
+Tài liệu trong KB mang trường `language` (`vi` hoặc `en`). Liên kết một tài liệu tiếng Việt với bản đối tác tiếng Anh (hoặc ngược lại) bằng cách đặt `translation_of` trong frontmatter hoặc dùng **Document → Link translation** trong trình soạn thảo. Khi một thành viên đọc tài liệu, KB phục vụ phiên bản khớp với tùy chọn locale của họ. Engine Q&A AI grounding câu trả lời trên cả hai phiên bản ngôn ngữ khi cả hai đều có sẵn.
+
+---
+
+## Tìm kiếm ba lớp
+
+Tìm kiếm KB là một pipeline tuần tự được thiết kế cho độ chính xác của tiếng Việt và chất lượng truy xuất AI.
+
+<Steps>
+  <Step title="Bước 1 — Lexical (FTS5 / PGroonga)">
+    Tìm kiếm toàn văn dùng FTS5 cho nội dung chữ Latin và PGroonga với tokenization bigram tiếng Việt cho tiếng Việt. Bước này trả về tối đa 100 phiên bản tài liệu ứng viên dựa trên trùng lặp từ khóa. Các truy vấn tiếng Việt như *"hóa đơn cấp khi nào"* được tokenize chính xác mà không cần người dùng phân tách từ thủ công.
+  </Step>
+  <Step title="Bước 2 — Semantic (embeddings BGE-M3)">
+    Truy vấn được embed dùng BGE-M3, một mô hình embedding đa ngôn ngữ. Độ tương đồng cosine trên tập ứng viên thu hẹp kết quả xuống top 30 chunk có liên quan ngữ nghĩa nhất.
+  </Step>
+  <Step title="Bước 3 — Reranker (BGE-rerank-v2-m3)">
+    Cross-encoder BGE-rerank-v2-m3 chấm điểm 30 chunk hàng đầu đối chiếu với truy vấn trong một lần chạy và trả về top 10 kết quả cuối. Reranker tính đến độ liên quan giữa truy vấn và tài liệu ở mức câu, không chỉ trùng lặp token.
+  </Step>
+</Steps>
+
+<Note>
+  Việc lọc quyền diễn ra **trước** reranker — các tài liệu bạn không được phép đọc không bao giờ đến được reranker, bộ soạn Q&A, hay kết quả tìm kiếm. Rò rỉ quyền qua tìm kiếm là bug mức nghiêm trọng 0.
+</Note>
+
+---
+
+## Q&A AI "Ask this page"
+
+Mỗi tài liệu có một nút **Ask this page** cho phép bạn đặt câu hỏi ngôn ngữ tự nhiên và nhận câu trả lời được grounding hoàn toàn trong tài liệu đó và bất kỳ tài liệu nào nó liên kết rõ ràng.
+
+<Steps>
+  <Step title="Đặt câu hỏi">
+    Mở một tài liệu và nhấp **Ask this page**, hoặc gõ câu hỏi vào bảng Q&A của tài liệu. Ví dụ: *"Khi nào chúng ta phải xuất hóa đơn?"*
+  </Step>
+  <Step title="KB truy xuất các span liên quan">
+    KB embed câu hỏi của bạn bằng BGE-M3, tìm 8 span văn bản liên quan nhất trên tài liệu hiện tại và các tài liệu được liên kết, rồi chuyển chúng đến bộ soạn Q&A.
+  </Step>
+  <Step title="AI soạn câu trả lời có trích dẫn">
+    Bộ soạn Q&A gọi AI Gateway với chỉ dẫn hệ thống yêu cầu mọi luận điểm phải trích dẫn một span ID. AI trả về câu trả lời có cấu trúc với trích dẫn nội tuyến.
+  </Step>
+  <Step title="Xác thực trích dẫn">
+    KB xác thực rằng mọi span ID được trích dẫn đều thực sự tồn tại trong tài liệu nguồn tại vị trí được nêu. Nếu một trích dẫn không khớp — một ảo giác — KB từ chối câu trả lời và trả về *"Tôi không biết"* thay vì phản hồi bịa đặt.
+  </Step>
+</Steps>
+
+Bạn có thể hover qua bất kỳ trích dẫn nào trong câu trả lời để nhảy trực tiếp đến đoạn văn nguồn trong tài liệu. Mục tiêu độ chính xác trích dẫn là ≥ 95% trên mẫu đánh giá con người hàng tháng.
+
+<Tip>
+  Sử dụng **Ask the KB** (Q&A toàn bộ ngữ liệu, truy cập từ thanh tìm kiếm) khi bạn không chắc tài liệu nào chứa câu trả lời. Ask this page tốt nhất khi bạn đã đọc đúng tài liệu và muốn hỏi nó theo kiểu hội thoại.
+</Tip>
+
+---
+
+## Nạp bộ nhớ
+
+Mỗi lần bạn lưu tài liệu, KB tự động re-index trong vòng **5 giây p95**. Pipeline nạp:
+
+1. Tách cú pháp markdown thành plaintext sạch
+2. Chunk văn bản tại các ranh giới ngữ nghĩa (mức đoạn và tiêu đề)
+3. Embed mỗi chunk bằng BGE-M3
+4. Cập nhật chỉ mục tìm kiếm với chunk và embedding mới
+5. Xác nhận việc nạp đã hoàn tất
+
+Vì việc nạp diễn ra tự động mỗi lần lưu, lớp truy xuất AI không bao giờ lỗi thời quá vài giây. Bạn không cần kích hoạt re-indexing thủ công.
+
+---
+
+## Tích hợp OBS
+
+KB lưu trữ các runbook mà router auto-runbook của OBS tham chiếu trong quá trình phân loại cảnh báo. Khi OBS nhận cảnh báo, engine phân loại của nó gọi KB để tìm runbook có tag `applicability` (provider, region, severity) khớp với chữ ký của cảnh báo.
+
+Viết runbook dưới dạng tài liệu `category: runbook` với khối frontmatter `applicability`. Sau mỗi post-mortem sự cố, công bố một runbook mới hoặc đã cập nhật — vòng lặp tăng trưởng được tích hợp sẵn: các sự cố mới trở thành runbook mới, và các runbook cũ tăng độ tin cậy khi OBS tương quan việc sử dụng chúng với kết quả phân loại thành công.
+
+<Warning>
+  Sự cố KB ảnh hưởng đến router auto-runbook của OBS. OBS cache danh mục runbook tốt gần nhất với TTL 1 giờ, nên các sự cố KB ngắn hạn chỉ suy giảm — không phá vỡ — việc phân loại cảnh báo. Nếu KB không truy cập được quá một giờ, OBS chuyển về định tuyến severity tĩnh và page kỹ sư trực.
+</Warning>
+
+---
+
+## Nâng lên canonical
+
+**Promote to canonical** nâng một tài liệu từ trang cơ sở tri thức thông thường thành nguồn có thẩm quyền cao được sử dụng bởi tổng hợp AI xuyên tenant của Lumi (nơi `sync_class` cho phép).
+
+<Steps>
+  <Step title="Yêu cầu nâng cấp">
+    Mở tài liệu và nhấp **Promote to canonical**. Nhập đường dẫn bộ nhớ canonical (ví dụ `memories/policy/leave.md`). Điều này kích hoạt thông báo CHAT tới ghế CDO để phê duyệt.
+  </Step>
+  <Step title="CDO phê duyệt">
+    CDO xem xét tài liệu để xác nhận nó đại diện cho tri thức có thẩm quyền, ổn định, phù hợp cho tổng hợp xuyên tenant. Phê duyệt được ghi lại trong lịch sử audit.
+  </Step>
+  <Step title="Tạo entry canonical">
+    KB đăng ký một entry canonical có thẩm quyền cao phản chiếu tài liệu. Các câu trả lời AI trích dẫn nó mang trọng số tin cậy cao hơn các câu trả lời trích dẫn chunk chỉ mục tìm kiếm thông thường.
+  </Step>
+</Steps>
+
+<Tip>
+  Sử dụng "Promote to canonical" cho các tài liệu chính sách công ty, bản ghi quyết định kiến trúc (ADR), và tham chiếu lương thưởng — các tài liệu đại diện cho sự thật nền tảng ổn định mà toàn bộ tổ chức của bạn có thể dựa vào. Không nâng cấp bản nháp hoặc các tài liệu bạn dự kiến sẽ thay đổi thường xuyên.
+</Tip>

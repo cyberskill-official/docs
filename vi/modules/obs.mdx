@@ -1,0 +1,197 @@
+---
+title: 'OBS: Observability, cảnh báo và runbook của CyberOS'
+sidebarTitle: 'OBS'
+description: 'CyberOS OBS mang lại cho các tenant khả năng quan sát sức khỏe nền tảng, xu hướng chi phí AI và tư thế tuân thủ — với định tuyến runbook tự động được hỗ trợ bởi KB.'
+---
+
+OBS là mặt phẳng observability chạy bên dưới mọi module CyberOS. Với vai trò là tenant admin hoặc operator, bạn tương tác với OBS qua bảng điều khiển CyberOS — không phải bằng cách cấu hình log shipper hay quản lý một công cụ giám sát riêng biệt. OBS trình bày sức khỏe của nền tảng, xu hướng chi phí AI của bạn, các trace phiên AI (được hỗ trợ bởi LangSmith), và một góc nhìn tư thế tuân thủ về lịch sử audit của tenant. Khi có sự cố xảy ra, OBS có thể tra cứu danh mục runbook trong KB của bạn và định tuyến cảnh báo đến đúng kênh trước khi có người phải được gọi.
+
+<Note>
+  OBS là một module P0 được tích hợp vào nền tảng cốt lõi — bạn tương tác với nó qua bảng điều khiển CyberOS và các kênh cảnh báo.
+</Note>
+
+## Các góc nhìn bảng điều khiển
+
+Mở **Settings → Observability** trong bảng điều khiển CyberOS để truy cập các góc nhìn sau. Tất cả các góc nhìn đều được giới hạn phạm vi trong tenant của bạn — bạn không thể thấy metric hoặc log của tenant khác.
+
+<CardGroup cols={2}>
+  <Card title="Sức khỏe nền tảng" icon="heart-pulse">
+    Trạng thái SLO thời gian thực cho các dịch vụ nền tảng mà tenant của bạn phụ thuộc. Xem tính khả dụng hiện tại, độ trễ p95, và tỷ lệ tiêu hao ngân sách lỗi cho CHAT, AUTH, AI Gateway, và MCP Gateway.
+  </Card>
+  <Card title="Xu hướng chi phí AI" icon="chart-line">
+    Biểu đồ trượt về mức tiêu thụ token AI và chi phí USD, được lấy trực tiếp từ sổ cái chi phí của AI Gateway. Đi sâu theo module, kỹ năng, hoặc persona agent để nhận diện tác nhân chi phí.
+  </Card>
+  <Card title="Trace phiên agent" icon="route">
+    Trace đầy đủ các cuộc gọi LLM cho các phiên CUO, được hỗ trợ bởi LangSmith. Xem prompt, completion, các cuộc gọi công cụ, và lý do quyết định cho bất kỳ phiên AI nào trong lịch sử tenant của bạn.
+  </Card>
+  <Card title="Tư thế tuân thủ" icon="shield-check">
+    Góc nhìn chỉ đọc về các sự kiện audit liên quan đến tuân thủ của tenant. Lọc theo quy định (EU AI Act, PDPL, SOC 2) để xem các dòng quyết định mà kiểm toán viên cần.
+  </Card>
+</CardGroup>
+
+### Chỉ số sức khỏe nền tảng
+
+Bảng điều khiển sức khỏe nền tảng hiển thị trạng thái SLO cho từng dịch vụ:
+
+| Dịch vụ | Mục tiêu SLO | Chỉ báo đo lường điều gì |
+|---|---|---|
+| Nền tảng (tổng hợp) | ≥ 99,5% khả dụng | Tổ hợp tất cả các SLO module |
+| CHAT | ≥ 99,9% khả dụng | Tỷ lệ gửi tin nhắn thành công |
+| AI Gateway | ≥ 99,9% khả dụng · p95 ≤ 2 s | Tỷ lệ thành công + độ trễ yêu cầu suy luận |
+| AUTH | ≥ 99,95% khả dụng | Tỷ lệ đăng nhập và cấp token thành công |
+| MCP Gateway | ≥ 99,95% khả dụng · công cụ ghi p95 ≤ 1 s | Tỷ lệ thành công + độ trễ cuộc gọi công cụ |
+
+### Biểu đồ xu hướng chi phí AI
+
+Biểu đồ chi phí AI đọc trực tiếp từ sổ cái chi phí của AI Gateway. Mỗi điểm dữ liệu hiển thị:
+
+- **Tiêu thụ token** — token đầu vào + đầu ra theo ngày/tuần/tháng
+- **Chi phí USD** — chi tiêu ước tính dựa trên đơn giá nhà cung cấp tại thời điểm gọi
+- **Phân tích theo module** — tính năng CyberOS nào (chat, skill, kb) đã tạo ra chi tiêu
+- **Phân tích theo kỹ năng** — chi tiêu token theo từng kỹ năng cho các quy trình tự động hóa
+
+<Tip>
+  Đặt ngưỡng cảnh báo chi phí AI (mô tả bên dưới) để nhận thông báo trước khi tenant của bạn tiếp cận giới hạn hạn ngạch tháng. Điều này cho bạn thời gian điều chỉnh mẫu sử dụng trước khi các yêu cầu bị chặn.
+</Tip>
+
+### Trace phiên agent
+
+Góc nhìn trace tích hợp với LangSmith để hiển thị các trace phiên AI đầy đủ cho CUO. Với mỗi phiên, bạn có thể xem:
+
+- Chuỗi hội thoại đã kích hoạt phiên
+- Mọi cuộc gọi LLM trong phiên, với số token đầu vào/đầu ra và độ trễ
+- Các cuộc gọi công cụ mà agent đã thực hiện (tra cứu bộ nhớ, tìm kiếm KB, gọi kỹ năng)
+- Quyết định cuối cùng và bất kỳ lập luận nào agent đã ghi vào bộ nhớ
+
+Tất cả các trace được tương quan bằng một `trace_id` W3C liên kết ngược lại trace HTTP vận hành, để bạn có thể nhảy từ "vì sao phản hồi CHAT này mất 8 giây?" trực tiếp đến cuộc gọi LLM giải thích điều đó.
+
+## Cảnh báo
+
+### Cấu hình ngưỡng cảnh báo
+
+Mở **Settings → Observability → Alerts** để cấu hình các ngưỡng cho tenant của bạn.
+
+<ParamField path="ai_cost_threshold_pct" type="number" default="80">
+  Phần trăm hạn ngạch token AI hàng tháng mà tại đó bạn nhận được cảnh báo cảnh cáo. Đặt `80` để được thông báo khi bạn đã tiêu thụ 80% ngân sách.
+</ParamField>
+
+<ParamField path="error_rate_threshold_pct" type="number" default="5">
+  Phần trăm tỷ lệ lỗi trên các cuộc gọi API kích hoạt cảnh báo. Đặt `5` để cảnh báo khi hơn 5% yêu cầu trong cửa sổ 5 phút trả về lỗi.
+</ParamField>
+
+<ParamField path="latency_p95_ms" type="number" default="2000">
+  Ngưỡng độ trễ p95 tính bằng mili-giây cho các yêu cầu AI Gateway. Cảnh báo khi độ trễ ở phân vị 95 vượt giá trị này trong hơn 5 phút.
+</ParamField>
+
+### Các loại cảnh báo có sẵn
+
+| Cảnh báo | Mức độ mặc định | Định tuyến mặc định |
+|---|---|---|
+| Sắp chạm giới hạn chi phí AI (80% hạn ngạch) | Cảnh cáo | Kênh CHAT `#alerts` |
+| Đã chạm giới hạn chi phí AI (100% hạn ngạch) | Nghiêm trọng | CHAT `#alerts` + email đến tenant admin |
+| Khả dụng nền tảng suy giảm | Nghiêm trọng | PagerDuty + CHAT `#alerts` |
+| Tăng đột biến tỷ lệ lỗi (> 5% trong 5 phút) | Cảnh cáo | CHAT `#alerts` |
+| Độ trễ p95 vượt ngưỡng | Cảnh cáo | CHAT `#alerts` |
+| Sự cố nhà cung cấp AI (đang failover) | Thông tin | Bản tổng hợp CHAT |
+| Bất thường phiên agent (persona drift) | Thông tin | Bản tổng hợp CUO hàng ngày |
+
+### Định tuyến cảnh báo
+
+OBS định tuyến cảnh báo theo thứ tự mức độ:
+
+<Steps>
+  <Step title="Cảnh báo kích hoạt">
+    Quy tắc cảnh báo được đánh giá dựa trên ngưỡng bạn đã cấu hình. Khi điều kiện được đáp ứng trong khoảng thời gian đã cấu hình, cảnh báo chuyển sang trạng thái Firing.
+  </Step>
+  <Step title="CUO phân loại">
+    Trước khi có bất kỳ người nào được thông báo, OBS gọi kỹ năng `obs.execute_triage`. CUO tra cứu danh mục runbook trong KB của bạn và gán điểm tin cậy cho runbook khớp nhất.
+  </Step>
+  <Step title="Quyết định định tuyến">
+    Nếu độ tin cậy của CUO ≥ 0,70 **và** mức độ là P2 hoặc thấp hơn, một ticket tự phục vụ được tạo trong kênh CHAT `#alerts` với liên kết runbook và bước đầu tiên được đề xuất. Nếu độ tin cậy dưới 0,70 **hoặc** mức độ là P0/P1, cảnh báo leo thang lên PagerDuty với runbook đề xuất được đính kèm sẵn.
+  </Step>
+  <Step title="Xác nhận">
+    Người trực on-call của bạn xác nhận cảnh báo trong CHAT hoặc PagerDuty. Việc xác nhận được ghi vào chuỗi audit bộ nhớ.
+  </Step>
+</Steps>
+
+<Warning>
+  Cảnh báo P0 (nền tảng ngừng hoạt động) và P1 (suy giảm nghiêm trọng) luôn leo thang lên PagerDuty bất kể độ tin cậy phân loại của CUO. Ghi đè này không thể thay đổi theo từng tenant — đây là một cam kết an toàn của nền tảng.
+</Warning>
+
+## Định tuyến runbook tự động
+
+Khi cảnh báo kích hoạt, OBS tra cứu tự động các runbook khớp trong KB. Bạn xuất bản càng nhiều runbook, OBS càng xử lý được nhiều cảnh báo mà không cần gọi ai.
+
+### Xuất bản runbook lên KB cho OBS
+
+Để OBS tự động tìm và đề xuất runbook của bạn:
+
+<Steps>
+  <Step title="Viết runbook">
+    Tạo một tài liệu KB trong đường dẫn `runbooks/` của knowledge base. Bao gồm tên cảnh báo hoặc chữ ký trong tiêu đề tài liệu hoặc đoạn đầu tiên để tìm kiếm ngữ nghĩa có thể khớp.
+  </Step>
+  <Step title="Gắn thẻ runbook">
+    Thêm các thẻ front-matter cho các nhà cung cấp, dịch vụ, và loại cảnh báo áp dụng. Điều này giúp CUO lọc runbook đến những cái liên quan đến ngữ cảnh cảnh báo cụ thể.
+
+    ```markdown
+    ---
+    title: "Increase Bedrock quota when AI latency spikes"
+    tags: [runbook, ai-gateway, bedrock, latency]
+    applies_to: [sg-1, us-1]
+    alert_signature: AIGatewayLatencyHigh
+    ---
+    ```
+  </Step>
+  <Step title="Xuất bản lên KB">
+    Nạp tài liệu vào corpus KB của bạn. Kỹ năng phân loại của OBS sử dụng tìm kiếm ngữ nghĩa dựa trên KB, nên runbook có thể tìm thấy được trong vòng vài phút sau khi nạp.
+  </Step>
+</Steps>
+
+<Tip>
+  Sau mỗi sự cố, thêm một runbook cho nguyên nhân gốc. Lần tới khi một cảnh báo tương tự kích hoạt, CUO sẽ tìm thấy nó, và cảnh báo có thể không bao giờ cần gọi con người nữa. Mục tiêu là ≥ 60% cảnh báo tự động chạy được runbook vào cuối P1.
+</Tip>
+
+## Góc nhìn tư thế tuân thủ
+
+Góc nhìn tư thế tuân thủ trình bày các sự kiện audit liên quan nhất đến từng khung quy định mà tenant của bạn hoạt động dưới đó. Tenant admin có thể truy cập góc nhìn này; kiểm toán viên bên ngoài có thể được cấp quyền chỉ đọc có giới hạn thời gian.
+
+### Bạn thấy gì theo từng khung
+
+| Khung | Sự kiện được trình bày | Thời gian lưu trữ tối thiểu |
+|---|---|---|
+| **EU AI Act (Điều 12)** | Tất cả các dòng gọi AI cho tenant cư trú EU — persona, lý do quyết định, sự kiện xác nhận của con người | 6 tháng |
+| **Vietnam PDPL (Điều 14)** | Các dòng quyết định theo từng chủ thể lọc theo chủ thể dữ liệu Việt Nam; tất cả sự kiện xử lý cho một chủ thể | 1 năm |
+| **SOC 2 Type II** | Sự kiện truy cập, thay đổi đặc quyền, sự kiện sao lưu, vi phạm SLO | 1 năm |
+| **ISO 27001:2022** | Dòng audit an ninh, cập nhật đăng ký rủi ro, thay đổi kiểm soát | 3 năm |
+
+### Xuất bằng chứng tuân thủ
+
+Để xuất một gói đã ký cho kiểm toán viên:
+
+<Steps>
+  <Step title="Yêu cầu xuất">
+    Trong **Settings → Observability → Compliance**, chọn quy định, khung thời gian, và (đối với PDPL/GDPR) ID chủ thể dữ liệu. Nhấp **Generate Export**.
+  </Step>
+  <Step title="Nhận gói">
+    OBS tạo một gói JSON đã ký chứa các dòng audit đã lọc, chain anchor, và một manifest chuỗi giám sát được ký bằng Ed25519. URL gói có hiệu lực trong 24 giờ.
+  </Step>
+  <Step title="Cung cấp cho kiểm toán viên">
+    Chia sẻ gói với kiểm toán viên của bạn. Họ có thể xác minh tính toàn vẹn của chuỗi một cách độc lập bằng cách tính lại hash từ các dòng đã xuất và so sánh với anchor manifest — không cần truy cập CyberOS.
+  </Step>
+</Steps>
+
+## Lưu trữ dữ liệu
+
+Các bậc lưu trữ được quản lý bởi gói và khu vực cư trú của bạn:
+
+| Loại tín hiệu | Bậc nóng | Bậc ấm | Bậc lạnh / tuân thủ |
+|---|---|---|---|
+| Log | 7 ngày | 90 ngày (S3) | 1 năm (Glacier) |
+| Trace | 7 ngày | 30 ngày (S3) | — |
+| Metric | 15 ngày | 1 năm (P1+) | — |
+| Trace AI (LangSmith) | 90 ngày | 1 năm | — |
+| Chuỗi audit bộ nhớ | Vô hạn (chỉ nối thêm) | Vô hạn | Vô hạn |
+
+<Note>
+  Log quyết định (dòng audit gọi AI) được lưu tối thiểu 180 ngày để đáp ứng Điều 12 EU AI Act. Tenant admin có thể cấu hình ghi đè lưu trữ dài hơn trong **Settings → Tenancy → Data Retention**, nhưng không thể đặt lưu trữ dưới mức tối thiểu theo quy định mà không có phê duyệt của DPO.
+</Note>

@@ -1,0 +1,181 @@
+---
+title: 'MCP Gateway: Kết nối bất kỳ AI agent nào với công cụ CyberOS'
+sidebarTitle: 'MCP Gateway'
+description: 'CyberOS MCP Gateway triển khai Model Context Protocol, cung cấp công cụ và bộ nhớ cho bất kỳ agent tương thích MCP nào — Claude, Cursor, Codex, và nhiều hơn nữa.'
+---
+
+Model Context Protocol (MCP) là một tiêu chuẩn mở được hiến tặng cho Linux Foundation vào tháng 12/2025. Với hơn 10.000 server công khai đã được xây dựng theo spec, MCP đã trở thành cách tiêu chuẩn để các AI agent khám phá và gọi công cụ trong các hệ thống bên ngoài. CyberOS MCP Gateway triển khai MCP 2025-11-25, biến tất cả các module của CyberOS thành một MCP server thống nhất, mạch lạc. Các AI agent của bạn — cho dù là Claude Code trong IDE, Cursor, Codex CLI, hay một agent tùy chỉnh — kết nối một lần và ngay lập tức có quyền truy cập vào bộ nhớ, quản lý tác vụ, tìm kiếm KB, và các khả năng audit của CyberOS thông qua một giao diện thống nhất, có kiểm soát quyền.
+
+<Note>
+  MCP Gateway sử dụng spec MCP 2025-11-25 (transport Streamable HTTP, primitive Tasks, và hỗ trợ Elicitation). MCP Gateway là một module P0, hiện đang được lên kế hoạch.
+</Note>
+
+## Các agent bạn có thể kết nối
+
+<CardGroup cols={3}>
+  <Card title="Claude Code" icon="terminal">
+    CLI Claude Code và tiện ích mở rộng VS Code kết nối trực tiếp qua URL của MCP server. Tất cả công cụ CyberOS xuất hiện tự nhiên trong bảng công cụ.
+  </Card>
+  <Card title="Cursor" icon="code">
+    Thêm CyberOS vào cấu hình MCP của Cursor và truy cập bộ nhớ, tác vụ, và KB từ trong IDE mà không cần chuyển ngữ cảnh.
+  </Card>
+  <Card title="Codex CLI" icon="square-terminal">
+    Codex CLI của OpenAI hỗ trợ MCP 2025-11-25. Kết nối nó với CyberOS để điều khiển tác vụ và ghi bộ nhớ từ terminal của bạn.
+  </Card>
+  <Card title="Goose" icon="bird">
+    Framework agent Goose của Block Labs hỗ trợ MCP server nguyên bản. Trỏ nó tới gateway CyberOS cho các quy trình tác vụ tự chủ.
+  </Card>
+  <Card title="Amp" icon="bolt">
+    Agent lập trình Amp của Sourcegraph kết nối qua MCP để tìm kiếm KB và đọc trạng thái tác vụ mà không cần rời khỏi trình soạn thảo.
+  </Card>
+  <Card title="Bất kỳ MCP client nào" icon="plug">
+    Bất kỳ agent nào triển khai spec MCP 2025-11-25 đều kết nối bằng khám phá OAuth 2.1 + PKCE tiêu chuẩn tại `/.well-known/oauth-protected-resource`.
+  </Card>
+</CardGroup>
+
+## Các công cụ MCP có sẵn
+
+Agent đã kết nối của bạn khám phá các công cụ này tự động qua `tools/list`. Các công cụ mà agent của bạn có thể thấy được lọc theo phạm vi (scope) mà token OAuth của bạn được cấp — bạn chỉ thấy các công cụ mà bạn được phép gọi.
+
+<AccordionGroup>
+  <Accordion title="Công cụ quản lý tác vụ">
+    | Công cụ | Chức năng | Chú thích |
+    |---|---|---|
+    | `cyberos.skill.task_install` | Cài đặt CyberOS vào một repository — thiết lập thư mục `.cyberos/`, khởi tạo danh mục tác vụ ban đầu, và cấu hình skill runner | `destructive: false`, `idempotent: true` |
+    | `cyberos.skill.task_gates` | Chạy các cổng xác minh cho một tác vụ — thực thi các tiêu chí chấp nhận đã định nghĩa và trả về phán quyết đạt/không đạt kèm bằng chứng | `readOnly: false`, `idempotent: true` |
+    | `cyberos.skill.task_status` | Kiểm tra trạng thái hiện tại của tác vụ (planned / building / shipped) cùng với kết quả các cổng và mốc thời gian cập nhật gần nhất | `readOnly: true` |
+    | `cyberos.skill.ship_task` | Đưa tác vụ đủ điều kiện tiếp theo qua quy trình — chạy các cổng, cập nhật trạng thái sang shipped, và phát ra dòng audit | `destructive: false`, cần xác nhận của con người cho các chuyển trạng thái không thể hoàn tác |
+  </Accordion>
+  <Accordion title="Công cụ bộ nhớ (BRAIN)">
+    | Công cụ | Chức năng | Chú thích |
+    |---|---|---|
+    | `cyberos.memory.search` | Tìm kiếm trong kho BRAIN bằng độ tương tự ngữ nghĩa — trả về các tệp bộ nhớ được xếp hạng với điểm liên quan và trích dẫn | `readOnly: true` |
+    | `cyberos.memory.write_memory` | Ghi một mục bộ nhớ vào kho BRAIN — tạo hoặc thay thế tệp tại đường dẫn đã cho với dòng audit được móc xích | `idempotent: true` |
+  </Accordion>
+  <Accordion title="Công cụ Knowledge Base">
+    | Công cụ | Chức năng | Chú thích |
+    |---|---|---|
+    | `cyberos.kb.read` | Đọc một tài liệu KB theo đường dẫn — trả về nội dung và metadata của tài liệu | `readOnly: true` |
+    | `cyberos.kb.search` | Tìm kiếm KB bằng độ tương tự ngữ nghĩa — trả về các đoạn tài liệu được xếp hạng với trích dẫn nguồn | `readOnly: true` |
+  </Accordion>
+  <Accordion title="Công cụ audit">
+    | Công cụ | Chức năng | Chú thích |
+    |---|---|---|
+    | `cyberos.audit.append` | Thêm một dòng audit vào chuỗi bộ nhớ — được các agent dùng để ghi lại quyết định, lý do, hoặc các sự kiện bên ngoài với liên kết chuỗi mật mã | `idempotent: false`, cần scope `audit.write` |
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  Các công cụ có tính phá hủy (thực hiện thay đổi không thể hoàn tác) luôn yêu cầu xác nhận rõ ràng của con người thông qua luồng Elicitation của MCP. Agent của bạn sẽ hiển thị lời nhắc xác nhận trong giao diện trước khi tiếp tục — điều này không thể bỏ qua bằng lập trình.
+</Tip>
+
+## Kết nối agent của bạn
+
+### Khởi động nhanh: Claude Code hoặc Claude Desktop
+
+Thêm phần sau vào tệp cấu hình MCP của Claude (`~/.claude/mcp.json` hoặc đường dẫn tương đương cho nền tảng của bạn):
+
+```json
+{
+  "mcpServers": {
+    "cyberos": {
+      "command": "node",
+      "args": [".cyberos/mcp/cyberos-mcp.mjs"]
+    }
+  }
+}
+```
+
+<Note>
+  Cấu hình này sử dụng cầu MCP CyberOS cục bộ được cài đặt trong repository của bạn bởi `task_install`. Cầu này xử lý trao đổi token OAuth tự động bằng phiên CyberOS hiện có của bạn.
+</Note>
+
+### Cursor
+
+Thêm cùng khối trên vào tệp `.cursor/mcp.json` của dự án:
+
+```json
+{
+  "mcpServers": {
+    "cyberos": {
+      "command": "node",
+      "args": [".cyberos/mcp/cyberos-mcp.mjs"]
+    }
+  }
+}
+```
+
+Sau khi lưu, khởi động lại phiên MCP của Cursor (⌘/Ctrl + Shift + P → **MCP: Reconnect**). Các công cụ CyberOS xuất hiện trong bảng Tools của Cursor.
+
+### Các MCP client khác (chế độ URL từ xa)
+
+Với các agent hỗ trợ trực tiếp URL MCP server từ xa:
+
+```
+MCP server URL: https://mcp.cyberos.world
+OAuth discovery: https://mcp.cyberos.world/.well-known/oauth-protected-resource
+```
+
+Hoàn tất luồng OAuth 2.1 PKCE trong trình duyệt để cấp quyền cho agent. Token của bạn được giới hạn phạm vi theo các module và hành động bạn phê duyệt tại thời điểm đồng ý.
+
+### Xác minh kết nối
+
+Sau khi kết nối, yêu cầu agent chạy:
+
+```
+Liệt kê các công cụ CyberOS có sẵn.
+```
+
+Bạn sẽ thấy tất cả các công cụ mà phạm vi của bạn cho phép, bao gồm `cyberos.memory.search`, `cyberos.skill.task_status`, và `cyberos.kb.search`.
+
+## Chú thích công cụ và các cổng an toàn
+
+Mỗi công cụ trong registry mang các chú thích điều khiển cách gateway xử lý nó:
+
+| Chú thích | Ý nghĩa | Agent của bạn trải nghiệm ra sao |
+|---|---|---|
+| `readOnly: true` | Không thay đổi trạng thái | Tự động gọi mà không cần xác nhận |
+| `idempotent: true` | An toàn để thử lại với cùng tham số | Tự động gọi; gateway thực thi idempotency key |
+| `destructive: true` | Hành động không thể hoàn tác (xóa, gửi, ghi đè) | Agent của bạn hiển thị lời nhắc xác nhận trước khi tiếp tục |
+| `longRunning: true` | Trả về task ID; hoàn thành bất đồng bộ | Agent của bạn thăm dò tiến trình; bạn thấy chỉ báo tiến độ |
+
+## Registry công cụ (tính năng dành cho admin)
+
+Admin của tenant và chủ sở hữu module đăng ký công cụ mới bằng cách gửi manifest công cụ cho gateway. Việc đăng ký cần phê duyệt của CTO + CSO vì mỗi công cụ mới đều mở rộng bề mặt tấn công cho các agent đã kết nối.
+
+<Steps>
+  <Step title="Soạn manifest công cụ">
+    Tạo một manifest JSON định nghĩa tên công cụ (theo quy ước `cyberos.{module}.{verb}_{noun}`), schema đầu vào/đầu ra, scope yêu cầu, và các chú thích.
+  </Step>
+  <Step title="Gửi để xem xét">
+    Gửi manifest qua CLI admin hoặc bảng điều khiển tenant admin. Gateway tự động xác thực quy ước đặt tên và tính đầy đủ của chú thích.
+  </Step>
+  <Step title="Phê duyệt và đăng ký">
+    Sau khi CTO và CSO phê duyệt, công cụ được đăng ký và ngay lập tức khả dụng cho các agent giữ scope yêu cầu. Các agent đã đăng ký nhận được thông báo `tools/list_changed` và tự động lấy lại danh mục.
+  </Step>
+</Steps>
+
+<Warning>
+  Tên công cụ phải tuân theo mẫu `cyberos.{module}.{verb}_{noun}` (ví dụ: `cyberos.proj.create_issue`). Gateway từ chối các đăng ký vi phạm quy ước này tại thời điểm gửi.
+</Warning>
+
+## Tác vụ chạy dài
+
+Với các thao tác mất hơn vài giây — chẳng hạn như nạp một corpus KB lớn hoặc chạy một kỹ năng hàng loạt — gateway sử dụng primitive **Tasks** của MCP. Agent của bạn khởi động thao tác và nhận `task_id` ngay lập tức. Bạn có thể ngắt kết nối và kết nối lại; tác vụ vẫn tồn tại cho đến khi hoàn thành.
+
+```
+Your agent: "Index the /docs folder into KB"
+Gateway:    task_id: tsk_01HZJ...XK  status: running  progress: 34%
+            "Embedding 3,400 / 10,000 documents..."
+```
+
+## Dấu vết audit
+
+Mỗi lần gọi công cụ — dù thành công, thất bại, được xác nhận, hay bị từ chối — đều tạo ra một dòng audit `mcp.invocation` trong chuỗi bộ nhớ. Dòng đó ghi lại:
+
+- Công cụ nào được gọi và với hash tham số nào
+- Persona agent nào thực hiện cuộc gọi (ví dụ: `claude-code@user-stephen`)
+- Scope OAuth đã được kiểm tra
+- Có được xác nhận phá hủy hay không
+- Kết quả và độ trễ
+- Chain anchor liên kết đến dòng audit trước đó

@@ -1,0 +1,198 @@
+---
+title: 'PROJ: Hợp Đồng Khách Hàng, Dự Án và Theo Dõi Issue'
+sidebarTitle: 'Projects'
+description: 'PROJ tổ chức công việc khách hàng thành Engagement, Project và Issue với các quy tắc giờ tính phí, bảng giá và khả năng truy vết đầy đủ đến hóa đơn INV.'
+---
+
+PROJ là xương sống điều phối của CyberOS — module nơi một deal CRM đã thắng trở thành một hợp đồng khách hàng đang hoạt động, nơi công việc chia thành các dự án và issue, và nơi mỗi giờ tính phí chảy về phía trước vào TIME và cuối cùng vào hóa đơn INV. Khi một Account Manager nhấp **Convert to Engagement** trên một deal đã đóng, PROJ tạo Engagement với bảng giá được kết nối sẵn từ định giá của deal, kết nối các quy tắc tính phí với vai trò, và mở chu kỳ thanh toán. Từ khoảnh khắc đó, mọi mục thời gian được ghi trong TIME đối với Engagement đều truy vết một chuỗi kiểm toán sạch trở lại một issue cụ thể, một thành viên cụ thể và một mức giá cụ thể — cho bạn khả năng truy vết cấp hóa đơn mà không cần nhập lại thủ công.
+
+<Note>
+  PROJ là một module P1 hiện đang trong giai đoạn thiết kế. Trang này mô tả chức năng được lên kế hoạch từ góc nhìn người dùng. Tham khảo roadmap nền tảng để biết chi tiết về tính khả dụng GA.
+</Note>
+
+---
+
+## Mô hình dữ liệu
+
+PROJ tổ chức công việc theo phân cấp bốn cấp. Mọi thứ có thể tính phí sống dưới một Engagement; không có gì trôi ra ngoài phân cấp đó.
+
+<CardGroup cols={2}>
+  <Card title="Workspace" icon="building">
+    Container tenant cấp cao nhất. Tất cả Engagement, Project và Issue thuộc về một Workspace duy nhất và kế thừa danh sách thành viên và cài đặt giá mặc định của nó.
+  </Card>
+  <Card title="Engagement" icon="handshake">
+    Đơn vị tính phí đối mặt với khách hàng. Mang một bảng giá, chế độ tính phí (T&M, phí cố định hoặc retainer), danh sách danh mục không tính phí và một liên kết trở lại deal CRM gốc.
+  </Card>
+  <Card title="Project" icon="folder">
+    Một nhóm logic các Issue trong một Engagement. Sử dụng Project để tách các luồng công việc, giai đoạn hoặc khu vực giao hàng dưới cùng một hợp đồng khách hàng.
+  </Card>
+  <Card title="Issue" icon="circle-check">
+    Đơn vị công việc nguyên tử. Issue mang trạng thái, người được giao, độ ưu tiên và ghi đè tính phí tùy chọn. Các mục thời gian được ghi đối với một Issue kế thừa các quy tắc tính phí của Engagement trừ khi Issue ghi đè chúng.
+  </Card>
+</CardGroup>
+
+---
+
+## Tạo một Engagement
+
+Bạn có thể tạo một Engagement theo hai cách: từ một deal CRM đã thắng, hoặc trực tiếp trong PROJ.
+
+### Từ một deal CRM đã thắng (khuyến nghị)
+
+<Steps>
+  <Step title="Mở deal trong CRM">
+    Điều hướng đến bản ghi deal và xác nhận giai đoạn là **Closed Won**.
+  </Step>
+  <Step title="Nhấp Convert to Engagement">
+    Chọn **Convert to Engagement** từ menu hành động deal. PROJ tự động tạo Engagement với bảng giá được điền sẵn từ trang định giá của deal, và liên kết URL hợp đồng và tài khoản khách hàng của deal với Engagement mới.
+  </Step>
+  <Step title="Chọn chế độ tính phí">
+    Chọn **Time & Materials**, **Fixed-Fee**, hoặc **Retainer**. Lựa chọn này khóa lại khi Engagement được tạo — chọn cẩn thận, vì thay đổi chế độ tính phí giữa chu kỳ yêu cầu một Engagement mới.
+  </Step>
+  <Step title="Xem xét bảng giá">
+    Xác nhận mức giá theo vai trò (VND và USD) và mặc định tính phí cho mỗi vai trò. Điều chỉnh nếu định giá deal khác với bảng giá mặc định của bạn.
+  </Step>
+  <Step title="Lưu">
+    Engagement đang hoạt động. Các thành viên có thể bắt đầu ghi các mục TIME đối với nó ngay lập tức.
+  </Step>
+</Steps>
+
+### Tạo một Engagement trực tiếp
+
+Nếu công việc không bắt nguồn từ một deal CRM (ví dụ, một dự án nội bộ hoặc một pilot pre-sales), mở **PROJ → New Engagement** và điền thủ công tài khoản khách hàng, chế độ tính phí và bảng giá. Bạn có thể liên kết nó với một tài khoản CRM sau này.
+
+<Note>
+  Không phải mọi deal đã thắng đều nên trở thành một Engagement PROJ. Các deal bán lại thuần túy — nơi bạn thu thanh toán mà không cung cấp dịch vụ — không cần một Engagement. Chuyển đổi deal-sang-Engagement yêu cầu một hành động rõ ràng của Account Manager vì lý do này.
+</Note>
+
+---
+
+## Quản lý issue
+
+Issue là bề mặt công việc hàng ngày trong PROJ. Mỗi Issue sống dưới một Project, sống dưới một Engagement.
+
+### Tạo một issue
+
+Mở bảng Project và nhấp **New Issue**. Đặt tiêu đề, mô tả, độ ưu tiên và người được giao. Nếu Issue liên quan đến công việc nên được theo dõi theo một quy tắc tính phí khác với mặc định của Project, đánh dấu **Override billable flag** và đặt giá trị rõ ràng.
+
+### Giao issue cho thành viên
+
+Kéo Issue vào làn của một thành viên trên view Board, hoặc mở Issue và chọn người được giao từ trình chọn thành viên. Bạn có thể giao cho bất kỳ thành viên nào có quyền truy cập Engagement. Tín hiệu next-best-action của CUO (xem [tính năng AI](#ai-features) dưới đây) sẽ nêu bật những người được giao được khuyến nghị dựa trên vai trò và khối lượng công việc hiện tại.
+
+### Theo dõi trạng thái
+
+Issue di chuyển qua một quy trình trạng thái có thể cấu hình. Trạng thái mặc định là **Backlog → In Progress → In Review → Done → Cancelled**. Admin Workspace có thể thêm trạng thái tùy chỉnh và định nghĩa quy tắc chuyển tiếp (ví dụ, yêu cầu người review trước khi một Issue có thể chuyển sang Done).
+
+<Tip>
+  Sử dụng view **Timeline** để phát hiện các Issue đã bị kẹt ở cùng trạng thái hơn một tuần. Tín hiệu next-best-action của CUO tự động gắn cờ những cái này trên dashboard của bạn.
+</Tip>
+
+---
+
+## Bộ máy quy tắc giờ tính phí
+
+Mỗi mục thời gian trong TIME tham chiếu đến một Issue PROJ đều đi qua một cascade bốn bước để xác định xem nó có thể tính phí hay không. Quyết định được ghi lên mục tại thời điểm ghi — thay đổi bảng giá hồi tố không bao giờ dịch chuyển các mục trong quá khứ.
+
+<Steps>
+  <Step title="Bước 1 — Ghi đè thành viên">
+    Nếu thành viên ghi mục có ghi đè tính phí rõ ràng được đặt trên Engagement, giá trị đó thắng. Điều này xử lý các trường hợp như một reviewer cấp cao không tính phí mà bạn muốn ghi thời gian nhưng không tính phí.
+  </Step>
+  <Step title="Bước 2 — Lớp nhiệm vụ (danh mục không tính phí)">
+    Mỗi Engagement mang một danh sách các danh mục không tính phí (ví dụ, `internal-admin`, `pre-sales`, `travel`). Nếu danh mục của Issue khớp với một trong số này, mục không tính phí bất kể vai trò.
+  </Step>
+  <Step title="Bước 3 — Mặc định vai trò">
+    Bảng giá trên Engagement chỉ định một mặc định tính phí cho mỗi vai trò (ví dụ, `architect: true`, `intern: false`). Nếu Bước 1 và Bước 2 đều không áp dụng, mặc định của vai trò thành viên được sử dụng.
+  </Step>
+  <Step title="Bước 4 — Dự phòng">
+    Nếu không có ghi đè, quy tắc danh mục hoặc mặc định vai trò nào giải quyết cờ, mục có thể tính phí. Dự phòng luôn có thể tính phí, để công việc không được phân loại không bao giờ âm thầm rơi khỏi hóa đơn.
+  </Step>
+</Steps>
+
+<Warning>
+  Thay đổi các danh mục không tính phí trên một Engagement đang hoạt động chỉ ảnh hưởng đến các mục thời gian mới. Các mục trong quá khứ giữ nguyên cờ tính phí đã ghi. Nếu bạn cần sửa hồi tố trạng thái tính phí của một mục, sử dụng mô hình sửa lỗi của TIME để tạo một mục đã sửa mới.
+</Warning>
+
+---
+
+## Bảng giá
+
+Một bảng giá định nghĩa định giá theo vai trò trên một Engagement. Mỗi mục vai trò chỉ định một mức giá VND, một mức giá USD tùy chọn và một cờ mặc định tính phí.
+
+```yaml
+# Example Engagement rate card
+roles:
+  - role: architect
+    rate_vnd_per_hour: 2_500_000
+    rate_usd_per_hour: 100
+    billable_default: true
+  - role: senior-engineer
+    rate_vnd_per_hour: 1_800_000
+    rate_usd_per_hour: 72
+    billable_default: true
+  - role: mid-engineer
+    rate_vnd_per_hour: 1_200_000
+    rate_usd_per_hour: 48
+    billable_default: true
+  - role: junior-engineer
+    rate_vnd_per_hour: 700_000
+    rate_usd_per_hour: 28
+    billable_default: true
+  - role: account-manager
+    rate_vnd_per_hour: 1_500_000
+    rate_usd_per_hour: 60
+    billable_default: false
+```
+
+Bảng giá được **khóa tại thời điểm tạo Engagement** khi cầu nối deal-sang-Engagement kích hoạt. Bạn có thể chỉnh sửa nó trước khi rollup TIME đầu tiên, nhưng khi INV đã kéo một bản tóm tắt tính phí, thay đổi giá chỉ áp dụng cho các chu kỳ thanh toán trong tương lai.
+
+<Tip>
+  Đối với các Engagement phí cố định, bảng giá vẫn quan trọng: nó cấp sức mạnh cho **margin watchdog** nội bộ (P2) so sánh giờ-nhân-giá với giá trị hợp đồng cố định và cảnh báo bạn về sự leo thang phạm vi trước khi Engagement chìm xuống dưới mực nước.
+</Tip>
+
+---
+
+## Xương sống PROJ → TIME → INV
+
+PROJ, TIME và INV tạo thành xương sống giao hàng doanh thu của CyberOS. Đây là cách dữ liệu chảy qua ba module:
+
+<CardGroup cols={3}>
+  <Card title="PROJ" icon="clipboard-list">
+    Định nghĩa Engagement, Project, Issue và các quy tắc tính phí chi phối mỗi mục thời gian. Mỗi Issue là điểm neo cho công việc tính phí.
+  </Card>
+  <Card title="TIME" icon="clock">
+    Các thành viên ghi thời gian đối với các Issue PROJ. Mỗi mục đi qua cascade tính phí, và quyết định được ghi lại. Tại thời điểm đóng chu kỳ thanh toán, TIME tổng hợp các giờ tính phí đã phê duyệt theo thành viên theo vai trò theo Engagement.
+  </Card>
+  <Card title="INV" icon="file-invoice">
+    Tiêu thụ rollup TIME và tạo các dòng hóa đơn. Mỗi dòng truy vết trở lại một mục TIME, mà truy vết trở lại một Issue PROJ — cho bạn một chuỗi kiểm toán sạch từ hóa đơn đến mục công việc.
+  </Card>
+</CardGroup>
+
+Sự kiện rollup mang các snapshot bảng giá, ghi đè thành viên và cờ luồng phê duyệt. INV vẽ hóa đơn nháp; Account Manager xem xét nó; khách hàng nhận hóa đơn cuối. Mọi dòng hóa đơn đều hoàn toàn có thể truy vết đến một mục thời gian cụ thể và mục công việc mà nó ghi lại.
+
+---
+
+## Tính năng AI
+
+CUO (lớp điều phối AI của CyberOS) cung cấp hai lớp hỗ trợ thông minh trong PROJ.
+
+<Accordion title="Next-best-action trên các issue mở">
+  CUO liên tục giám sát các Issue mở qua các Engagement của bạn và nêu bật các khuyến nghị next-best-action trên dashboard của bạn. Các khuyến nghị được xếp hạng theo mức độ khẩn cấp và bao gồm các người được giao được đề xuất dựa trên vai trò, dung lượng và hiệu suất trước đây trên các Issue tương tự. Các khuyến nghị luôn là đề xuất — CUO không bao giờ tự động giao hoặc tự động đóng một Issue.
+</Accordion>
+
+<Accordion title="Tín hiệu hiệu chuẩn đánh giá hiệu suất">
+  Vào cuối chu kỳ đánh giá, CUO tổng hợp lịch sử Issue của mỗi thành viên — tỷ lệ hoàn thành, đóng góp giờ tính phí, mẫu bình luận và tần suất chỉnh sửa — thành các tín hiệu hiệu chuẩn cho các đánh giá hiệu suất HR. Các tín hiệu này được đặt nền tảng trên chuỗi kiểm toán và trích dẫn các Issue cụ thể và các khoảng thời gian, làm cho việc hiệu chuẩn dựa trên bằng chứng thay vì giai thoại.
+</Accordion>
+
+---
+
+## Tích hợp
+
+PROJ kết nối với năm module CyberOS khác. Mỗi tích hợp có thể kiểm toán — mọi sự kiện cross-module đều được ghi trong audit trail.
+
+| Module | Hướng | Dòng chảy |
+|--------|-----------|------------|
+| **CRM** | CRM → PROJ | Deal thắng kích hoạt tạo Engagement. Bảng giá và chi tiết tài khoản khách hàng được kết nối sẵn. |
+| **TIME** | PROJ → TIME | Engagement, Project và Issue là các mục tiêu tham chiếu cho mỗi mục thời gian. Các quy tắc cascade tính phí bắt nguồn từ PROJ. |
+| **INV** | TIME → INV (qua quy tắc PROJ) | Rollup tính phí tại đóng chu kỳ dẫn động các dòng hóa đơn INV. Các snapshot bảng giá đi kèm với rollup. |
+| **HR** | PROJ → HR | Lịch sử hoàn thành Issue và đóng góp tính phí chảy đến HR như tín hiệu hiệu chuẩn cho các đánh giá hiệu suất. |
+| **KB** | KB ↔ PROJ | Các Issue có thể trích dẫn tài liệu KB như là nguồn thẩm quyền. CUO đặt nền tảng cho các đề xuất next-best-action trong runbook KB và log quyết định. |

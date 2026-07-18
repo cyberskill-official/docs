@@ -1,0 +1,165 @@
+---
+title: 'Ship Nhiệm vụ CyberOS đầu tiên: Hướng dẫn từng bước đầy đủ'
+sidebarTitle: 'Nhiệm vụ đầu tiên'
+description: 'Tạo file nhiệm vụ, kích hoạt AI agent, và hoàn thành thay đổi đầu tiên do CyberOS quản lý với hai gate chấp nhận của con người trong vòng chưa đến 30 phút.'
+---
+
+Hướng dẫn này đưa bạn qua toàn bộ vòng đời nhiệm vụ CyberOS từ đầu — từ việc viết file nhiệm vụ đến việc hoàn thiện thay đổi. Không yêu cầu kiến thức CyberOS trước đó. Khi kết thúc, bạn sẽ viết một nhiệm vụ, kích hoạt một agent, giữ cả hai gate chấp nhận của con người, và hiểu chính xác những gì bạn chịu trách nhiệm so với những gì agent xử lý.
+
+## Hai vai trò trong mỗi bước
+
+Trước khi bắt đầu, hãy hiểu sự phân chia:
+
+| Vai trò | Trách nhiệm |
+|---|---|
+| **Bạn** | Quyết định xây dựng gì, kích hoạt agent, phê duyệt hoặc trả lại tại cả hai gate, commit, push, và mở PR. Chỉ bạn mới có thể đặt `ready_to_test` và `done`. |
+| **Agent** | Thực hiện toàn bộ công việc triển khai giữa các quyết định của bạn — viết mã, chạy các gate, tự xem xét đầu ra của mình, và dừng lại tại mỗi gate để chờ phán quyết của bạn. |
+
+Agent không bao giờ push, merge, deploy, hoặc đánh dấu công việc của chính nó là done.
+
+---
+
+<Steps>
+  <Step title="Đảm bảo CyberOS đã được cài đặt">
+    Nếu bạn chưa cài đặt CyberOS, hãy làm theo [Hướng dẫn cài đặt](/guides/install) trước. Cài đặt là thiết lập một lần cho mỗi kho mã và mất chưa đến hai phút.
+
+    Để xác nhận kho mã của bạn đã sẵn sàng, chạy:
+
+    ```bash
+    python -m cyberos doctor
+    ```
+
+    Kết quả sẽ hiển thị `READY`.
+  </Step>
+
+  <Step title="Viết file nhiệm vụ">
+    Tạo một file tại `docs/tasks/<module>/task-<MODULE>-<NNN>-<slug>.md`. Bạn có thể sao chép mẫu từ `.cyberos/cuo/templates/` hoặc bắt đầu từ khung này:
+
+    ```markdown
+    ---
+    id: TASK-MYAPP-001
+    title: Add login rate limit
+    module: myapp
+    class: product
+    status: ready_to_implement
+    priority: MUST
+    depends_on: []
+    routed_back_count: 0
+    ---
+
+    # TASK-MYAPP-001 — Add login rate limit
+
+    ## Context
+    The login endpoint is vulnerable to brute-force attacks.
+    It needs rate limiting to protect user accounts.
+
+    ## 1. Normative clauses
+    1. The login endpoint MUST reject more than 5 attempts per minute per account.
+    2. A rejected attempt MUST return 429 with a Retry-After header.
+
+    ## 2. Acceptance criteria
+    - [ ] 6th attempt within a minute returns 429.
+    - [ ] Tests cover the limit and the reset.
+    ```
+
+    Dùng `class: product` cho các năng lực mới và `class: improvement` cho việc củng cố, refactor, hoặc sửa lỗi.
+
+    <Tip>
+      Một nhiệm vụ nên có thể ship xong trong một lần ngồi làm. Nếu nhiệm vụ của bạn có nhiều hơn khoảng năm điều khoản quy phạm, hãy tách thành các nhiệm vụ nhỏ hơn. Nhiệm vụ nhỏ hơn di chuyển nhanh hơn và dễ xem xét hơn.
+    </Tip>
+  </Step>
+
+  <Step title="Thêm nhiệm vụ vào BACKLOG.md">
+    Mở `docs/tasks/BACKLOG.md` và thêm một dòng trong phần module của bạn:
+
+    ```markdown
+    | TASK-MYAPP-001 | Add login rate limit | ready_to_implement | MUST |
+    ```
+
+    Với các nhiệm vụ `class: improvement`, thêm tag `(improvement)` vào dòng đó. Trường `status:` trong file nhiệm vụ là bản ghi chính thức; `BACKLOG.md` là chỉ mục được giữ đồng bộ.
+  </Step>
+
+  <Step title="Kích hoạt agent">
+    Với Claude plugin đã cài, gõ dòng này trong phiên làm việc với kho mã:
+
+    ```
+    /ship-tasks
+    ```
+
+    Không có plugin, dán prompt này cho bất kỳ agent nào:
+
+    ```
+    Follow .cyberos/AGENT-ENTRY.md and drive the next eligible task in
+    docs/tasks/BACKLOG.md. HITL required. repo_root = this repo.
+    ```
+
+    Agent chọn nhiệm vụ đủ điều kiện đầu tiên (tôn trọng `depends_on`), chuyển sang `implementing`, viết mã, chạy `bash .cyberos/cuo/gates/run-gates.sh`, tự xem xét đầu ra, và tiến tới `reviewing` — sau đó dừng lại và chờ bạn.
+  </Step>
+
+  <Step title="Gate 1 — Chấp nhận xem xét">
+    Agent trình bày:
+    - Những gì nó đã xây dựng (tóm tắt các thay đổi)
+    - Các phát hiện xem xét (thay đổi ánh xạ tới từng điều khoản quy phạm như thế nào)
+    - Bất kỳ sai lệch hoặc câu hỏi mở nào
+
+    **Bạn kiểm tra gì:** đọc từng điều khoản quy phạm trong file nhiệm vụ đối chiếu với thay đổi thực tế. Mọi điều khoản đã được đáp ứng chưa? Gói xem xét đã hoàn chỉnh chưa?
+
+    - **Để phê duyệt:** nói `approved` (hoặc tương đương). Agent chuyển nhiệm vụ sang `ready_to_test`.
+    - **Để trả lại:** đưa một câu giải thích điều gì sai, ví dụ: _"Điều khoản 2 chưa được triển khai — endpoint trả về 400, không phải 429."_ Agent đưa nhiệm vụ trở lại `ready_to_implement` và `routed_back_count` tăng thêm 1.
+  </Step>
+
+  <Step title="Gate 2 — Chấp nhận cuối cùng">
+    Agent trình bày:
+    - Bằng chứng kiểm thử — đầu ra gate, chứng minh cho mỗi tiêu chí chấp nhận
+    - Các gate đều xanh (build, lint, test đều đạt)
+
+    **Bạn kiểm tra gì:** đi qua từng tiêu chí chấp nhận một. Mọi ô đã được đáp ứng chưa? Tất cả các gate đều xanh không?
+
+    - **Để phê duyệt:** nói `done` (hoặc tương đương). Trạng thái nhiệm vụ trở thành `done`.
+    - **Để trả lại:** đưa một câu giải thích điều gì sai. `routed_back_count` tăng thêm một lần nữa.
+  </Step>
+
+  <Step title="Hoàn thiện thay đổi">
+    Khi bạn đã chấp nhận tại Gate 2, thay đổi là của bạn để hoàn thiện:
+
+    ```bash
+    git add .
+    git commit -m "feat(myapp): add login rate limit (TASK-MYAPP-001)"
+    git push origin my-branch
+    # open a PR in your usual flow
+    ```
+
+    Agent không bao giờ commit, push, merge, hoặc deploy thay bạn. Đó luôn là bước của bạn.
+  </Step>
+</Steps>
+
+---
+
+## Khi có sự cố
+
+<Accordion title="Gate thất bại — agent trình bày đầu ra đỏ">
+  Agent phải sửa các gate thất bại và chạy lại chúng trước khi có thể yêu cầu bạn xem xét ở một trong hai gate. Nếu agent yêu cầu bạn chấp nhận với đầu ra gate đỏ, hãy từ chối. Gửi trả lại với: _"Các gate chưa xanh. Sửa và chạy lại trước khi yêu cầu xem xét."_
+</Accordion>
+
+<Accordion title="Bản thân nhiệm vụ đã sai">
+  Trả lại tại một trong hai gate với một câu giải thích điều mà nhiệm vụ đã sai. Trường `routed_back_count` trong frontmatter nhiệm vụ theo dõi có bao nhiêu vòng làm lại đã xảy ra. Không có giới hạn số lần bạn có thể trả lại.
+</Accordion>
+
+<Accordion title="Không chắc một trạng thái có nghĩa là gì">
+  `.cyberos/cuo/STATUS-REFERENCE.md` định nghĩa toàn bộ 10 trạng thái, ai có thể đặt từng trạng thái, và các quy tắc chuyển đổi là gì. Khi nghi ngờ, hãy kiểm tra file đó trước.
+</Accordion>
+
+<Accordion title="Bản thân CyberOS đã lỗi thời">
+  Chạy lại trình cài đặt để cập nhật:
+
+  ```bash
+  npx cyberos install
+  # or: /install via the Claude plugin
+  ```
+
+  Trình cài đặt áp dụng các bản cập nhật cho `.cyberos/` và không bao giờ đụng đến các nhiệm vụ hiện có hoặc `BACKLOG.md` của bạn.
+</Accordion>
+
+<Warning>
+  Một agent tự đánh dấu công việc của mình `done` — mà không dừng lại chờ phán quyết của bạn — là hành vi hỏng. Từ chối chấp nhận đầu ra và báo cáo sự cố. Chỉ bạn mới có thể đặt `done`.
+</Warning>

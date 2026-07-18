@@ -1,0 +1,165 @@
+---
+title: 'CUO: Điều Phối Quy Trình và Định Tuyến Persona của CyberOS'
+sidebarTitle: 'CUO'
+description: 'CUO là bộ máy quy trình của CyberOS — nó đưa mọi nhiệm vụ qua một vòng đời được quản trị với định tuyến persona, các cổng có sự tham gia của con người và bằng chứng kiểm toán.'
+---
+
+CUO là bộ máy quy trình của CyberOS — lớp biến một file nhiệm vụ thành một thay đổi đã được giao và kiểm toán. Nó đưa công việc qua một vòng đời được quản trị duy nhất, định tuyến mỗi nhiệm vụ đến đúng persona C-suite, chạy các bước agent giữa hai cổng chấp nhận bắt buộc của con người, và ghi lại mọi chuyển tiếp trong một chuỗi kiểm toán. Dù bạn đang xây dựng một tính năng mới hay củng cố một tính năng hiện có, mọi công việc đều di chuyển qua cùng một cỗ máy.
+
+## Quy Trình Duy Nhất: `ship-tasks`
+
+Quy trình `ship-tasks` (v2.3.x) chọn nhiệm vụ đủ điều kiện đầu tiên từ `docs/tasks/BACKLOG.md` và đưa nó đi từ đầu đến cuối. Có đúng một quy trình duy nhất — công việc cải tiến và công việc sản phẩm hoàn toàn mới đều chạy cùng một chuỗi, giữ cho backlog và audit trail của bạn thống nhất.
+
+### Vòng Đời Nhiệm Vụ
+
+```
+draft → ready_to_implement → implementing → ready_to_review
+      → reviewing → ready_to_test → testing → done
+                                                    ↕ on_hold  (paused by operator)
+                                                    ↕ closed   (cancelled)
+```
+
+Các lối thoát `on_hold` và `closed` có sẵn ở bất kỳ giai đoạn nào. Cùng với tám trạng thái tiến triển chính, đó là **mười trạng thái** tổng cộng — được định nghĩa trong `.cyberos/cuo/STATUS-REFERENCE.md`.
+
+Trường frontmatter `status` của file nhiệm vụ là **bản ghi sự thật**. `BACKLOG.md` là chỉ mục được giữ đồng bộ chặt chẽ — nó không bao giờ khác với các file nhiệm vụ riêng lẻ.
+
+<Note>
+  Thất bại không bao giờ dẫn đến trạng thái cuối. Một nhiệm vụ bị chặn hoặc thất bại sẽ định tuyến trở lại `ready_to_implement` với `routed_back_count` tăng lên một. Agent ghi lại lý do và chọn nhiệm vụ đủ điều kiện tiếp theo.
+</Note>
+
+### Cấu Trúc File Nhiệm Vụ
+
+Mỗi nhiệm vụ là một file markdown với frontmatter có cấu trúc. Tạo một cái trong `docs/tasks/<module>/task-<MODULE>-<NNN>-<slug>.md`:
+
+```yaml
+---
+id: TASK-SHOP-001
+title: Add a login rate limit
+module: shop
+class: product          # product = new capability; improvement = hardening/refactor/fix
+status: ready_to_implement
+priority: MUST
+depends_on: []
+routed_back_count: 0
+---
+```
+
+Thêm một dòng tương ứng vào `docs/tasks/BACKLOG.md`. Các dòng thuộc lớp improvement mang thẻ `(improvement)`; dòng product không có thẻ. Không bao giờ có file backlog thứ hai.
+
+## Cổng Chấp Nhận của Con Người
+
+CUO yêu cầu hai phán quyết của con người cho mỗi nhiệm vụ. Agent chạy liên tục giữa hai phán quyết — nó không bao giờ dừng để xin xác nhận cho công việc mà nó có thể tự xác minh.
+
+<Steps>
+  <Step title="Cổng 1 — Chấp nhận Review">
+    Agent dừng ở chuyển tiếp `reviewing → ready_to_test` và trình bày gói code-review: diff triển khai, phát hiện review, ma trận edge-case, và bất kỳ bản ghi quyết định kiến trúc nào. Đọc các điều khoản chuẩn mực của nhiệm vụ so với thay đổi, sau đó nói **"approved"** để tiếp tục hoặc định tuyến ngược lại với một câu giải thích điều gì sai.
+  </Step>
+  <Step title="Cổng 2 — Chấp nhận cuối">
+    Agent dừng ở chuyển tiếp `testing → done` và trình bày bằng chứng test: đầu ra gate (build, lint, coverage, CAF, AWH), và bằng chứng theo từng tiêu chí chấp nhận. Khi mọi machine gate đều xanh và bạn đã hài lòng, nói **"done"** để đóng nhiệm vụ. Định tuyến ngược nếu có điều gì thiếu hoặc không đúng.
+  </Step>
+</Steps>
+
+<Warning>
+  Một agent tự đánh dấu công việc của chính mình `done` — hoặc chuyển tiếp `reviewing → ready_to_test` mà không có phán quyết của con người — đang thể hiện hành vi bị hỏng. Từ chối hành động đó, định tuyến nhiệm vụ ngược lại và báo cáo sự cố. Chỉ bạn mới có thể đặt `ready_to_test` (Cổng 1) và `done` (Cổng 2).
+</Warning>
+
+## Định Tuyến Persona
+
+CUO được xây dựng trên một danh mục các persona C-suite. Mỗi persona đại diện cho một vai trò điều hành có tên với lĩnh vực chuyên môn, dữ liệu tri thức đầu vào, và tập hợp quy trình riêng. Khi một nhiệm vụ đến, CUO xác định persona phù hợp nhất bằng cách khớp lĩnh vực, module và từ khóa của nhiệm vụ với danh mục persona — sau đó chọn quy trình phù hợp nhất trong thư mục của persona đó và gọi chuỗi skill được khai báo.
+
+Ví dụ các persona trong danh mục CUO:
+
+| Thư mục persona | Tiêu đề đầy đủ | Lĩnh vực chính |
+|---|---|---|
+| `chief-technology-officer` | Chief Technology Officer | Kỹ thuật, kiến trúc, bảo mật |
+| `chief-revenue-officer` | Chief Revenue Officer | Bán hàng, pipeline, go-to-market |
+| `chief-financial-officer` | Chief Financial Officer | Lập ngân sách, dự báo, báo cáo |
+| `chief-product-officer` | Chief Product Officer | Roadmap, yêu cầu, backlog |
+| `chief-legal-officer` | Chief Legal Officer | Hợp đồng, tuân thủ, rủi ro |
+
+Khi không có persona nào có điểm trên ngưỡng tin cậy, CUO leo thang cho bạn với ba ứng viên hàng đầu và lý do phù hợp. Khi một quy trình tham chiếu đến một kỹ năng chưa được giao, CUO phát ra một khối `MISSING_SKILL_REQUEST` và dừng tại bước đó.
+
+## Lệnh CLI
+
+CLI `cyberos-cuo` cung cấp các lệnh sau để kiểm tra và vận hành bộ máy quy trình:
+
+```bash
+# List all personas in the CUO catalog — shows shipped, planned, and extinct entries
+cyberos-cuo list-personas
+
+# Include extinct and planned personas in the listing
+cyberos-cuo list-personas --show-extinct --show-planned
+
+# List available workflows for a specific persona
+cyberos-cuo list-workflows chief-technology-officer
+
+# Dry-run a skill chain for a persona/workflow without invoking skills
+cyberos-cuo dry-run chief-technology-officer/ship-tasks
+```
+
+## Kích Hoạt CUO
+
+Bạn có thể kích hoạt quy trình `ship-tasks` từ ba điểm truy cập. Cả ba đều thực thi cùng một quy trình, cùng các cổng và cùng các phán quyết bắt buộc của con người.
+
+<CodeGroup>
+
+```text Claude Plugin
+/ship-tasks
+```
+
+```text Plain Text (any agent)
+Follow .cyberos/AGENT-ENTRY.md and drive the next eligible task in
+docs/tasks/BACKLOG.md. HITL required. repo_root = this repo.
+```
+
+```json MCP Tool
+{
+  "tool": "ship_task",
+  "arguments": {
+    "repo_root": "/path/to/your-repo"
+  }
+}
+```
+
+</CodeGroup>
+
+<Note>
+  Cài Claude plugin một lần thông qua **Settings → Plugins → Add**, trỏ đến `dist/cyberos/cyberos.plugin`. Lệnh `/ship-tasks` sẽ có sẵn trong mọi phiên.
+</Note>
+
+## Machine Gates
+
+Giữa hai cổng của con người, agent chạy các machine gate của repo bạn tự động thông qua `bash .cyberos/cuo/gates/run-gates.sh`. Các gate được phái sinh từ `audit-profile.yaml` của module bị chạm và bao gồm:
+
+- **Build và lint** — các kiểm tra biên dịch và phong cách chuẩn của repo
+- **Test và coverage** — sàn coverage 90% trên tất cả các file bị nhiệm vụ chạm vào
+- **CAF gate** — sàn code-audit trên toàn bộ thay đổi
+- **AWH gate** — chạy lại độc lập golden-set so với đường cơ sở đã niêm phong trong `modules/<m>/.awh/`
+
+Machine gate xanh là cần thiết nhưng không bao giờ đủ — bạn vẫn quyết định ở mỗi cổng chấp nhận của con người.
+
+## Dream Loop (Chế Độ Đề Xuất)
+
+CUO bao gồm một tính năng tự cải thiện tùy chọn gọi là **dream loop**. Khi được bật, nó đánh giá các cải tiến ứng viên cho các prompt kỹ năng, cách dùng từ trong rubric kiểm toán, thứ tự các bước quy trình và các ngưỡng golden-set — và ghi lại những gì nó sẽ làm mà không áp dụng bất cứ điều gì.
+
+Mặc định được giao là `mode: propose`. Chuyển sang `auto-apply` yêu cầu bốn khóa tường minh được thỏa mãn đồng thời:
+
+1. `enabled: true` trong `modules/cuo/config/dream.yaml` với kill switch không đặt
+2. `mode: auto` được đặt trong cấu hình
+3. Cờ runtime tường minh `--allow-auto-apply` được truyền cho runner
+4. Bạn đang ở trên một nhánh dream chuyên biệt có tên chứa `"dream"`
+
+Ngay cả trong chế độ `auto`, vòng lặp không bao giờ commit, push hay deploy. Bạn xem xét diff đã áp dụng và tự commit nó. Ghi đè mọi thứ bất kỳ lúc nào:
+
+```bash
+export CYBEROS_DREAM_KILL=1   # hard stop, regardless of config
+```
+
+<CardGroup cols={2}>
+  <Card title="Quy trình Ship Tasks" icon="rocket" href="/guides/ship-tasks-workflow">
+    Hướng dẫn từng bước về toàn bộ vòng đời `ship-tasks`, từ việc viết file nhiệm vụ đầu tiên đến khi giao thay đổi.
+  </Card>
+  <Card title="Human-in-the-Loop" icon="user-check" href="/guides/human-in-the-loop">
+    Đi sâu vào hai cổng chấp nhận: agent trình bày bằng chứng gì, cách định tuyến ngược, và điều gì được tính là phán quyết hợp lệ.
+  </Card>
+</CardGroup>

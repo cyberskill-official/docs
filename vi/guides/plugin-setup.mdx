@@ -1,0 +1,94 @@
+---
+title: 'Cấu hình CyberOS Claude Plugin và các Slash Command'
+sidebarTitle: 'Cài đặt Plugin'
+description: 'Thêm plugin CyberOS vào Claude Code hoặc Claude Desktop để truy cập một lệnh cho /install, /ship-tasks, /update, /changelog và /help.'
+---
+
+CyberOS Claude plugin là lớp tiện ích đóng gói toàn bộ quy trình nhiệm vụ dưới dạng các lệnh của host. Sau khi cài đặt, nó cung cấp cho bạn năm slash command — `/install`, `/update`, `/changelog`, `/help`, và `/ship-tasks` — trực tiếp trong Claude Code, Claude Desktop, hoặc Cowork, mà không cần sao chép prompt hay tham chiếu đường dẫn file thủ công. Plugin không bắt buộc để sử dụng CyberOS; nó là một lối tắt trên hệ thống dựa trên tài liệu vốn hoạt động với bất kỳ agent nào.
+
+## Các lệnh của plugin
+
+| Lệnh | Chức năng |
+|---|---|
+| `/install [repo]` | Cài đặt hoặc cập nhật CyberOS trong kho mã — tự động phát hiện các lệnh gate, đưa `.cyberos/` vào, tạo khung `docs/tasks/BACKLOG.md`, và ghi các file entry cho agent. Idempotent. |
+| `/update [repo]` | Kiểm tra `.cyberos/VERSION` đã cài đặt so với payload có sẵn và áp dụng bản cập nhật khi bạn xác nhận. Chỉ đọc cho đến khi bạn đồng ý. |
+| `/changelog [repo]` | Báo cáo phiên bản đã cài đặt và những gì đã thay đổi gần đây. |
+| `/help` | In ra các lệnh, vòng đời nhiệm vụ, hai human gate, và vị trí các thứ trong một kho mã đã được khởi tạo. |
+| `/ship-tasks` | Điều khiển nhiệm vụ đủ điều kiện tiếp theo trong `docs/tasks/BACKLOG.md` từ đầu đến cuối: triển khai → xem xét → kiểm thử → hoàn thành. Dừng lại tại cả hai human gate. |
+
+---
+
+## Cài đặt plugin
+
+<Tabs>
+  <Tab title="Claude Code">
+    <Steps>
+      <Step title="Thêm marketplace">
+        Chạy lệnh sau trong phiên Claude Code của bạn, trỏ đến thư mục payload đã build:
+
+        ```
+        /plugin marketplace add <path to dist/cyberos>
+        ```
+      </Step>
+
+      <Step title="Cài đặt plugin từ marketplace">
+        ```
+        /plugin install cyberos@cyberos
+        ```
+
+        Claude Code sẽ xác nhận plugin đang hoạt động. Năm lệnh giờ đây có sẵn trong bất kỳ phiên làm việc với kho mã nào.
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Claude Desktop và Cowork">
+    <Steps>
+      <Step title="Mở cài đặt Plugin">
+        Vào **Settings → Plugins → Add**.
+      </Step>
+
+      <Step title="Chọn file plugin">
+        Điều hướng đến payload CyberOS của bạn và chọn `dist/cyberos/cyberos.plugin`.
+
+        <Tip>
+          Sử dụng file `.plugin` (không phải thư mục). Bộ chọn Add sẽ làm mờ nút Open trên một thư mục — gói file đơn là mục tiêu cài đặt chính xác cho Claude Desktop và Cowork.
+        </Tip>
+      </Step>
+
+      <Step title="Xác nhận kích hoạt">
+        Plugin xuất hiện trong danh sách Plugins của bạn với tên **cyberos**. Cả năm lệnh giờ đây có sẵn trong mọi phiên.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+---
+
+## Con người trong quy trình (human-in-the-loop) là bắt buộc
+
+Plugin không thay đổi hợp đồng quy trình cơ bản. Mọi nhiệm vụ vẫn yêu cầu hai phán quyết được ghi nhận của con người trước khi đạt tới `done`:
+
+1. **Gate 1 — Chấp nhận xem xét** (`reviewing → ready_to_test`): agent trình bày những gì nó đã xây dựng và các phát hiện xem xét của nó, sau đó dừng lại. Bạn đọc các điều khoản nhiệm vụ đối chiếu với thay đổi và nói "approved" để tiếp tục, hoặc trả lại với lý do có gì sai.
+2. **Gate 2 — Chấp nhận cuối cùng** (`testing → done`): agent trình bày bằng chứng kiểm thử và đầu ra của gate, sau đó dừng lại. Bạn chấp nhận với "done" hoặc trả lại.
+
+Agent không bao giờ tự đặt `ready_to_test` hoặc `done`. Một agent tuyên bố đã làm như vậy là đang hành xử sai — hãy báo cáo.
+
+---
+
+## Đi sâu vào kỹ năng ship-tasks
+
+`/ship-tasks` không chỉ là một lối tắt — nó là một kỹ năng độc lập đóng gói bản sao riêng của quy trình:
+
+- `ship-tasks.md` — toàn bộ quy tắc quy trình
+- `EXECUTION-DISCIPLINE.md` — cách các agent phải hành xử giữa các gate
+- `STATUS-REFERENCE.md` — 10 trạng thái nhiệm vụ và ai có thể đặt từng trạng thái
+
+Vì học thuyết được đóng gói bên trong kỹ năng, `/ship-tasks` hoạt động ngay cả khi `.cyberos/` không có mặt trong kho mã hiện tại. Kỹ năng luôn mang theo các quy tắc mà nó cần.
+
+---
+
+## Tính độc lập với agent
+
+<Note>
+  Claude plugin là tiện ích, không phải yêu cầu bắt buộc. Việc cài đặt CyberOS sẽ ghi xương sống chuẩn `AGENTS.md`, `.cyberos/AGENT-ENTRY.md`, và các file trỏ cho từng agent được hỗ trợ. Trỏ bất kỳ agent dùng file-và-shell nào — Codex, Cursor, Gemini, Grok, hoặc các agent khác — đến `AGENTS.md` hoặc `.cyberos/AGENT-ENTRY.md`, và nó sẽ điều khiển cùng một quy trình với cùng hai human gate bắt buộc. Plugin thêm quyền truy cập slash-command bên trên; hệ thống nền tảng hoàn toàn độc lập với agent.
+</Note>

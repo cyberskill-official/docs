@@ -1,0 +1,170 @@
+---
+title: 'CyberOS AUTH: Tùy Chọn Đăng Nhập, Vai Trò và Thiết Lập MFA'
+sidebarTitle: 'Auth'
+description: 'Quản lý các phương thức đăng nhập, đăng ký passkey MFA, truy cập theo vai trò, thu hồi phiên và ngoại lệ chính sách di chuyển trong CyberOS AUTH.'
+---
+
+CyberOS AUTH là lớp danh tính và truy cập bảo vệ mọi module trên nền tảng. Nó cung cấp cho bạn các tùy chọn đăng nhập linh hoạt — email/mật khẩu, passkey, Google SSO, hoặc IdP doanh nghiệp toàn công ty — và thực thi truy cập theo vai trò để mỗi người trong nhóm của bạn thấy chính xác những gì họ cần và không hơn. Mọi lần thử đăng nhập, thử thách MFA, gán vai trò và thu hồi phiên đều được ghi vào một audit log bất biến, liên kết chuỗi hash mà bạn có thể duyệt bất cứ lúc nào. Khi AUTH phát hiện đăng nhập từ một vị trí bất thường, nó sẽ thách thức bạn với yếu tố thứ hai trước khi cấp quyền truy cập, giữ tài khoản của bạn an toàn ngay cả khi mật khẩu bị lộ.
+
+## Phương Thức Đăng Nhập
+
+CyberOS hỗ trợ bốn đường đăng nhập. Tenant admin của bạn quyết định phương thức nào được bật trong **Tenant Settings → Authentication**.
+
+<CardGroup cols={2}>
+  <Card title="Email + Mật khẩu" icon="lock">
+    Đăng nhập bằng địa chỉ email đã đăng ký và mật khẩu của bạn. Nếu tenant của bạn yêu cầu MFA, bạn sẽ được nhắc chạm passkey hoặc security key sau khi mật khẩu được chấp nhận.
+  </Card>
+  <Card title="Passkey (không mật khẩu)" icon="fingerprint">
+    Nếu bạn đã đăng ký một passkey hoặc security key FIDO2, bạn có thể đăng nhập mà không cần gõ mật khẩu. Thiết bị hoặc hardware key của bạn xử lý nghi thức xác thực.
+  </Card>
+  <Card title="Google SSO" icon="google">
+    Nhấp **Sign in with Google** trên màn hình đăng nhập. Không cần thiết lập thêm ở phía bạn — khi admin đã kết nối Google Workspace trong **Tenant Settings → SSO**, nút sẽ xuất hiện tự động.
+  </Card>
+  <Card title="SAML 2.0 Enterprise SSO" icon="building">
+    Nếu công ty bạn dùng Azure AD, Okta hoặc Google Workspace làm nhà cung cấp danh tính, admin có thể cấu hình SAML 2.0 SSO. Bạn sẽ được chuyển hướng đến trang đăng nhập của công ty và quay lại CyberOS sau khi xác thực ở đó.
+  </Card>
+</CardGroup>
+
+<Note>
+  **Google SSO:** Tenant admin của bạn cấu hình kết nối IdP Google Workspace một lần trong **Tenant Settings → SSO**. Sau đó, mọi người trong nhóm chỉ cần nhấp **Sign in with Google** — không cần thiết lập cá nhân.
+</Note>
+
+---
+
+## Truy Cập Theo Vai Trò
+
+Mỗi tài khoản trong CyberOS mang một hoặc nhiều vai trò. Các vai trò của bạn quyết định module nào bạn có thể mở, bản ghi nào bạn có thể tạo hoặc chỉnh sửa, và màn hình admin nào bạn có thể xem. Vai trò được gán bởi tenant admin và được hiển thị trên trang hồ sơ của bạn dưới **Settings → My Roles**.
+
+<Tabs>
+  <Tab title="Vai trò Thành viên">
+    Các vai trò này bao gồm thành viên nhóm điển hình hàng ngày. Hầu hết mọi người chỉ giữ đúng một vai trò.
+
+    | Vai trò | Bạn có thể làm gì |
+    |---|---|
+    | **Tenant Member** | Truy cập tất cả các module tiêu chuẩn (CHAT, KB, PROJ, TIME, v.v.) cho tenant của bạn. Vai trò mặc định mà mọi thành viên mới nhận. |
+    | **Founder** | Toàn quyền đọc cross-module, bao gồm cả báo cáo đặc quyền. Gán vai trò này yêu cầu một passkey hoặc security key đã đăng ký. |
+    | **CFO / CTO / COO / CHRO / CMO / CPO / CSO / CLO / CDO / DPO / CAIO / CSECO** | Các vai trò chức năng C-suite mở khóa các view module tương ứng (ví dụ CFO xem tóm tắt bảng lương REW; CHRO xem hợp đồng HR). Mỗi vai trò cấp quyền đọc/ghi phù hợp với chức năng. |
+    | **Client Portal User** | Khách hàng bên ngoài hoặc đối tác với quyền truy cập chỉ đọc vào cổng khách hàng. Được gán bởi admin; không thể tự gán. |
+  </Tab>
+  <Tab title="Vai trò Admin">
+    Vai trò admin kiểm soát cấu hình nền tảng và chỉ được gán cho những người chịu trách nhiệm vận hành CyberOS cho tổ chức của bạn.
+
+    | Vai trò | Bạn có thể làm gì |
+    |---|---|
+    | **Tenant Admin** | Quản lý thành viên, vai trò, cấu hình SSO, chính sách di chuyển và thanh toán cho tenant của bạn. Toàn quyền đọc trên tất cả module. |
+    | **Root Admin** | Vai trò operator cross-tenant chỉ dành cho nhân viên CyberSkill. Không hiển thị cho người dùng tenant. |
+    | **Service Account** | Các tài khoản không phải con người được dùng bởi tích hợp và pipeline tự động. |
+    | **Agent Persona** | Danh tính AI agent (ví dụ CUO router). Xuất hiện trong CHAT và KB như là các đồng đội AI. |
+  </Tab>
+  <Tab title="Vai trò Bên ngoài">
+    Các vai trò này được đặt riêng và không thể tự gán. Chúng được cấp bởi admin của bạn hoặc bởi CyberSkill.
+
+    | Vai trò | Mục đích |
+    |---|---|
+    | **Auditor** | Kiểm toán viên bên ngoài với quyền đọc audit log và các báo cáo được chỉ định. |
+    | **Regulator** | Người quan sát của cơ quan quản lý. Chỉ đọc, giới hạn theo từng hoạt động điều tiết. |
+    | **Billing System** | Vai trò nội bộ cho tự động hóa webhook Stripe/VietQR. |
+  </Tab>
+</Tabs>
+
+<Note>
+  Các vai trò đang hoạt động của bạn luôn hiển thị tại **Settings → My Account → Roles**. Nếu bạn tin rằng mình đang thiếu quyền truy cập, hãy liên hệ tenant admin — thay đổi vai trò có hiệu lực ngay lập tức ở lần đăng nhập tiếp theo (hoặc khi làm mới token trong vòng một giờ).
+</Note>
+
+---
+
+## Đăng Ký Passkey và MFA
+
+CyberOS sử dụng WebAuthn Level 3 (FIDO2) cho xác thực đa yếu tố. Một passkey có thể là sinh trắc học của thiết bị (Face ID, Touch ID, Windows Hello) hoặc security key phần cứng (YubiKey, Titan Key). Sau khi đăng ký, passkey của bạn phục vụ như yếu tố thứ hai sau khi đăng nhập bằng mật khẩu — hoặc như một thông tin đăng nhập độc lập không cần mật khẩu.
+
+<Steps>
+  <Step title="Mở Security Settings">
+    Đi đến **Settings → Security → Passkeys & MFA**. Bạn thấy danh sách các yếu tố đã đăng ký (trống nếu bạn chưa đăng ký cái nào).
+  </Step>
+  <Step title="Bắt đầu đăng ký">
+    Nhấp **Add passkey or security key**. Đặt cho nó một nhãn (ví dụ "MacBook Touch ID" hoặc "YubiKey 5 NFC") để bạn có thể nhận diện sau này.
+  </Step>
+  <Step title="Hoàn tất nghi thức trình duyệt">
+    Trình duyệt hoặc hệ điều hành sẽ nhắc bạn chạm security key hoặc sử dụng sinh trắc học. Làm theo hướng dẫn trên màn hình. Toàn bộ nghi thức mất dưới 10 giây.
+  </Step>
+  <Step title="Lưu mã khôi phục của bạn">
+    Sau khi đăng ký, CyberOS tạo 10 mã khôi phục dùng một lần. **Tải xuống hoặc in chúng ngay bây giờ** và cất giữ ở nơi an toàn. Mỗi mã có 8 ký tự và có thể dùng đúng một lần nếu bạn từng mất truy cập vào tất cả các yếu tố đã đăng ký.
+  </Step>
+</Steps>
+
+**Khi đăng nhập với MFA được bật**, sau khi bạn gửi mật khẩu, CyberOS trình bày màn hình "Verify your identity". Chạm security key hoặc hoàn thành nhắc sinh trắc học. Nếu thành công, bạn được đăng nhập ngay lập tức.
+
+<Warning>
+  Nếu bạn mất tất cả passkey đã đăng ký và không còn mã khôi phục nào, hãy liên hệ tenant admin để đặt lại các yếu tố MFA của bạn. Không có một trong hai, truy cập không thể được khôi phục nếu không có sự can thiệp của admin.
+</Warning>
+
+---
+
+## Chính Sách Di Chuyển GeoIP
+
+CyberOS giám sát vị trí đăng nhập để bảo vệ tài khoản của bạn khỏi trộm cắp thông tin đăng nhập. Khi một lần đăng nhập có vẻ đến từ một châu lục khác với lần đăng nhập trước, hoặc di chuyển nhanh hơn mức có thể về mặt vật lý, AUTH kích hoạt một thử thách di chuyển.
+
+**Những gì bạn thấy khi thử thách di chuyển kích hoạt:**
+
+> *"Chúng tôi nhận thấy một lần đăng nhập từ vị trí mới. Vui lòng xác minh với passkey hoặc security key của bạn để tiếp tục."*
+
+Bạn không bị chặn — bạn được yêu cầu xác nhận với yếu tố thứ hai. Khi bạn vượt qua thử thách MFA, phiên tiếp tục bình thường.
+
+**Nếu chính sách của tenant được đặt để chặn hoàn toàn các lần đăng nhập bất thường**, bạn sẽ thấy:
+
+> *"Đăng nhập bị chặn: phát hiện vị trí bất thường. Liên hệ admin hoặc thử lại từ mạng thông thường của bạn."*
+
+### Tạo Ngoại Lệ Chính Sách Di Chuyển
+
+Nếu bạn thường xuyên di chuyển và muốn tránh các thử thách vị trí lặp đi lặp lại, hãy hỏi **Tenant Admin** hoặc **Security Admin** của bạn để tạo một mục allowlist cho các dải IP bạn sử dụng khi di chuyển (ví dụ mạng khách sạn hoặc nút thoát VPN). Sau khi được thêm, các lần đăng nhập từ các địa chỉ đó được coi là đáng tin cậy và bỏ qua kiểm tra di chuyển.
+
+Admin có thể quản lý allowlist tại **Admin → Security → Travel Policy → CIDR Allowlist**.
+
+---
+
+## Vòng Đời Phiên và Hết Hạn Token
+
+Khi bạn đăng nhập, CyberOS phát hành một **access token** (có hiệu lực 1 giờ) và một **refresh token** (có hiệu lực 7 ngày). Trình duyệt hoặc ứng dụng desktop quản lý điều này tự động — bạn vẫn được đăng nhập miễn là bạn dùng CyberOS ít nhất một lần mỗi 7 ngày.
+
+<AccordionGroup>
+  <Accordion title="Phiên của bạn trông như thế nào">
+    Các phiên đang hoạt động của bạn được liệt kê tại **Settings → Security → Active Sessions**. Mỗi mục hiển thị loại thiết bị, vị trí xấp xỉ và thời gian thấy lần cuối. Bạn có thể thu hồi bất kỳ phiên nào bạn không nhận ra.
+  </Accordion>
+  <Accordion title="Khi nào token hết hạn">
+    Access token 1 giờ của bạn được làm mới âm thầm trong nền mỗi khi bạn tương tác với nền tảng. Nếu bạn đóng trình duyệt hơn 7 ngày, refresh token của bạn hết hạn và bạn được yêu cầu đăng nhập lại. Không có dữ liệu nào bị mất — chỉ phiên kết thúc.
+  </Accordion>
+  <Accordion title="Thu hồi một phiên">
+    Đi đến **Settings → Security → Active Sessions**, tìm phiên bạn muốn kết thúc và nhấp **Revoke**. Phiên bị vô hiệu ngay lập tức — bất kỳ tab trình duyệt nào sử dụng phiên đó sẽ được đăng xuất trong vòng vài giây. Admin cũng có thể thu hồi phiên cho bất kỳ thành viên nào từ **Admin → Members → [member] → Sessions**.
+  </Accordion>
+  <Accordion title="Đăng xuất mọi nơi">
+    Nhấp **Revoke all other sessions** trên trang Active Sessions để vô hiệu ngay lập tức mọi phiên trừ phiên hiện tại của bạn. Sử dụng cái này nếu bạn nghĩ tài khoản của mình đã bị xâm phạm.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Audit Log
+
+Mọi sự kiện xác thực được ghi vào một audit log liên kết chuỗi hash — đăng nhập, đăng xuất, các lần thử thất bại, thử thách MFA, cờ di chuyển và thay đổi vai trò đều xuất hiện ở đây.
+
+- **Thành viên** có thể xem lịch sử đăng nhập của chính họ tại **Settings → Security → Sign-in History**.
+- **Tenant Admin** có thể xem đầy đủ audit log auth toàn tenant tại **Admin → Audit Log → Authentication**.
+
+Mỗi mục hiển thị timestamp, loại sự kiện, IP nguồn (được hash để bảo mật) và kết quả (thành công, thử thách, chặn hoặc thất bại).
+
+<Note>
+  Các dòng audit là bất biến và liên kết chuỗi hash — không ai có thể xóa hoặc thay đổi chúng. Chuỗi được neo vào hạ tầng kiểm toán của module memory CyberOS để có khả năng xác minh bằng mật mã học.
+</Note>
+
+---
+
+## Lỗi Auth Thường Gặp
+
+| Lỗi | Có nghĩa là gì | Phải làm gì |
+|---|---|---|
+| **401 Unauthorized** | Phiên của bạn đã hết hạn hoặc token không hợp lệ. | Đăng nhập lại. Nếu vẫn xảy ra, xóa cache trình duyệt. |
+| **403 Forbidden** | Bạn đã đăng nhập nhưng không có quyền truy cập tài nguyên này. | Kiểm tra vai trò của bạn tại **Settings → My Account → Roles**. Hỏi admin nếu bạn cần quyền truy cập. |
+| **429 Too Many Attempts** | Bạn đã vượt quá 10 lần thử đăng nhập trong một phút từ mạng của bạn, hoặc 5 lần thử cho tài khoản của bạn. | Đợi 60 giây và thử lại. Nếu tài khoản bị khóa, hãy liên hệ admin. |
+| **Geo-block: unusual location** | Chính sách di chuyển của tenant được đặt để chặn các đăng nhập từ các châu lục mới. | Liên hệ admin để thêm dải IP hiện tại của bạn vào allowlist, hoặc kết nối từ mạng đáng tin cậy. |
+| **Needs MFA challenge** | Chính sách di chuyển hoặc bảo mật yêu cầu bạn xác minh với yếu tố thứ hai trước khi phiên được cấp. | Hoàn thành nhắc passkey hoặc security-key. Sử dụng mã khôi phục nếu thiết bị của bạn không có sẵn. |
+| **Account revoked** | Tài khoản của bạn đã bị vô hiệu bởi tenant admin. | Liên hệ admin HR hoặc nhóm IT. |

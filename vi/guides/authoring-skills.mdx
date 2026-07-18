@@ -1,0 +1,174 @@
+---
+title: 'Xây dựng cặp kỹ năng Author và Audit CyberOS tùy chỉnh'
+sidebarTitle: 'Viết kỹ năng'
+description: 'Xây dựng cặp kỹ năng author/audit tùy chỉnh cho CyberOS: tạo khung từ mẫu, định nghĩa hợp đồng SKILL.md, và kết nối nó vào chuỗi quy trình CUO.'
+---
+
+Viết một kỹ năng CyberOS tùy chỉnh cho phép bạn mở rộng nền tảng với các loại artifact mới, tạo tài liệu theo miền cụ thể, hoặc các quy trình tùy chỉnh vượt ra ngoài danh mục có sẵn. CyberOS cung cấp 52 kỹ năng ngay từ đầu (bao trùm mọi thứ từ statement of work đến architecture decision record), nhưng miền của đội bạn sẽ có các loại artifact riêng biệt cho sản phẩm của bạn — một cặp kỹ năng tùy chỉnh cung cấp cho bạn cùng một quy trình được quản trị, có thể kiểm toán, và có con người trong quy trình cho các artifact đó như nền tảng cung cấp cho mọi thứ khác.
+
+## Mẫu cặp author/audit
+
+Mọi loại artifact trong CyberOS được đại diện bởi hai kỹ năng:
+
+| Kỹ năng | Vai trò |
+|---|---|
+| `<artifact>-author` | Tạo artifact từ các đầu vào nguồn, dừng lại ở các gate HITL, và mặc định chain đến kỹ năng audit. |
+| `<artifact>-audit` | Xác thực artifact được tạo ra dựa trên một rubric, tạo báo cáo `.audit.md`, và gán điểm số. |
+
+Author viết; audit thẩm định. Chúng là các kỹ năng riêng biệt được chain với nhau. Bạn phải ship cả hai — một author mà không có audit tương ứng không phải là một bản phát hành hoàn chỉnh.
+
+---
+
+<Steps>
+  <Step title="Chọn tên">
+    Tên kỹ năng dùng `kebab-case`, chữ thường, chỉ chữ cái và số. Tuân theo quy ước `<artifact>-author` / `<artifact>-audit`.
+
+    Ví dụ tốt từ danh mục hiện có:
+    - `statement-of-work-author` / `statement-of-work-audit`
+    - `task-author` / `task-audit`
+    - `product-requirements-document-author` / `product-requirements-document-audit`
+
+    Chọn tên xác định rõ loại artifact. Nếu bạn không chắc, hãy xem danh mục hiện có trong `.cyberos/cuo/skills/` để tham khảo mẫu đặt tên.
+  </Step>
+
+  <Step title="Sao chép khung">
+    Từ thư mục `.cyberos/cuo/skills/` của bạn, sao chép cả hai thư mục mẫu:
+
+    ```bash
+    cd .cyberos/cuo/skills
+    cp -r _template/author my-artifact-author
+    cp -r _template/audit  my-artifact-audit
+    ```
+
+    Mỗi thư mục mẫu chứa toàn bộ các file bắt buộc. Bạn sẽ điền nội dung cụ thể cho artifact ở các bước sau.
+  </Step>
+
+  <Step title="Điền vào SKILL.md của author">
+    Mở `my-artifact-author/SKILL.md` và thay thế mọi placeholder `<ARTIFACT>` và `<artifact>` bằng tên artifact của bạn (viết hoa và viết thường tương ứng). Các trường chính cần cập nhật:
+
+    - **`name`** — đặt thành `my-artifact-author`
+    - **`description`** — mô tả khi nào gọi kỹ năng này và nó tạo ra gì
+    - **`expects.required_fields`** — liệt kê các trường đầu vào mà kỹ năng yêu cầu (ví dụ `source_files`, `output_dir`)
+    - **`produces.output_kind`** — đặt thành `artefact`
+    - **`depends_on_contracts`** — tham chiếu đến định nghĩa hợp đồng của artifact
+
+    Để nguyên hợp đồng scope, các công cụ MCP, quy tắc leo thang, và các trường tự thẩm định trừ khi bạn có lý do cụ thể để thay đổi.
+  </Step>
+
+  <Step title="Viết các tài liệu hỗ trợ author">
+    Điền vào các file còn lại trong `my-artifact-author/`:
+
+    | File | Nội dung viết |
+    |---|---|
+    | `INVARIANTS.md` | Liệt kê các kiểm tra tự thẩm định mà kỹ năng phải vượt qua mỗi lần gọi (streak độ tin cậy, streak sửa lỗi, vi phạm scope). |
+    | `PIPELINE.md` | Mô tả cách kỹ năng tạo ra artifact của mình từng bước và cách nó chain đến người anh em audit. |
+    | `STANDALONE_INTERVIEW.md` | Viết các câu hỏi mà kỹ năng đặt ra khi được gọi ở chế độ chat mà không có envelope đầu vào có cấu trúc. |
+    | `HUMAN_SUMMARY.md` | Định nghĩa những gì người dùng thấy trong chat sau khi mỗi batch hoàn thành. |
+    | `references/` | Sao chép nguyên văn từ mẫu: `ANTI_FABRICATION.md`, `UNTRUSTED_CONTENT.md`, `HITL_PROTOCOL.md`, `FAILURE_MODES.md`, `MANIFEST_SCHEMA.md`. Chỉ tùy chỉnh `HITL_PROTOCOL.md` (các danh mục HITL) và `MANIFEST_SCHEMA.md` (các trường schema). |
+  </Step>
+
+  <Step title="Định nghĩa schema đầu vào và đầu ra">
+    Chỉnh sửa các file JSON Schema trong `my-artifact-author/envelopes/`:
+
+    ```json title="envelopes/input.json (example)"
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "required": ["source_files", "output_dir"],
+      "properties": {
+        "source_files": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "output_dir": { "type": "string" },
+        "batch_size": { "type": "integer", "default": 3 },
+        "chain_to": {
+          "type": "array",
+          "default": ["my-artifact-audit"]
+        }
+      }
+    }
+    ```
+
+    Schema đầu ra (`envelopes/output.json`) nên bao gồm `skill_id`, `batch_outcome`, `artefacts_written`, và `next_skill_recommendation`.
+  </Step>
+
+  <Step title="Điền vào SKILL.md và RUBRIC.md của audit">
+    Mở `my-artifact-audit/SKILL.md` và thay thế các placeholder — description nên khai báo phiên bản rubric mà nó triển khai (ví dụ `my_artifact_rubric@1.0`).
+
+    Sau đó viết `my-artifact-audit/RUBRIC.md`. Đây là file quan trọng nhất trong kỹ năng audit — nó định nghĩa các quy tắc cụ thể mà audit áp dụng. Tuân theo cấu trúc từ `task-audit/RUBRIC.md` trong danh mục kỹ năng:
+
+    - Dùng các chuỗi `rule_id` ổn định (ví dụ `FM-001`, `SEC-001`, `QA-001`)
+    - Nhóm các quy tắc thành họ: `FM` (fabrication), `SEC` (security), `COND` (conditional), `QA` (quality), `SAFE` (safety), `STALE` (freshness)
+    - Mỗi quy tắc phải có thể được kiểm chứng — kỹ năng audit phải có thể tạo ra pass/fail rõ ràng cho nó
+  </Step>
+
+  <Step title="Thêm fixture chấp nhận và lặp lại">
+    Trong `my-artifact-author/acceptance/` và `my-artifact-audit/acceptance/`, thêm các file fixture golden — các đầu vào mẫu và các đầu ra mong đợi mà kỹ năng của bạn nên tạo ra.
+
+    Chạy kỹ năng audit đối với một đầu ra mẫu từ kỹ năng author của bạn:
+
+    ```
+    Skill: my-artifact-audit
+    Input: { "artefact_paths": ["./sample/MY-ARTIFACT-001-example.md"] }
+    ```
+
+    Lặp lại cho đến khi kỹ năng audit đạt 10/10 trên mọi mẫu. Không ship dưới 10/10.
+  </Step>
+
+  <Step title="Kết nối chain (tùy chọn)">
+    Để kỹ năng author tự động gọi kỹ năng audit sau khi mỗi artifact được ghi, đặt giá trị mặc định của `chain_to` trong `envelopes/input.json` của author:
+
+    ```json
+    "chain_to": {
+      "type": "array",
+      "default": ["my-artifact-audit"]
+    }
+    ```
+
+    CUO supervisor đọc `produces.next_skill_recommendation` từ envelope đầu ra và đưa kỹ năng audit vào hàng đợi trừ khi người dùng chọn không dùng. Đặt `chain_to` thành một mảng rỗng để tắt chain tự động.
+  </Step>
+</Steps>
+
+---
+
+## Các trường chính trong SKILL.md
+
+| Trường | Mục đích |
+|---|---|
+| `name` | Định danh kỹ năng duy nhất (kebab-case) |
+| `description` | Khi nào gọi, nó tạo ra gì, và nó KHÔNG làm gì |
+| `license` | `Apache-2.0` cho các kỹ năng CyberOS |
+| `invocation_modes` | `[standalone, chained]` cho hầu hết các kỹ năng |
+| `expects.required_fields` | Các trường đầu vào mà kỹ năng không thể chạy thiếu |
+| `expects.optional_fields` | Các đầu vào tùy chọn bao gồm `chain_to` |
+| `produces.output_kind` | `artefact` cho các kỹ năng tạo tài liệu |
+| `allowed_memory_scopes` | Những gì kỹ năng có thể đọc và ghi trong BRAIN |
+| `allowed_mcp_tools` | Các công cụ MCP mà kỹ năng được phép gọi |
+| `escalation` | CUO persona nào để leo thang khi có vấn đề pháp lý, bảo mật, hoặc tuân thủ |
+
+---
+
+## Điều gì xảy ra khi kỹ năng được gọi
+
+Khi một agent gọi kỹ năng của bạn, CyberOS:
+
+1. Tải `SKILL.md` và phát ra một khối `CONTRACT_ECHO` trước bất kỳ hành động file nào
+2. Xác thực envelope đầu vào dựa trên `envelopes/input.json`
+3. Chạy pipeline được định nghĩa trong `PIPELINE.md`
+4. Ghi artifact vào `output_dir` và tính hash của nó
+5. Chain đến kỹ năng audit nếu `chain_to` không rỗng
+6. Phát ra một tóm tắt batch và dừng lại tại bất kỳ pause HITL nào
+
+<Tip>
+  Bắt đầu từ một kỹ năng hiện có gần với những gì bạn muốn. `task-author` là tài liệu tham khảo đầy đủ nhất — nó bao trùm toàn bộ pipeline, các gate HITL, máy trạng thái manifest, và mẫu chain. Đọc nó trước khi viết kỹ năng của riêng bạn.
+</Tip>
+
+<CardGroup cols={2}>
+  <Card title="Skill module" icon="puzzle-piece" href="/modules/skill">
+    Duyệt danh mục đầy đủ 52 cặp kỹ năng author/audit có sẵn.
+  </Card>
+  <Card title="Ship Tasks Workflow" icon="arrow-right-arrow-left" href="/guides/ship-tasks-workflow">
+    Hiểu cách các kỹ năng phù hợp trong vòng đời nhiệm vụ đầu-cuối.
+  </Card>
+</CardGroup>

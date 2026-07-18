@@ -1,0 +1,218 @@
+---
+title: 'CyberOS CHAT: Nhắn Tin Nhóm, Cuộc Gọi và Đồng Đội AI'
+sidebarTitle: 'Chat'
+description: 'Gửi tin nhắn, bắt đầu cuộc gọi thoại và video, gọi @genie để nhận phản hồi AI, và tự động ghi log hoạt động CRM — tất cả bên trong CyberOS CHAT mà không cần công cụ ngoài.'
+---
+
+CyberOS CHAT là lớp nhắn tin tích hợp sẵn cho toàn bộ nhóm của bạn — kênh, tin nhắn trực tiếp, luồng và cuộc gọi thoại/video, tất cả trong một nơi mà không cần Slack, Zalo hay bất kỳ công cụ ngoài nào. Nó được thiết kế cho các nhóm native CyberOS: mọi tin nhắn sống bên trong tenant của bạn, cấp vào cùng chuỗi kiểm toán mà các module khác của bạn sử dụng, và kết nối trực tiếp với các năng lực AI, bản ghi CRM và luồng onboarding HR vận hành phần còn lại của nền tảng. Khi bạn @mention một đồng nghiệp hoặc gọi `@genie` trong bất kỳ luồng nào, CHAT biết bạn là ai, bạn thuộc kênh nào, và nhóm của bạn đang theo dõi những contact nào — không cần sao chép ngữ cảnh giữa các ứng dụng.
+
+<Warning>
+  **CHAT là một module P0 hiện đang được phát triển tích cực.** Nhắn tin cốt lõi, luồng, gọi `@genie` và cuộc gọi thoại/video đã có sẵn ngay bây giờ. Một số tính năng được mô tả trên trang này — như các trigger tự động ghi log CRM nâng cao và công cụ kiểm duyệt đầy đủ — đang được triển khai dần dần. Kiểm tra [changelog](/reference/changelog) để biết trạng thái mới nhất.
+</Warning>
+
+## Tính Năng Chính
+
+<CardGroup cols={2}>
+  <Card title="Kênh và Luồng" icon="messages">
+    Tổ chức cuộc hội thoại thành các kênh nhóm có tên (công khai hoặc riêng tư) và tin nhắn trực tiếp. Mỗi tin nhắn có thể tạo ra một luồng, giữ cho các phản hồi tập trung mà không làm rối timeline chính.
+  </Card>
+  <Card title="Gọi AI @genie" icon="sparkles">
+    Gõ `@genie` ở bất cứ đâu trong tin nhắn để gọi persona AI được hỗ trợ bởi CUO ngay tại chỗ. Genie trả lời trong luồng, được đặt nền tảng trên Knowledge Base và Memory của tenant, và trích dẫn nguồn.
+  </Card>
+  <Card title="Cuộc gọi Thoại và Video" icon="video">
+    Bắt đầu một cuộc gọi thoại hoặc video trực tiếp từ bất kỳ tiêu đề DM hoặc kênh nào. Cuộc gọi được tích hợp vào CHAT — không cần ứng dụng hội nghị riêng hoặc link ngoài.
+  </Card>
+  <Card title="Ghi log Hoạt động CRM" icon="address-book">
+    Tin nhắn và cuộc gọi liên quan đến các contact domain được theo dõi tự động ghi log dưới dạng hoạt động CRM. Timeline bán hàng và quản lý tài khoản của bạn luôn cập nhật mà không cần nhập tay.
+  </Card>
+</CardGroup>
+
+---
+
+## Làm Việc Với Kênh và Luồng
+
+CHAT tổ chức hội thoại ở hai cấp: **kênh** cho các chủ đề đang diễn ra và **luồng** cho các phản hồi tập trung trong một kênh.
+
+### Kênh
+
+Một kênh có thể là kênh **nhóm** (có tên, hiển thị trong sidebar, với một hoặc nhiều thành viên) hoặc **tin nhắn trực tiếp** (một cuộc hội thoại riêng tư giữa hai người). Kênh nhóm có thể là **công khai** (bất cứ ai trong tenant có thể duyệt và tham gia) hoặc **riêng tư** (chỉ mời).
+
+<Steps>
+  <Step title="Tạo một kênh">
+    Nhấp biểu tượng **+** bên cạnh **Channels** trong sidebar. Đặt tên kênh và một dòng chủ đề tùy chọn. Đặt hiển thị là **Public** nếu bạn muốn bất kỳ đồng đội nào có thể tìm và tham gia, hoặc **Private** để giữ chỉ mời.
+  </Step>
+  <Step title="Duyệt và tham gia kênh công khai">
+    Nhấp **Browse Channels** (biểu tượng la bàn trong sidebar) để xem tất cả các kênh công khai trong tenant của bạn. Nhấp **Join** để thêm bất kỳ kênh nào vào sidebar của bạn.
+  </Step>
+  <Step title="Bắt đầu một tin nhắn trực tiếp">
+    Nhấp biểu tượng **+** bên cạnh **Direct Messages** và chọn một đồng đội từ danh bạ. Một DM mở ngay lập tức.
+  </Step>
+  <Step title="Mở hoặc trả lời trong một luồng">
+    Di chuột qua bất kỳ tin nhắn nào và nhấp biểu tượng **Reply in thread**. Panel luồng mở ở bên phải. Tất cả phản hồi vẫn được lồng dưới tin nhắn gốc.
+  </Step>
+</Steps>
+
+### @Mention
+
+Gõ `@` theo sau bởi tên của bất kỳ đồng đội nào để mention họ. Họ nhận được huy hiệu thông báo trong sidebar, thông báo desktop nếu họ đã cấp quyền, và một điểm nhấn riêng biệt khi họ xem tin nhắn. Một huy hiệu phân biệt **mention** (tên của bạn được gọi) với tin nhắn **chưa đọc** thông thường.
+
+### Đính kèm File
+
+Kéo file vào khung tin nhắn, dán từ clipboard, hoặc nhấp biểu tượng **paperclip** trong composer để đính kèm file. Hình ảnh render inline; các file khác xuất hiện dưới dạng thẻ có thể tải xuống. Kích thước và số lượng file được đặt bởi admin của bạn.
+
+### Phím Tắt
+
+| Phím tắt | Hành động |
+|---|---|
+| `Ctrl/Cmd + K` | Mở quick switcher — chuyển đến bất kỳ kênh, DM, hoặc người nào |
+| `Enter` | Gửi tin nhắn |
+| `Shift + Enter` | Dòng mới trong composer |
+| `Escape` | Đóng sidebar drawer (viewport hẹp) |
+
+---
+
+## Sử Dụng @genie
+
+`@genie` là đồng đội AI được hỗ trợ bởi CUO có sẵn trong mọi kênh. Gọi `@genie` trong một tin nhắn khiến AI đọc ngữ cảnh luồng gần đây, truy vấn Knowledge Base và Memory của tenant, và đăng một phản hồi có nền tảng ngay tại chỗ — trực tiếp trong luồng, hiển thị cho mọi người trong kênh.
+
+### Ví Dụ Tương Tác
+
+> **Minh Tran** → `#project-alpha`  
+> `@genie can you summarise where we left off on the Q3 CRM integration? I've been out this week.`
+>
+> **@genie**  
+> Chắc chắn! Dựa trên 12 tin nhắn cuối trong luồng này và bài KB *CRM Integration Runbook v2* (cập nhật 14 tháng 6):
+> - Bắt tay auth API đã được Linh hoàn thành hôm thứ Ba.
+> - Job đồng bộ contact đang chạy nhưng có vấn đề mapping trường trên `phone_type` — được theo dõi trong PROJ-412.
+> - Bước tiếp theo: Linh đang giải quyết PROJ-412 trước cuối tuần; đồng bộ đầy đủ được lên kế hoạch cho thứ Hai.
+>
+> *Nguồn: luồng #project-alpha (12 tin nhắn cuối), KB: CRM Integration Runbook v2*
+
+<Tip>
+  Phản hồi của Genie được đặt nền tảng trên nội dung thực tế của tenant — nó đọc luồng hiện tại, các bài KB của bạn và Memory của nhóm. Luôn kiểm tra các nguồn được trích dẫn để có chi tiết đầy đủ. Bạn có thể yêu cầu Genie đi sâu hơn: `@genie can you pull the open issues from PROJ-412?`
+</Tip>
+
+### @genie Có Thể Giúp Gì
+
+<AccordionGroup>
+  <Accordion title="Tóm tắt bắt kịp">
+    Hỏi `@genie summarise this channel` hoặc `@genie what did I miss?` và Genie đọc các tin nhắn gần nhất và trả về một bản tóm tắt bullet ngắn gọn với ghi nhận người nói.
+  </Accordion>
+  <Accordion title="Trích xuất mục hành động">
+    Hỏi `@genie what are the open action items from this thread?` và Genie liệt kê các nhiệm vụ chưa hoàn thành mà nó tìm thấy trong cuộc hội thoại, sẵn sàng để bạn chuyển đổi thành ticket PROJ.
+  </Accordion>
+  <Accordion title="Gợi ý phản hồi thông minh">
+    Nhấp nút **✨ Suggest replies** trong thanh công cụ composer. Genie đề xuất ba tùy chọn phản hồi ngắn dựa trên ngữ cảnh luồng. Nhấp vào một để thả nó vào composer, sau đó chỉnh sửa hoặc gửi.
+  </Accordion>
+  <Accordion title="Dịch inline">
+    Di chuột qua bất kỳ tin nhắn nào và nhấp biểu tượng **Translate** để render nó ở ngôn ngữ trình duyệt của bạn. Các bản dịch được cache theo tin nhắn cho phiên.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Ghi Chú Cuộc Họp và Tích Hợp CRM
+
+CHAT được kết nối với feed hoạt động CRM. Khi nhóm của bạn giao tiếp với hoặc về một **contact domain được theo dõi** — một người hoặc công ty mà CRM của bạn đang theo dõi — các tương tác đó tự động được ghi log như là hoạt động CRM, để bản ghi tài khoản luôn cập nhật mà không cần ai đó chép ghi chú thủ công.
+
+**Hoạt động như thế nào từ góc nhìn của bạn:**
+
+- Khi bạn gửi tin nhắn trong một kênh bao gồm domain của một contact được theo dõi (ví dụ domain email của khách hàng), tin nhắn được ghi log như là một hoạt động CRM đối với contact đó.
+- Các cuộc gọi được thực hiện qua CHAT tới số điện thoại hoặc hồ sơ người dùng của contact được theo dõi cũng được ghi log, bao gồm thời lượng cuộc gọi.
+- Bản tóm tắt cuộc họp và mục hành động mà `@genie` trích xuất từ một luồng có thể được lưu trực tiếp vào bản ghi contact CRM bằng cách nhấp **Save to CRM** trong phản hồi của Genie.
+
+<Note>
+  Tự động ghi log hoạt động CRM áp dụng cho các contact có domain được đánh dấu **tracked** trong module CRM của bạn. Cuộc hội thoại chỉ giữa các đồng đội nội bộ không bao giờ được ghi log vào CRM. Admin của bạn kiểm soát domain nào được theo dõi trong **CRM → Settings → Tracked Domains**.
+</Note>
+
+---
+
+## Tùy Chọn Thông Báo
+
+Bạn kiểm soát cách mỗi kênh thông báo cho bạn. Nhấp biểu tượng **bell** trong tiêu đề kênh để chọn:
+
+| Cài đặt | Hành vi |
+|---|---|
+| **All messages** (mặc định) | Thông báo cho mọi tin nhắn mới trong kênh này |
+| **@mentions only** | Chỉ thông báo khi ai đó mention bạn theo tên |
+| **Mute** | Không thông báo; huy hiệu chưa đọc vẫn xuất hiện |
+
+Thông báo desktop xuất hiện khi tab trình duyệt của bạn ở nền và bạn đã cấp quyền thông báo. CyberOS xin quyền lần đầu tiên bạn chọn một kênh.
+
+---
+
+## Hành Động Tin Nhắn
+
+Di chuột qua bất kỳ tin nhắn nào để hiển thị thanh hành động, hoặc nhấn giữ trên thiết bị cảm ứng để mở action sheet.
+
+<CardGroup cols={2}>
+  <Card title="React" icon="face-smile">
+    Nhấp biểu tượng emoji để thêm một phản ứng. Trình chọn emoji đầy đủ mở từ nút **+** trên thanh reaction.
+  </Card>
+  <Card title="Reply in thread" icon="reply">
+    Mở một luồng tập trung cho tin nhắn. Số lượng phản hồi luồng xuất hiện trên bong bóng tin nhắn.
+  </Card>
+  <Card title="Edit" icon="pen">
+    Chỉnh sửa tin nhắn của chính bạn. Nhãn **edited** xuất hiện bên cạnh timestamp sau khi bạn lưu.
+  </Card>
+  <Card title="Delete" icon="trash">
+    Xóa mềm tin nhắn của bạn. Toast **Undo** xuất hiện trong vài giây trước khi việc xóa được commit. Chủ kênh và admin có thể xóa tin nhắn của bất kỳ thành viên nào.
+  </Card>
+</CardGroup>
+
+### Báo Cáo Tin Nhắn
+
+Nếu bạn thấy nội dung vi phạm chuẩn mực ứng xử của workspace, di chuột qua tin nhắn và nhấp **Report**. Chọn lý do (spam, quấy rối, nội dung bất hợp pháp, v.v.) và một ghi chú tùy chọn. Báo cáo được nộp riêng tư; người gửi không được thông báo. Admin xem xét báo cáo trong hàng đợi kiểm duyệt.
+
+<Note>
+  Các báo cáo hoàn toàn riêng tư. Người gửi không biết bạn đã nộp một cái. Báo cáo của bạn là một snapshot của tin nhắn tại thời điểm bạn nộp — nó được bảo tồn ngay cả khi người gửi sau đó chỉnh sửa hoặc xóa tin nhắn.
+</Note>
+
+---
+
+## Cấu Hình Admin
+
+### Thiết Lập Workspace
+
+Tenant Admin cấu hình CHAT tại **Admin → CHAT → Settings**:
+
+<ParamField path="default_channels" type="string[]">
+  Danh sách tên kênh mà mọi thành viên mới được tự động thêm vào khi tài khoản của họ được tạo. Thường bao gồm `#general` và `#announcements`.
+</ParamField>
+
+<ParamField path="attachment_max_bytes" type="integer">
+  Kích thước file tối đa mỗi đính kèm tính bằng byte. Mặc định là 5 MB. Tăng cho các tenant thường xuyên chia sẻ file thiết kế lớn hoặc bản ghi.
+</ParamField>
+
+<ParamField path="attachment_max_files" type="integer">
+  Số file tối đa có thể được đính kèm vào một tin nhắn. Mặc định là 10.
+</ParamField>
+
+### Tạo và Quản Lý Kênh
+
+Admin có thể tạo, lưu trữ và quản lý tất cả các kênh từ **Admin → CHAT → Channels**. Lưu trữ một kênh làm cho nó chỉ đọc và loại bỏ nó khỏi các sidebar đang hoạt động, nhưng toàn bộ lịch sử tin nhắn được giữ lại.
+
+### Hàng Đợi Kiểm Duyệt
+
+Admin và thành viên có vai trò moderator có thể truy cập hàng đợi kiểm duyệt tại **Admin → CHAT → Moderation**. Báo cáo được xếp hạng theo mức độ nghiêm trọng (tự làm hại > nội dung bất hợp pháp > bạo lực > quấy rối > spam) và được trình bày cũ nhất trước trong mỗi tầng mức độ. Khi xem xét một báo cáo về tin nhắn trực tiếp, chỉ tin nhắn được báo cáo duy nhất được hiển thị — không phải luồng DM xung quanh.
+
+<Tip>
+  CHAT được tích hợp với onboarding HR — các Thành viên mới được tự động thêm vào tất cả các kênh mặc định vào thời điểm tài khoản của họ được tạo trong quy trình onboarding. Không cần lời mời thủ công.
+</Tip>
+
+---
+
+## Sự Hiện Diện và Xác Nhận Đã Đọc
+
+CHAT hiển thị sự hiện diện trực tiếp cho các thành viên đang xem cùng kênh với bạn. Một chấm màu nhỏ bên cạnh avatar chỉ ra:
+
+- 🟢 **Online** — đang hoạt động trong CHAT ngay bây giờ
+- ⚫ **Offline** — không kết nối
+
+**Xác nhận đã đọc** xuất hiện dưới tin nhắn cuối cùng bạn gửi trong một DM hoặc kênh nhóm nhỏ. Khi tin nhắn của bạn đã được xem, tên của những người đọc xuất hiện bên dưới. Trong các kênh lớn, chỉ hiển thị số lượng.
+
+---
+
+## Chặn
+
+Bạn có thể chặn một thành viên khác để ngăn họ gửi cho bạn tin nhắn trực tiếp. Trong một kênh nhóm, tin nhắn của họ vẫn hiện diện (để cuộc hội thoại có ý nghĩa với người khác) nhưng nội dung của họ bị ẩn với bạn. Để chặn ai đó, mở thẻ hồ sơ của họ và nhấp **Block**. Để bỏ chặn, quay lại cùng thẻ hồ sơ đó.

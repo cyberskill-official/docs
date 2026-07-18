@@ -1,0 +1,108 @@
+---
+title: 'Quy trình ship-tasks: Vòng đời nhiệm vụ đầu-cuối'
+sidebarTitle: 'Ship Tasks'
+description: 'ship-tasks là quy trình CyberOS đưa mọi nhiệm vụ từ bản nháp đến hoàn thành. Tìm hiểu 10 trạng thái nhiệm vụ, quy tắc gate, và các vòng phục hồi khi thất bại.'
+---
+
+`ship-tasks` là quy trình CyberOS duy nhất đưa mọi đơn vị công việc từ đặc tả đến bàn giao. Không có quy trình riêng cho tính năng mới so với củng cố hay sửa lỗi — mọi công việc đều đi qua cùng một hệ thống. Một nhiệm vụ `class: product` và một nhiệm vụ `class: improvement` tuân theo các quy tắc vòng đời giống hệt nhau, chia sẻ một `BACKLOG.md`, và cả hai đều yêu cầu cùng hai gate chấp nhận bắt buộc của con người. Quy trình nằm trong `.cyberos/cuo/ship-tasks.md` bên trong bất kỳ kho mã đã khởi tạo CyberOS nào và cũng được đóng gói bên trong kỹ năng plugin `/ship-tasks`.
+
+## 10 trạng thái nhiệm vụ
+
+Một nhiệm vụ mang chính xác một trạng thái tại bất kỳ thời điểm nào. Các trạng thái tạo thành một vòng đời tuyến tính đơn với hai lối thoát.
+
+| # | Trạng thái | Ai có thể đặt | Ý nghĩa |
+|---|---|---|---|
+| 1 | `draft` | Tác giả hoặc agent | Đặc tả đang được viết; chưa được thẩm định. |
+| 2 | `ready_to_implement` | Tác giả hoặc agent | Đặc tả đạt thẩm định 10/10; đủ điều kiện để agent nhận. Cũng là trạng thái mà nhiệm vụ quay trở lại khi một bước trong chu trình thất bại. |
+| 3 | `implementing` | Agent | Agent đang tích cực viết mã và test. |
+| 4 | `ready_to_review` | Agent | Triển khai hoàn tất; đang chờ người xem xét nhận. |
+| 5 | `reviewing` | Agent hoặc con người | Người xem xét đang kiểm tra diff đối chiếu với các điều khoản quy phạm và tiêu chí chấp nhận. |
+| 6 | `ready_to_test` | **Chỉ con người (Gate 1)** | Người xem xét đã chấp nhận gói xem xét mã. |
+| 7 | `testing` | Agent hoặc con người | Agent đang chạy các gate và chứng minh từng tiêu chí chấp nhận. |
+| 8 | `done` | **Chỉ con người (Gate 2)** | Con người đã chấp nhận nhiệm vụ đã ship sau khi tất cả các gate máy đều xanh. Thành công cuối cùng. |
+| 9 | `on_hold` | Con người | Cố ý hoãn — bị hàng đợi mặc định bỏ qua. |
+| 10 | `closed` | Con người | Bị bỏ, từ chối, hoặc bị thay thế — vẫn ở trong BACKLOG.md để giữ dấu vết kiểm toán. |
+
+Định nghĩa có thẩm quyền của tất cả các trạng thái nằm trong `.cyberos/cuo/STATUS-REFERENCE.md`.
+
+---
+
+## Chỉ mục BACKLOG.md
+
+`docs/tasks/BACKLOG.md` là chỉ mục duy nhất cho mọi công việc. Một file bao trùm mọi module và mọi lớp nhiệm vụ — không bao giờ có file backlog thứ hai.
+
+**Để thêm một nhiệm vụ**, thêm một dòng vào phần module của bạn:
+
+```markdown
+| TASK-MYAPP-001 | Add login rate limit | ready_to_implement | MUST |
+```
+
+Với các nhiệm vụ `class: improvement`, thêm tag `(improvement)`:
+
+```markdown
+| TASK-MYAPP-002 | Refactor auth middleware | ready_to_implement | SHOULD | (improvement) |
+```
+
+Trường frontmatter `status:` của file nhiệm vụ là bản ghi chính thức. `BACKLOG.md` là chỉ mục được giữ đồng bộ với nó. Không bao giờ cập nhật một mà không cập nhật cái kia.
+
+---
+
+## Cách agent chọn nhiệm vụ
+
+Khi bạn kích hoạt `ship-tasks`, agent:
+
+1. Đọc `BACKLOG.md` và tìm tất cả các nhiệm vụ có `status: ready_to_implement`
+2. Lọc bỏ các nhiệm vụ có danh sách `depends_on` chứa bất kỳ nhiệm vụ nào chưa ở trạng thái `done`
+3. Chọn nhiệm vụ đủ điều kiện đầu tiên (theo thứ tự trong `BACKLOG.md`)
+4. Chuyển sang `implementing` và bắt đầu công việc
+
+Nếu không có nhiệm vụ đủ điều kiện, agent báo cáo rào cản và dừng lại. Kiểm tra các trường `depends_on` và trạng thái của các nhiệm vụ phụ thuộc nếu điều này xảy ra.
+
+---
+
+## Thất bại và trả lại
+
+Không có trạng thái thất bại cuối cùng trong vòng đời CyberOS. Khi một nhiệm vụ thất bại ở bất kỳ bước nào trong chu trình, quy trình sẽ trả lại:
+
+- Trạng thái nhiệm vụ trở về `ready_to_implement`
+- `routed_back_count` trong frontmatter nhiệm vụ tăng thêm 1
+- Lý do được ghi trong một dòng kiểm toán
+
+Trong lần chạy `ship-tasks` tiếp theo, nhiệm vụ được lấy lại từ đầu. Trường `routed_back_count` là tín hiệu cho bạn rằng một nhiệm vụ đã lặp lại — nếu con số cao, đặc tả hoặc cách tiếp cận triển khai có thể cần xem xét lại.
+
+---
+
+## Gates
+
+Gates là lớp xác minh máy giữa triển khai và xem xét của con người. Chúng phải xanh trước khi agent có thể yêu cầu bạn xem xét tại một trong hai human gate.
+
+Các lệnh gate của kho mã được lưu trong `.cyberos/gates.env` và chạy bằng:
+
+```bash
+bash .cyberos/cuo/gates/run-gates.sh
+```
+
+Trình cài đặt tự động phát hiện các lệnh build, lint, và test của bạn và ghi chúng vào `gates.env`. Chỉnh sửa file đó nếu các lệnh được tự động phát hiện là sai. Một `gates.env` chuẩn trông như sau:
+
+```bash
+GATE_BUILD="npm run build"
+GATE_LINT="npm run lint"
+GATE_TEST="npm test"
+```
+
+Gates chạy tự động như một phần của `ship-tasks`. Bạn cũng có thể chạy chúng thủ công bất kỳ lúc nào để kiểm tra sức khỏe kho mã.
+
+---
+
+<Note>
+  `ship-tasks` là độc lập với agent — cùng một quy trình, cùng bộ chạy gate, và cùng hai human gate hoạt động với Claude, Codex, Cursor, Gemini, Grok, hoặc bất kỳ agent nào có thể đọc file và chạy lệnh shell. Trỏ agent đến `AGENTS.md` hoặc `.cyberos/AGENT-ENTRY.md` và nó sẽ điều khiển quy trình đúng cách.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Human Gates" icon="shield-check" href="/guides/human-in-the-loop">
+    Hiểu chính xác cần kiểm tra gì tại Gate 1 và Gate 2, và cách phê duyệt hoặc trả lại.
+  </Card>
+  <Card title="Ship Your First Task" icon="rocket" href="/guides/first-task">
+    Hướng dẫn từng bước từ viết file nhiệm vụ đến hoàn thiện thay đổi.
+  </Card>
+</CardGroup>

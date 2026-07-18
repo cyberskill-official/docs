@@ -1,0 +1,172 @@
+---
+title: 'Module LEARN: Danh mục kỹ năng, engine VP và thăng chức'
+sidebarTitle: 'LEARN'
+description: 'CyberOS LEARN theo dõi mỗi thành viên nhóm có thể làm gì, tính Voting Power cho phân phối bonus và chạy quy trình hội đồng thăng chức peer-review.'
+---
+
+CyberOS LEARN là sổ cái năng lực — mỗi thành viên có thể làm gì, họ giỏi đến đâu, và điều đó chuyển thành thăng chức, trọng số quỹ bonus và mức độ sẵn sàng sabbatical như thế nào. Nó đóng ba vai trò riêng biệt trong nền tảng. Với vai trò là **danh mục kỹ năng**, nó duy trì một cây kỹ năng enum-đóng, có bằng chứng hỗ trợ, trên mọi chuyên môn. Với vai trò là **engine VP (Voting Power)**, nó tính toán một điểm số hàng quý có tính xác định cho mỗi thành viên mà REW dùng để cân trọng phân phối quỹ bonus. Với vai trò là **Hội đồng Chuyên môn (Specialist Council)**, nó chạy quy trình peer-review có cấu trúc làm cho mọi quyết định thăng chức minh bạch, do con người điều khiển và có thể bảo vệ được theo Điều 14 EU AI Act.
+
+<Note>
+  LEARN là một **module P1** — hiện đang trong giai đoạn kế hoạch/thiết kế và chưa sẵn sàng phổ biến. Các tính năng được mô tả ở đây phản ánh thiết kế P1 đã lên kế hoạch.
+</Note>
+
+## Danh mục kỹ năng
+
+LEARN duy trì một danh mục kỹ năng đóng — thành viên không thể tự phát minh kỹ năng dạng văn bản tự do. Mỗi kỹ năng thuộc về một chuyên môn, mang thang thành thạo 1–5 và yêu cầu bằng chứng cụ thể trước khi một tuyên bố cấp độ được chấp nhận.
+
+### Chuyên môn và cây kỹ năng
+
+<CardGroup cols={3}>
+  <Card title="Engineering" icon="code">
+    Ngôn ngữ, framework, hạ tầng, bảo mật và kỹ năng kiến trúc. ~60 kỹ năng ở P1.
+  </Card>
+  <Card title="Design" icon="pen-ruler">
+    Nghiên cứu UX, thiết kế thị giác, chuyển động và hệ thống thiết kế. ~25 kỹ năng ở P1.
+  </Card>
+  <Card title="Operations" icon="gears">
+    Quản lý dự án, thiết kế quy trình, tuân thủ và people ops. ~25 kỹ năng ở P1.
+  </Card>
+  <Card title="Business" icon="briefcase">
+    Bán hàng, đối tác, thành công của khách hàng và chiến lược. ~20 kỹ năng ở P1.
+  </Card>
+  <Card title="Finance" icon="calculator">
+    Kế toán, FP&A, thuế và quản trị doanh nghiệp. ~20 kỹ năng ở P1.
+  </Card>
+</CardGroup>
+
+### Cấp độ thành thạo và yêu cầu bằng chứng
+
+Mỗi cấp từ 1 đến 5 yêu cầu ít nhất một bằng chứng được liên kết. Hệ thống chấp nhận bốn loại bằng chứng:
+
+| Loại bằng chứng | Mô tả | Ngữ cảnh Việt Nam |
+|---|---|---|
+| `proj_contribution` | Một issue PROJ đã đóng hoặc tạo phẩm dự án nơi thành viên đóng vai trò đáng kể. | Bằng chứng chính ở cấp 1–3. |
+| `kb_post` | Một tài liệu KB được thành viên là tác giả hoặc chỉnh sửa đáng kể, sau đó được đồng nghiệp trích dẫn. | Đóng góp vào yêu cầu tác quyền cấp 3–4. |
+| `external_cert` | Một chứng chỉ bên ngoài có thể xác minh với tổ chức cấp và ngày hết hạn. | **bằng cấp** và **chứng chỉ** là các loại bằng chứng hạng nhất với các trường tổ chức cấp + trạng thái công nhận. |
+| `endorsement` | Một xác nhận đồng nghiệp từ một thành viên khác ở cấp độ mục tiêu trở lên. | Cần hai xác nhận ở cấp độ mục tiêu trước khi một tuyên bố có thể tiến lên mà không cần xét duyệt hội đồng. |
+
+<Tip>
+  Với các bước nhảy từ cấp 4 lên cấp 5, xét duyệt hội đồng là bắt buộc bất kể bạn có bao nhiêu xác nhận. Ngưỡng là một tham số có phiên bản — quản lý của bạn có thể xác nhận yêu cầu hiện tại cho chuyên môn của bạn.
+</Tip>
+
+### Cảnh báo hết hạn chứng chỉ
+
+LEARN giám sát trường `expires_at` trên mỗi chứng chỉ bên ngoài và phát các sự kiện `learn.cert.expiring` tại **90, 30 và 7 ngày** trước khi hết hạn. Agent CUO/CHRO-skill hiển thị chúng như thông báo chủ động cho thành viên. Gia hạn chứng chỉ trước khi hết hạn giữ được tính liên tục của cấp độ thành thạo mà nó hỗ trợ.
+
+## Voting Power (VP)
+
+VP là một điểm số hàng quý định lượng đóng góp cụ thể của mỗi thành viên cho công ty. REW đọc VP tại thời điểm đóng quý để cân trọng phân phối quỹ bonus BP.
+
+### VP đo lường điều gì
+
+VP là một hàm thuần túy, có tính xác định của ba chiều đầu vào:
+
+```
+VP = (mastery × discipline_weight × skill_weight)
+   + (PROJ contributions × complexity × peer_rating × project_weight)
+   + (KB authorship × kb_weight)
+```
+
+Tất cả trọng số là các tham số có phiên bản — thay đổi chúng đòi hỏi đồng ký ba bên CEO + CFO + CHRO, và thay đổi không thể chấm điểm lại các quý lịch sử một cách hồi tố.
+
+<Tabs>
+  <Tab title="Chiều PROJ">
+    Các issue đã đóng, thẻ độ phức tạp của chúng và đánh giá đồng nghiệp gắn với mỗi đóng góp. Một thành viên dẫn dắt công việc độ phức tạp cao có điểm cao hơn so với người đóng số lượng nhiệm vụ độ phức tạp thấp tương đương.
+  </Tab>
+  <Tab title="Chiều TIME">
+    Dữ liệu hiện diện từ TIME — giờ có thể tính phí và không tính phí trong kỳ. Sự hiện diện TIME đóng góp vào VP như một tín hiệu về sự cam kết bền vững, không phải như một đếm giờ thuần túy.
+  </Tab>
+  <Tab title="Chiều KB">
+    Các tài liệu được viết hoặc chỉnh sửa đáng kể, có trọng số theo tần suất chúng được các thành viên khác trích dẫn. Viết một tài liệu tham khảo được trích dẫn rộng rãi có điểm cao hơn viết nhiều tài liệu cụt không được trích dẫn.
+  </Tab>
+</Tabs>
+
+### Tổng hợp VP và tích hợp REW
+
+LEARN tính toán lại VP cho mọi thành viên hàng tháng. Bảng `vp_snapshot` ghi lại tổng và phân tích theo chuyên môn của mỗi thành viên cùng với `parameter_version_id` được dùng cho lần tính đó. Một công việc CI phát lại khẳng định đầu ra giống hệt từng byte cho 12 snapshot gần nhất trên mỗi thay đổi tham số — nếu bất kỳ snapshot nào bị lệch, thay đổi bị từ chối.
+
+<Note>
+  Tổng hợp VP là tự động và có tính xác định. Bạn không thể ghi đè điểm VP thủ công. Nếu bạn tin rằng một tín hiệu đầu vào bị sai (ví dụ một đóng góp PROJ bị phân loại sai), hãy sửa bản ghi nguồn trong PROJ hoặc KB — lần tính toán lại hàng tháng tiếp theo sẽ nhặt nó.
+</Note>
+
+## Hội đồng Chuyên môn (Specialist Council)
+
+Hội đồng Chuyên môn là sự thích ứng của CyberOS đối với định dạng peer-review học thuật Việt Nam cho quyết định thăng chức chuyên nghiệp. Nó đảm bảo mọi thăng chức đều được hỗ trợ bởi bằng chứng có cấu trúc và nhiều đánh giá độc lập — không phải ý kiến của một quản lý đơn lẻ.
+
+### Quy trình hội đồng
+
+<Steps>
+  <Step title="Đề cử của quản lý">
+    Các trường hợp thăng chức được mở thủ công bởi đề cử của quản lý hoặc đơn tự đệ trình của thành viên. Hệ thống không bao giờ tự động kích hoạt trường hợp thăng chức, bất kể điểm VP của thành viên cao đến đâu.
+  </Step>
+  <Step title="Chụp snapshot phiên bản tham số">
+    Tại thời điểm đệ trình, LEARN snapshot các tiêu chí cổng thăng chức hiện tại (ngưỡng VP, yêu cầu thành thạo, xác nhận tối thiểu, thời gian ở cấp độ) vào bản ghi trường hợp. Ngay cả khi các tham số được cập nhật giữa chừng, trường hợp này được đánh giá theo tiêu chí có hiệu lực khi nó được đệ trình.
+  </Step>
+  <Step title="Phân công ban giám khảo">
+    HR/Ops phân công 3–5 giám khảo đồng nghiệp cộng với một chủ tịch hội đồng. Hệ thống áp dụng heuristic đa dạng — ban giám khảo nên trải rộng ít nhất hai nhóm và hai cấp thâm niên. CHRO xác nhận ban giám khảo cuối cùng trước khi mở thảo luận.
+  </Step>
+  <Step title="Chấm điểm cá nhân (Riêng tư)">
+    Mỗi giám khảo chấm điểm ứng viên trên năm chiều trong không gian làm việc riêng tư. Các giám khảo không thể nhìn thấy điểm của nhau trong lúc thảo luận — điều này phản ánh định dạng hội đồng học thuật Việt Nam và ngăn thiên kiến neo.
+  </Step>
+  <Step title="Tính toán tổng hợp">
+    Sau khi tất cả giám khảo đệ trình, LEARN tính điểm trung vị. Trung vị bền vững với một điểm bất thường cực đoan đơn lẻ trên một ban giám khảo nhỏ. Điểm tổng hợp và một khuyến nghị (`ADVANCE`, `HOLD`, hoặc `REFINE`) được ghi vào hàng `PROMOTION_OUTCOME`.
+  </Step>
+  <Step title="Chuyển kết quả cho HR">
+    HR **chỉ** nhận cặp `{summary, recommendation}` — không có điểm số của từng giám khảo, không có văn bản phản hồi cá nhân. Đây là một đảm bảo cấu trúc: vai trò cơ sở dữ liệu của HR không có `SELECT` trên bảng `council_vote` trong schema vault của LEARN.
+  </Step>
+  <Step title="Phê duyệt cuối cùng của CEO">
+    CEO xem xét tóm tắt kết quả và đưa ra quyết định thăng chức cuối cùng. CEO có thể phủ quyết khuyến nghị của hội đồng, nhưng phải ghi lại lý do bằng văn bản — nhật ký audit phân biệt kết quả `council-approved` với kết quả `override`.
+  </Step>
+</Steps>
+
+<Warning>
+  Điểm số cá nhân của từng giám khảo **không bao giờ rời khỏi LEARN**. Đây là hợp đồng an toàn tâm lý làm cho peer review trung thực trở nên khả thi. Vai trò truy cập của HR bị chặn về mặt cấu trúc khỏi việc đọc dữ liệu giám khảo cá nhân — chỉ tóm tắt kết quả tổng hợp và khuyến nghị mới được chuyển tiếp cho HR.
+</Warning>
+
+### Tiêu chí cổng thăng chức — Ví dụ (L2 → L3 Engineering)
+
+| Tiêu chí | Ngưỡng | Nguồn |
+|---|---|---|
+| Tổng VP | ≥ 140 điểm | `vp_snapshot` |
+| Kỹ năng ở mức thành thạo ≥ 4 | ≥ 3 kỹ năng | `mastery_claim` |
+| Vai trò lead trên dự án | ≥ 1 dự án | PROJ `contribution.role` |
+| Xác nhận đồng nghiệp (từ thành viên ≥ L2) | ≥ 5 | `endorsement` |
+| Điểm trung vị hội đồng | ≥ 4 / 5 | `council_vote` (vault) |
+| Thời gian ở cấp hiện tại | ≥ 18 tháng | Lịch sử hợp đồng / cấp bậc HR |
+| Bài chia sẻ kiến thức sabbatical (nếu đủ điều kiện) | ≥ 1 | Tác quyền KB |
+
+<Note>
+  **Điều 14 EU AI Act — Giám sát của con người:** Hội đồng Chuyên môn là bên ra quyết định cho thăng chức, không phải một thuật toán. Tính toán của LEARN (điểm VP, kiểm tra tiêu chí) là bằng chứng tư vấn. Hội đồng con người thảo luận, và CEO đưa ra quyết định cuối cùng. Thiết kế này thỏa mãn yêu cầu giám sát của con người đối với hệ thống ra quyết định về việc làm có rủi ro cao theo Annex III §4.
+</Note>
+
+## Trực quan hóa lộ trình sự nghiệp
+
+Mỗi thành viên có thể xem tiến trình kỹ năng của chính mình và chính xác những gì còn lại để đủ điều kiện cho cấp độ tiếp theo.
+
+<Tabs>
+  <Tab title="Xem của thành viên">
+    Bảng điều khiển lộ trình sự nghiệp của bạn hiển thị mỗi tiêu chí cổng cho cấp độ mục tiêu, liệu bạn có đáp ứng nó hay không, và những khoảng trống bằng chứng cụ thể nào còn lại. Bạn có thể nhấp qua đến các issue PROJ, bài KB hoặc bản ghi chứng chỉ liên quan tính vào mỗi tiêu chí.
+  </Tab>
+  <Tab title="Xem của quản lý">
+    Quản lý xem mức độ sẵn sàng của lộ trình sự nghiệp của mỗi báo cáo trực tiếp. Đề xuất cấp độ kỹ năng nổi lên tự động khi bằng chứng tích lũy; quản lý xác nhận hoặc trả về để chỉnh sửa. Mở một trường hợp thăng chức luôn là một hành động thủ công có chủ ý.
+  </Tab>
+</Tabs>
+
+## Quy trình quản lý
+
+Đề xuất cấp độ kỹ năng dựa trên bằng chứng và nổi lên tự động — bạn xác nhận hoặc trả về, bạn không khởi tạo chúng từ đầu.
+
+<Steps>
+  <Step title="Bằng chứng tích lũy">
+    Khi một thành viên đóng issue PROJ, viết bài KB, đạt chứng chỉ và thu thập xác nhận, LEARN tự động cập nhật bản ghi bằng chứng gắn với các tuyên bố thành thạo của họ.
+  </Step>
+  <Step title="Đề xuất nổi lên">
+    Khi bằng chứng vượt ngưỡng cho cấp thành thạo tiếp theo, LEARN đưa ra đề xuất cho quản lý của thành viên: "Bằng chứng ủng hộ việc nâng kỹ năng `postgres` của Mai từ cấp 3 lên cấp 4."
+  </Step>
+  <Step title="Quản lý xác nhận">
+    Quản lý xem xét bằng chứng được liên kết và hoặc xác nhận việc nâng cấp hoặc trả về với ghi chú giải thích cần bằng chứng bổ sung nào.
+  </Step>
+  <Step title="Trường hợp thăng chức (đề cử thủ công)">
+    Khi bạn tin rằng một thành viên đã sẵn sàng cho một thay đổi cấp độ (ví dụ L2 → L3), bạn mở một trường hợp thăng chức thủ công. Hệ thống kiểm tra mức độ sẵn sàng của tiêu chí cổng hiện tại và gắn cờ bất kỳ khoảng trống nào trước khi trường hợp được đệ trình lên hội đồng.
+  </Step>
+</Steps>

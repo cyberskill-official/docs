@@ -1,0 +1,181 @@
+---
+title: 'Module HR: Vòng đời thành viên và Luật Lao động Việt Nam'
+sidebarTitle: 'HR'
+description: 'CyberOS HR quản lý vòng đời thành viên trong đội từ tuyển dụng đến rời đi, với tuân thủ luật lao động Việt Nam, điều phối onboarding và theo dõi nghỉ phép theo luật định.'
+---
+
+CyberOS HR là nguồn sự thật duy nhất cho mọi người làm việc tại công ty bạn — nhân viên, cộng tác viên và thực tập sinh. Nó phục vụ HR admin, quản lý và chính các thành viên, bao quát toàn bộ cung đường từ ứng viên trước khi tuyển đến khoản thanh toán rời khỏi cuối cùng. Module được thiết kế ưu tiên luật lao động Việt Nam: giới hạn giờ làm việc theo Nghị định 145/2020, quyền lợi thai sản và phụ trách theo Nghị định 13/2023, và quy tắc bảo vệ dữ liệu theo Điều 38 PDPL đều là các trường schema, không phải bình luận văn bản tự do. HR cũng đóng vai trò là trục Member-id cho mọi module hạ nguồn — REW, LEARN, ESOP, TIME, CHAT và AUTH đều dùng danh bạ chuẩn duy nhất mà HR cung cấp.
+
+<Note>
+  HR là một **module P1** — hiện đang trong giai đoạn kế hoạch/thiết kế và chưa sẵn sàng phổ biến. Các tính năng được mô tả ở đây phản ánh thiết kế P1 đã lên kế hoạch.
+</Note>
+
+## Máy trạng thái vòng đời thành viên
+
+Một thành viên di chuyển qua một tập hợp trạng thái được xác định từ khoảnh khắc thư mời được tạo cho đến khi quan hệ lao động kết thúc. Mỗi chuyển trạng thái phát sự kiện mà các module hạ nguồn tự động tiêu thụ — bạn không bao giờ cần cập nhật AUTH, TIME hay ESOP riêng lẻ theo cách thủ công.
+
+<Steps>
+  <Step title="Pre-hire → Offer">
+    HR/Ops tạo thư mời qua engine hợp đồng. Ứng viên nhận link ký điện tử WebAuthn qua DOC. Hàng thành viên được tạo ở trạng thái `pre_hire` và chưa tiêu tốn ghế license.
+  </Step>
+  <Step title="Offer → Probation">
+    Ứng viên ký và `start_date` của hợp đồng được đạt tới. Trạng thái chuyển thành `probation`. AUTH cấp một tài khoản subject với các scope có giới hạn thời gian. Bộ điều phối onboarding phát ngay lập tức.
+  </Step>
+  <Step title="Probation → Active">
+    Sau cửa sổ thử việc 60 ngày mặc định (có thể cấu hình theo hợp đồng), HR/Ops đánh dấu đã qua thử việc. Trạng thái trở thành `active`. Đầy đủ scope được áp dụng. Tích lũy nghỉ phép bắt đầu. Điều kiện nhận grant sáng lập ESOP được đánh giá.
+  </Step>
+  <Step title="Active → On Leave">
+    Bất kỳ yêu cầu nghỉ phép được duyệt nào từ năm ngày trở lên đều chuyển thành viên sang `on_leave`. TIME đánh dấu lịch; CHAT tự động đặt trạng thái vắng mặt.
+  </Step>
+  <Step title="Active → Sabbatical">
+    Khi tick đủ điều kiện sabbatical đạt năm năm liên tục và thành viên chọn tham gia, trạng thái trở thành `sabbatical`. Vesting tiếp tục; áp dụng yêu cầu tác quyền KB.
+  </Step>
+  <Step title="Any → Suspended">
+    HR/Ops hoặc CHRO có thể đưa thành viên vào trạng thái `suspended` trong khi chờ điều tra. Các scope AUTH bị hạn chế; thành viên không thể gửi timesheet hay yêu cầu nghỉ phép.
+  </Step>
+  <Step title="Active → Terminating → Terminated">
+    CHRO khởi tạo chấm dứt. CEO cần đồng ký cho quyết định nhánh ESOP Bad-Leaver. Khi cả hai chữ ký được ghi nhận, bộ điều phối offboarding chạy: AUTH thu hồi mọi phiên trong SLO 5 giây, REW tính lương cuối, ESOP rẽ nhánh sang Good hoặc Bad Leaver, và các nhiệm vụ trả tài sản được mở.
+  </Step>
+</Steps>
+
+<Note>
+  Mỗi lần chuyển trạng thái đều ghi một hàng audit bất biến vào module bộ nhớ và phát một sự kiện NATS (ví dụ `hr.member.joined`, `hr.member.terminated`). Các module hạ nguồn tiêu thụ các sự kiện này; bạn không cần kích hoạt chúng thủ công.
+</Note>
+
+## Điều phối Onboarding
+
+Khi một thành viên mới chuyển sang `active`, HR tự động phát playbook onboarding đa module. Toàn bộ fan-out chạy như một saga idempotent — nếu một bước hạ nguồn timeout, nó sẽ retry mà không thực thi lại các bước đã thành công.
+
+<Steps>
+  <Step title="AUTH — Cấp tài khoản">
+    AUTH tạo bản ghi subject, gán các quyền theo scope-vai trò và gửi cho thành viên một link đăng ký passkey tạm thời. Bước này diễn ra trước; tất cả các bước tiếp theo phụ thuộc vào danh tính đang hoạt động.
+  </Step>
+  <Step title="LEARN — Ghi danh vai trò">
+    LEARN gieo hồ sơ kỹ năng của thành viên và ghi danh họ vào danh sách đọc theo vai trò và mọi module onboarding bắt buộc cho chuyên môn của họ.
+  </Step>
+  <Step title="KB — Cấp quyền truy cập">
+    KB cấp quyền đọc cho các scope tài liệu phù hợp với cấp vai trò của thành viên. Các tài liệu hạn chế vẫn bị chặn cho đến khi quản lý bổ sung scope một cách rõ ràng.
+  </Step>
+  <Step title="PROJ — Issue kế hoạch ramp">
+    PROJ tạo các issue kế hoạch ramp có cấu trúc: theo bóng các engagement này, đọc các entry bộ nhớ này, hoàn thành rubric onboarding trước ngày 30.
+  </Step>
+  <Step title="CHAT — Cấp workspace">
+    CHAT thêm thành viên vào các workspace mặc định (`#general`, kênh nhóm của họ, và bất kỳ kênh nào được quản lý chỉ định).
+  </Step>
+  <Step title="Hiển thị checklist">
+    Checklist onboarding theo ngày hiển thị đồng thời cho quản lý, thành viên mới và CHRO. Bất kỳ bước nào bị chặn quá 24 giờ đều kích hoạt cảnh báo tự động.
+  </Step>
+</Steps>
+
+<Tip>
+  Bộ điều phối onboarding mang khóa idempotency cho mỗi bước. Nếu playbook được phát lại (ví dụ sau khi hệ thống khởi động lại), chỉ các bước chưa hoàn tất mới thực thi — các tài khoản đã cấp không bị nhân đôi.
+</Tip>
+
+## Quản lý nghỉ phép
+
+HR theo dõi tám loại nghỉ phép, mỗi loại có căn cứ luật định Việt Nam. Quyền lợi là các trường schema hạng nhất — chúng tự động tích lũy, thực thi giới hạn tại thời điểm ghi và có thể kiểm toán bởi thanh tra Nghị định 13/2023 mà không cần bất kỳ trích xuất dữ liệu thủ công nào.
+
+### Danh mục loại nghỉ phép
+
+| Code | Căn cứ luật định | Quyền lợi mặc định | Ghi chú |
+|---|---|---|---|
+| `annual` | Bộ luật Lao động Đ. 113 | 12 ngày làm việc/năm (≥ 5 năm phục vụ: +1 ngày mỗi 5 năm) | Tích lũy hàng quý theo Nghị định 145; tối đa chuyển tiếp 30 ngày. |
+| `sick` | Nghị định 152/2020 Đ. 26 | 30 / 40 / 60 ngày/năm (phân tầng theo thời gian phục vụ BHXH) | Cần giấy chứng nhận y tế cho các yêu cầu ≥ 3 ngày. |
+| `maternity` | Bộ luật Lao động Đ. 139 | 6 tháng | Sinh đôi: +30 ngày cho mỗi con thêm. Do BHXH tài trợ. |
+| `paternity` | Nghị định 152/2020 Đ. 34 | 5–14 ngày làm việc | 5 ngày chuẩn, 7 ngày cho mổ đẻ, kéo dài cho sinh nhiều con. |
+| `sabbatical` | Phụ lục Tổng Đãi ngộ CyberSkill | 4 tuần mỗi 5 năm liên tục | Điều kiện được theo dõi bởi bộ đếm `SABBATICAL_TICK`. |
+| `unpaid` | Bộ luật Lao động Đ. 115 | Theo thỏa thuận | Dùng ngoài định mức nghỉ phép năm và nghỉ ốm. |
+| `bereavement` | Bộ luật Lao động Đ. 115 | 3 ngày (gia đình trực hệ) | Bao gồm ông bà, cha mẹ, con cháu trực hệ và vợ/chồng. |
+| `public_holiday` | Bộ luật Lao động Đ. 112 | 11 ngày/năm (VN) | Tự động tính từ lịch nghỉ lễ; không cần yêu cầu. |
+
+### Tích lũy nghỉ phép năm
+
+Nghỉ phép năm tự động tích lũy hàng quý dựa trên các quy tắc trong Nghị định 145/2020. Bạn không cần chạy công việc tích lũy thủ công — hệ thống cập nhật `leave_balance.annual_remaining` tại mỗi ranh giới quý.
+
+<Note>
+  Việc tích lũy được tính lười tại các ranh giới quý thay vì theo thời gian thực, giúp đầu ra audit có tính xác định và có thể tái tạo. Ngày tích lũy chính xác hiển thị trong `leave_balance.last_accrual_at`.
+</Note>
+
+### Tự khai báo nghỉ ốm
+
+Thành viên tự khai báo nghỉ ốm. Hệ thống xác thực đơn gửi so với giới hạn tầng BHXH tại thời điểm ghi và từ chối bất kỳ yêu cầu nào vượt trần luật định. Nếu yêu cầu cần giấy chứng nhận y tế (yêu cầu ≥ 3 ngày), hệ thống đánh dấu yêu cầu ở trạng thái chờ cho đến khi tài liệu được đính kèm hoặc được quản lý phê duyệt miễn trừ.
+
+## Loại hợp đồng
+
+HR hỗ trợ năm loại hợp đồng, mỗi loại có logic nhắc gia hạn tự động.
+
+<CardGroup cols={2}>
+  <Card title="Không thời hạn" icon="infinity">
+    Việc làm không kết thúc. Không có `effective_to`. Các sửa đổi thêm hàng thay thế; hợp đồng gốc không bao giờ bị sửa.
+  </Card>
+  <Card title="Có thời hạn" icon="calendar">
+    Có `effective_to` xác định. Hệ thống gửi nhắc gia hạn **90 ngày trước khi hết hạn** để bạn không bỏ lỡ cửa sổ luật định.
+  </Card>
+  <Card title="Thử việc" icon="clock">
+    Mặc định 60 ngày (có thể cấu hình). Tự động chuyển thành không thời hạn hoặc có thời hạn khi đạt, hoặc kích hoạt offboarding khi không đạt.
+  </Card>
+  <Card title="Bán thời gian" icon="hourglass-half">
+    Quyền lợi nghỉ phép và giới hạn timesheet tỷ lệ theo thời gian. Giới hạn làm thêm giờ theo Nghị định 145/2020 áp dụng theo tỷ lệ.
+  </Card>
+  <Card title="Cộng tác viên" icon="file-signature">
+    Không có nghĩa vụ BHXH/BHYT/BHTN. Được coi là scope lương thưởng hoãn lại trong REW; không tích lũy nghỉ phép.
+  </Card>
+</CardGroup>
+
+<Warning>
+  Bỏ lỡ gia hạn hợp đồng có thời hạn kích hoạt vấn đề tuân thủ luật lao động Việt Nam. Nhắc 90 ngày là tự động, nhưng xác nhận hợp đồng đã gia hạn trước `effective_to` là nghĩa vụ thủ công của CHRO.
+</Warning>
+
+## Bảo vệ PII
+
+HR lưu trữ ảnh giấy tờ tùy thân do chính phủ cấp (CCCD) trong một **keyspace KMS riêng biệt** so với mọi dữ liệu HR khác. Điều này có nghĩa một truy vấn vào bảng `member` không thể vô tình lấy quá lượng dữ liệu CCCD — các cột ảnh nằm trong bảng `cccd_record` được cô lập, mã hóa dưới một khóa riêng.
+
+<Warning>
+  Mỗi lần đọc ảnh CCCD tạo ra một hàng audit truy cập mức nghiêm trọng 1 trong module bộ nhớ. Xuất hàng loạt ảnh CCCD bị chặn về mặt cấu trúc — endpoint REST admin chỉ trả về URL S3 pre-signed 30 giây, một bản ghi mỗi lần.
+</Warning>
+
+Các ranh giới PII chính được thực thi ở cấp schema:
+
+- **Ảnh CCCD** — khóa KMS riêng biệt, audit sev-1 mỗi lần đọc, không bao giờ có thể truy xuất qua GraphQL.
+- **PDF hợp đồng** — được bọc KMS, lưu trong S3 với object-lock 10 năm, chỉ truy cập được qua URL pre-signed có giới hạn thời gian.
+- **Dữ liệu lương thưởng** — vắng mặt về mặt cấu trúc trong mọi bảng HR. REW sở hữu mọi con số lương thưởng (xem [REW](/modules/rew)).
+
+## Tín hiệu hiệu suất
+
+HR tổng hợp các tín hiệu hiệu suất chỉ đọc từ ba module để hỗ trợ chuẩn bị 1:1 và đánh giá hàng quý. HR **không bao giờ ghi** vào các tín hiệu này và **không bao giờ giữ con số lương thưởng** — REW sở hữu những cái đó.
+
+<Tabs>
+  <Tab title="Tín hiệu PROJ">
+    HR đọc tỷ lệ trôi lệch hiệu chuẩn và tỷ lệ tạo blocker từ PROJ. Chúng hiện lên trong bảng chuẩn bị 1:1 của quản lý như ngữ cảnh, không phải điểm đánh giá.
+  </Tab>
+  <Tab title="Tín hiệu TIME">
+    HR đọc các chỉ số kỷ luật giờ — liệu các giờ đã ghi của thành viên có nhất quán với loại hợp đồng của họ và giới hạn làm thêm giờ theo Nghị định 145/2020 hay không.
+  </Tab>
+  <Tab title="Tín hiệu LEARN">
+    HR đọc tỷ lệ hoàn thành khóa học và tiến trình thành thạo kỹ năng từ LEARN. Chúng đi vào chuẩn bị đánh giá hàng quý và cung cấp thông tin đầu vào cho khuyến nghị lương thưởng của HR gửi REW.
+  </Tab>
+</Tabs>
+
+<Note>
+  Các tín hiệu hiệu suất tổng hợp là đầu vào cho quyết định của con người — chúng không bao giờ được áp dụng tự động vào lương thưởng. Luồng thay đổi lương thưởng của REW yêu cầu CHRO + CFO đồng ký bất kể tín hiệu HR chỉ ra điều gì.
+</Note>
+
+## Tuân thủ Luật Lao động Việt Nam
+
+CyberOS HR thực thi các yêu cầu quy định của Việt Nam như những ràng buộc cứng của hệ thống, không phải cảnh báo tư vấn.
+
+<Accordion title="Nghị định 145/2020 — Giới hạn giờ làm việc">
+  Giới hạn làm thêm giờ tiêu chuẩn là 200 giờ mỗi năm. Với sự đồng ý của người lao động và thông báo với Bộ LĐTBXH, giới hạn tăng lên 300 giờ. TIME từ chối bất kỳ đơn gửi timesheet nào có thể đẩy thành viên vượt qua giới hạn áp dụng; HR hiển thị trạng thái giới hạn hiện tại của thành viên qua một công cụ đọc MCP để router CUO có thể hiển thị nó trong ngữ cảnh.
+</Accordion>
+
+<Accordion title="Nghị định 13/2023 + Bộ luật Lao động 2019 — Thai sản / Phụ trách">
+  Nghỉ thai sản là sáu tháng (Bộ luật Lao động Đ. 139), kéo dài cho sinh nhiều con. Nghỉ phụ trách từ 5 đến 14 ngày làm việc tùy theo hoàn cảnh sinh (Nghị định 152/2020 Đ. 34). HR yêu cầu HR/Ops đính kèm thẻ căn cứ luật định khi phê duyệt một trong hai loại nghỉ, tạo bản ghi điều kiện có thể kiểm toán.
+</Accordion>
+
+<Accordion title="Điều 38 PDPL — Quyền dữ liệu cá nhân">
+  Thành viên có thể yêu cầu xuất DSAR đầy đủ dữ liệu HR của họ (hồ sơ, bản ghi nghỉ phép, hợp đồng, tài liệu không phải lương thưởng) trong vòng 30 ngày kể từ yêu cầu. Dữ liệu lương thưởng bị loại khỏi DSAR có scope HR — bản xuất đó chạy riêng qua REW.
+</Accordion>
+
+<Accordion title="Trường hồ sơ BHXH / BHYT / BHTN">
+  Số bảo hiểm xã hội Việt Nam (BHXH, BHYT, BHTN) là các trường hồ sơ hạng nhất, không phải ghi chú văn bản tự do. Tỷ lệ đóng góp của người lao động theo Nghị định 152/2020 (BHXH 10.5%, BHYT 1.5%, BHTN 1%) là các tham số được ghim phiên bản, được REW tiêu thụ trong chu kỳ tính lương hàng tháng.
+</Accordion>

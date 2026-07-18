@@ -1,0 +1,150 @@
+---
+title: 'EMAIL: Hộp thư hợp nhất, thư theo luồng và tự động ghi nhận vào CRM'
+sidebarTitle: 'Email'
+description: 'CyberOS EMAIL đưa hộp thư của bạn vào CyberOS với tự động ghi nhận hoạt động CRM, hội thoại theo luồng, soạn thư có hỗ trợ AI và kiểm soát domain được theo dõi.'
+---
+
+EMAIL đưa hộp thư của bạn vào CyberOS để việc đọc tin nhắn khách hàng, ghi nhận nó như một hoạt động CRM và soạn thảo phản hồi có thể diễn ra trong một workspace duy nhất mà không cần chuyển ứng dụng. Đây là bề mặt thu nhận cho luồng hoạt động CRM: email đến và đi cho các domain được theo dõi tự động xuất hiện trên dòng thời gian Contact và Deal tương ứng mà không cần ghi nhận thủ công. Các thread được tổ chức giống hội thoại CHAT để ngữ cảnh của mối quan hệ khách hàng luôn ở trong tầm tay. Khi bạn cần soạn phản hồi, CUO (Genie) có thể viết dựa trên lịch sử tài khoản CRM, các deal đang mở và các tài liệu KB liên quan — một bản nháp có ngữ cảnh chứ không phải trang trắng. EMAIL cũng đóng vai trò trong phòng thủ email đi: ký DKIM, ARC và BIMI đảm bảo tin nhắn của bạn đến được hộp thư đến và mang tín hiệu tin cậy thị giác của thương hiệu.
+
+<Note>
+  EMAIL là module P1 hiện đang trong giai đoạn thiết kế. Trang này mô tả chức năng đã thiết kế từ góc nhìn người dùng. Tham khảo lộ trình nền tảng để biết chi tiết về thời điểm GA.
+</Note>
+
+---
+
+## Tính năng cốt lõi
+
+<CardGroup cols={2}>
+  <Card title="Hộp thư hợp nhất" icon="inbox">
+    Đọc và phản hồi mọi email của bạn từ bên trong CyberOS. Thread từ các contact thuộc domain được theo dõi hiện lên cùng với ngữ cảnh CRM của họ — tên tài khoản, deal đang mở, hoạt động gần đây — nên bạn không bao giờ cần chuyển sang ứng dụng email riêng cho thư từ khách hàng.
+  </Card>
+  <Card title="Tự động ghi nhận CRM" icon="bolt">
+    Email đến và đi tới/từ các domain được theo dõi được tự động ghi nhận là hoạt động CRM trên Contact và Deal tương ứng. Không cần nhập thủ công — dòng thời gian hoạt động cập nhật ngay khi email được gửi hoặc nhận.
+  </Card>
+  <Card title="Hội thoại theo luồng" icon="comments">
+    Thread email được tổ chức giống thread CHAT. Trả lời, chuyển tiếp và trích dẫn nội tuyến được thu gọn thành một khung xem hội thoại duy nhất. Bạn có thể @mention một thành viên CyberOS trong thread để kéo họ vào qua CHAT mà không rời khỏi email.
+  </Card>
+  <Card title="Soạn thư bằng AI" icon="wand-magic-sparkles">
+    CUO soạn thảo các phản hồi đi dựa trên thread email đã được vệ sinh, ngữ cảnh tài khoản và deal CRM, và các tài liệu KB liên quan. Bản nháp luôn là gợi ý — bạn xem, chỉnh và gửi. CUO không bao giờ tự gửi email.
+  </Card>
+</CardGroup>
+
+---
+
+## Tự động ghi nhận hoạt động CRM
+
+Khi email đến từ một domain được theo dõi, EMAIL xác định Contact và Account CRM khớp bằng địa chỉ email và domain của người gửi. Email được ghi nhận là một hoạt động với kind `email` trên Contact và bất kỳ Deal đang mở nào được liên kết với Contact đó.
+
+<Steps>
+  <Step title="Email đến">
+    Một email đến từ `buyer@acme.com`. EMAIL kiểm tra xem `acme.com` có trong danh sách domain được theo dõi của tenant hay không.
+  </Step>
+  <Step title="Khớp Contact và Deal">
+    CRM tra Contact khớp với `buyer@acme.com` và bất kỳ Deal đang mở nào có Contact đó là contact chính.
+  </Step>
+  <Step title="Ghi nhận hoạt động">
+    Một hàng hoạt động được chèn với `kind = email`, `source = email`, và ID sự kiện nguồn làm khóa idempotency. Nếu retry đưa cùng một sự kiện email đến hai lần, ràng buộc khử trùng lặp đảm bảo chỉ một hoạt động xuất hiện trên dòng thời gian.
+  </Step>
+  <Step title="Cập nhật dòng thời gian Deal">
+    Dòng thời gian hoạt động của Deal hiển thị email với chủ đề, dấu thời gian và hướng (đến hoặc đi). Account Manager thấy nó lần tới khi họ mở deal — không có thông báo trừ khi họ được nhắc tên.
+  </Step>
+</Steps>
+
+<Warning>
+  Tự động ghi nhận CRM chỉ kích hoạt cho các **domain được theo dõi** mà bạn đã cấu hình rõ ràng. Địa chỉ email cá nhân và domain không có trong danh sách theo dõi của bạn không bao giờ tự động đính kèm vào bản ghi CRM. Ranh giới này được thực thi ở cấp API và được audit — các cấu hình sai có thể tự động ghi nhận email cá nhân sẽ bị chặn.
+</Warning>
+
+---
+
+## Cấu hình
+
+### Kết nối tài khoản email
+
+<Tabs>
+  <Tab title="Gmail / Google Workspace">
+    <Steps>
+      <Step title="Mở cài đặt Email">
+        Vào **Settings → EMAIL → Connect account**.
+      </Step>
+      <Step title="Ủy quyền với Google OAuth">
+        Nhấp **Connect Google account** và hoàn tất luồng OAuth. CyberOS yêu cầu các scope tối thiểu cần thiết: đọc, gửi và sửa (để lưu trữ).
+      </Step>
+      <Step title="Chọn hộp thư để đồng bộ">
+        Chọn nhãn hoặc thư mục nào để đồng bộ. CyberOS khuyến nghị đồng bộ hộp thư chính và thư mục Sent tối thiểu.
+      </Step>
+      <Step title="Xác nhận">
+        Tài khoản email của bạn đã được kết nối. Các thread hiện có từ các domain được theo dõi sẽ xuất hiện trong hộp thư hợp nhất trong vòng vài phút.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="IMAP / SMTP">
+    <Steps>
+      <Step title="Mở cài đặt Email">
+        Vào **Settings → EMAIL → Connect account → IMAP / SMTP**.
+      </Step>
+      <Step title="Nhập chi tiết máy chủ">
+        Cung cấp host IMAP, port và cài đặt bảo mật, cộng với host và port SMTP. Nhập địa chỉ email và mật khẩu (hoặc mật khẩu dành riêng cho ứng dụng nếu bạn bật xác thực hai yếu tố).
+      </Step>
+      <Step title="Kiểm tra kết nối">
+        Nhấp **Test connection**. CyberOS sẽ thử xác thực và lấy 10 tin nhắn gần nhất làm kiểm tra kết nối.
+      </Step>
+      <Step title="Lưu">
+        Khi bài kiểm tra đạt, lưu cấu hình. Hộp thư của bạn sẽ đồng bộ trong vòng vài phút.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+### Thiết lập theo dõi domain cho tự động ghi nhận CRM
+
+Việc theo dõi domain kiểm soát các domain email nào sẽ kích hoạt tự động ghi nhận hoạt động CRM.
+
+<Steps>
+  <Step title="Mở cài đặt theo dõi domain">
+    Vào **Settings → CRM → Tracked domains**.
+  </Step>
+  <Step title="Thêm domain">
+    Nhập domain khách hàng hoặc đối tác (ví dụ `acme.com`). Bạn có thể thêm nhiều domain. Chỉ email đi tới hoặc đến từ địa chỉ tại các domain được theo dõi mới tự động ghi nhận vào CRM.
+  </Step>
+  <Step title="Xem xét và lưu">
+    Xem xét danh sách cẩn thận. Mỗi thay đổi trong cấu hình domain được theo dõi đều được audit. Xác nhận và lưu.
+  </Step>
+</Steps>
+
+<Note>
+  Cấu hình domain được theo dõi tự bản thân nó được audit — mỗi lần thêm, thay đổi hoặc xóa đều ghi một hàng bộ nhớ. CSO có thể xem toàn bộ lịch sử cấu hình bất kỳ lúc nào.
+</Note>
+
+### Template email
+
+Tạo template email tái sử dụng cho các kịch bản gửi đi phổ biến (ví dụ theo dõi đề xuất, xác nhận cuộc họp, yêu cầu thanh toán). Template hỗ trợ các trường merge kéo từ ngữ cảnh CRM: `{{contact.salutation}}`, `{{deal.name}}`, `{{deal.amount_vnd}}`, và `{{account.name}}`.
+
+Truy cập template tại **EMAIL → Templates → New template**. Template có sẵn cho tất cả thành viên trong workspace của bạn và có thể được giới hạn theo pipeline hoặc stage của deal cụ thể.
+
+---
+
+## Tích hợp với CRM
+
+Tích hợp EMAIL → CRM là hai chiều:
+
+- **Email đến** từ các domain được theo dõi xuất hiện như hoạt động `email` trên Contact và Deal tương ứng trong vòng vài giây kể từ khi đến.
+- **Email đi** bạn gửi từ hộp thư hợp nhất CyberOS được ghi nhận ngay khi gửi.
+- **Lịch sử thread** có sẵn từ dòng thời gian Deal — nhấp bất kỳ hoạt động email nào để mở rộng toàn bộ thread mà không rời khỏi khung xem deal.
+
+Khi EMAIL không thể khớp một tin nhắn đến với một Contact đã biết (ví dụ một lead mới từ domain được theo dõi mà chưa có bản ghi Contact), nó hiển thị lời nhắc **Create Contact** trên tin nhắn. Chấp nhận lời nhắc để tạo Contact mới đã điền sẵn tên người gửi, email và Account suy ra từ domain.
+
+---
+
+## Tích hợp với CHAT (soạn thư bằng AI qua @genie)
+
+Từ bất kỳ thread email nào, gõ `@genie` trong khung soạn phản hồi để yêu cầu CUO soạn phản hồi. Genie có quyền truy cập:
+
+- **Thread email đã được vệ sinh** (kiểm dịch CaMeL ngăn prompt injection từ nội dung tin nhắn đến)
+- **Ngữ cảnh tài khoản và deal CRM** cho Contact được khớp
+- **Các tài liệu KB liên quan** (ví dụ tham chiếu giá, mô tả dịch vụ, trang chính sách)
+
+Genie trả về bản nháp phản hồi trong khung soạn. Bạn xem, chỉnh và gửi — Genie không bao giờ gửi tự động. Bản nháp và mọi chỉnh sửa bạn thực hiện trước khi gửi không được lưu trong ngữ cảnh CRM, chỉ tin nhắn cuối đã gửi.
+
+<Tip>
+  Với các đề xuất phức tạp hoặc trao đổi nhạy cảm với khách hàng, hãy dùng **@genie summarise thread** trước để có tóm tắt hội thoại được grounding trên CRM trước khi yêu cầu Genie soạn phản hồi. Điều này đảm bảo bản nháp phản ánh toàn bộ ngữ cảnh quan hệ, không chỉ email gần nhất.
+</Tip>

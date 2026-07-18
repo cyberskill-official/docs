@@ -1,0 +1,193 @@
+---
+title: 'AI Gateway: Định tuyến AI đa nhà cung cấp với kiểm soát chi phí'
+sidebarTitle: 'AI Gateway'
+description: 'CyberOS AI Gateway định tuyến các yêu cầu AI qua nhiều nhà cung cấp (Anthropic, OpenAI, Bedrock) với giới hạn chi phí theo tenant, ẩn danh PII và sổ cái chi phí đầy đủ.'
+---
+
+Mọi tính năng AI trong CyberOS — phản hồi Genie/CUO, chạy kỹ năng, hỏi đáp KB, và `@genie` trong CHAT — đều đi qua AI Gateway. Bạn không bao giờ phải quản lý khóa API riêng cho từng tính năng hay bận tâm tính năng nào dùng model gì. Thay vào đó, gateway xử lý định tuyến nhà cung cấp, thực thi ngân sách token theo gói của bạn, ẩn danh PII trước khi bất kỳ dữ liệu nào rời khỏi tenant của bạn, và ghi một dòng chi phí cho mỗi yêu cầu để bạn luôn biết đã chi tiêu bao nhiêu và vì sao.
+
+<Note>
+  Tất cả các tính năng AI của CyberOS (Genie/CUO, chạy kỹ năng, hỏi đáp KB, CHAT @genie) đều dùng AI Gateway — không có khóa API riêng nào cần quản lý theo từng tính năng. AI Gateway là một module P0, hiện đang được triển khai.
+</Note>
+
+## Định tuyến model và nhà cung cấp
+
+Gateway định tuyến mọi yêu cầu suy luận qua ba nhóm nhà cung cấp dựa trên cài đặt cư trú dữ liệu (data residency) và năng lực cần thiết.
+
+<CardGroup cols={3}>
+  <Card title="Anthropic Claude" icon="brain">
+    Các model Claude (Haiku, Sonnet, Opus) cho tác vụ suy luận đối thoại và ngữ cảnh dài. Được dùng cho các lớp alias chat-smart và chat-reason.
+  </Card>
+  <Card title="OpenAI" icon="sparkles">
+    Dòng GPT cho các lớp alias chat-fast và tạo ảnh. Có sẵn ở khu vực cư trú us-1 và sg-1.
+  </Card>
+  <Card title="AWS Bedrock" icon="aws">
+    Điểm cuối Bedrock theo khu vực cho tenant sg-1, eu-1, us-1 và vn-1. Giữ dữ liệu bên trong khu vực tuân thủ của bạn khi Bedrock là nhà cung cấp trong phạm vi.
+  </Card>
+</CardGroup>
+
+### Phân giải alias model
+
+Bạn và các agent tham chiếu model theo **alias**, không phải theo model ID thô. Gateway phân giải alias thành điểm cuối cụ thể phù hợp với khu vực cư trú của bạn.
+
+| Alias | Mục đích | Ví dụ model được phân giải |
+|---|---|---|
+| `chat.smart` | Model chat tốt nhất hiện có cho suy luận phức tạp | Claude Sonnet hoặc GPT-4o |
+| `chat.fast` | Chat độ trễ thấp cho phản hồi tương tác | Claude Haiku hoặc GPT-4o-mini |
+| `chat.reason` | Tác vụ suy nghĩ mở rộng / chuỗi lập luận | Claude 3.5 Sonnet (extended thinking) |
+| `embed.standard` | Text embedding cho tìm kiếm BRAIN / KB | BGE-M3 hoặc Bedrock Titan embed |
+| `rerank.standard` | Xếp hạng lại cho chất lượng truy xuất KB | BGE reranker hoặc Bedrock Rerank |
+| `image.standard` | Tạo ảnh (P2+) | Stable Diffusion hoặc DALL-E |
+
+### Cư trú × nhà cung cấp
+
+Cài đặt cư trú dữ liệu của bạn (chọn khi đăng ký và bị khóa sau đó) quyết định gateway dùng điểm cuối nhà cung cấp nào, giữ dữ liệu trong khu vực tuân thủ của bạn.
+
+| Cư trú | Nhà cung cấp AI trong phạm vi |
+|---|---|
+| **sg-1** (Singapore) | Bedrock AP-SE-1 · Anthropic · OpenAI |
+| **eu-1** (Frankfurt) | Bedrock EU-CENTRAL · Anthropic EU · Vertex EU |
+| **us-1** | Bedrock US-EAST · Anthropic · OpenAI · Vertex US |
+| **vn-1** (Việt Nam) | Bedrock AP-SE-1 + PDPL DPA · Anthropic với VN DPA |
+
+<Warning>
+  Yêu cầu không bao giờ được tự động định tuyến lại sang nhà cung cấp bên ngoài khu vực cư trú của bạn — kể cả khi nhà cung cấp gặp sự cố. Gateway chuyển sang chế độ suy giảm (degraded) và trả về lỗi rõ ràng thay vì âm thầm vượt qua ranh giới dữ liệu.
+</Warning>
+
+## Kiểm soát chi phí theo tenant
+
+### Hạn ngạch token AI hàng tháng
+
+Ngân sách token của bạn được đặt theo bậc gói. Gateway kiểm tra hạn ngạch còn lại **trước** mỗi yêu cầu, chứ không phải sau.
+
+| Gói | Token AI / tháng | Hành vi khi đạt giới hạn |
+|---|---|---|
+| **Free** | 50.000 | Yêu cầu bị chặn cho đến chu kỳ thanh toán tiếp theo |
+| **Pro** | 5.000.000 | Yêu cầu bị chặn cho đến chu kỳ thanh toán tiếp theo |
+| **Enterprise** | Tùy chỉnh (thương lượng) | Cảnh báo tại ngưỡng; dừng cứng ở mức đã thỏa thuận |
+
+<Note>
+  Khi hạn ngạch tháng của bạn cạn kiệt, yêu cầu trả về lỗi `402 COST_CAP_EXCEEDED` với thông báo rõ ràng. Yêu cầu không bao giờ bị âm thầm hủy hoặc tính phí — giới hạn là chặn cứng, không phải cảnh báo nhẹ.
+</Note>
+
+### Thực thi giới hạn chi phí
+
+Gateway sử dụng mô hình kế toán hai bước:
+
+<Steps>
+  <Step title="Kiểm tra trước khi gọi">
+    Trước khi chuyển tiếp yêu cầu tới nhà cung cấp, gateway kiểm tra sổ cái chi phí của tenant. Nếu chi phí token ước tính vượt quá ngân sách còn lại, yêu cầu bị từ chối ngay lập tức và không có cuộc gọi nào tới nhà cung cấp.
+  </Step>
+  <Step title="Giữ chi phí">
+    Với các yêu cầu vượt qua bước kiểm tra trước, gateway đặt một khoản giữ chi phí 60 giây trên số tiền ước tính. Điều này ngăn các yêu cầu đồng thời cộng dồn vượt giới hạn trước khi đối soát.
+  </Step>
+  <Step title="Đối soát sau khi gọi">
+    Sau khi nhà cung cấp phản hồi, gateway đối soát lượng token thực tế đã dùng so với khoản giữ và ghi một dòng chi phí cuối cùng vào sổ cái. Khoản giữ được giải phóng và số dư đang chạy của bạn được cập nhật.
+  </Step>
+</Steps>
+
+### Sổ cái chi phí
+
+Mỗi yêu cầu AI đều tạo ra một dòng chi phí mà bạn có thể xem trong bảng điều khiển thanh toán. Mỗi dòng ghi lại:
+
+- **Tenant và module** — module CyberOS nào đã kích hoạt yêu cầu (ví dụ: `chat`, `skill`, `kb`)
+- **Persona của agent** — biến thể CUO hoặc kỹ năng đã tạo ra cuộc gọi
+- **Model đã dùng** — alias đã phân giải và nhà cung cấp
+- **Số lượng token** — token đầu vào, token đầu ra và tổng chi phí bằng USD
+- **Đường dẫn failover** — yêu cầu đã đi đến nhà cung cấp chính hay dự phòng
+- **Trạng thái cache** — phản hồi có được phục vụ từ cache hay không (không tính phí cho cache hit)
+
+## Ẩn danh PII
+
+Gateway tự động quét mọi prompt và mọi phản hồi của nhà cung cấp để tìm PII trước khi ghi log, cache, hoặc ghi dòng audit. Việc ẩn danh diễn ra trong tiến trình — PII không bao giờ đến được pipeline log hoặc kho trace AI LangSmith ở dạng chưa ẩn danh.
+
+### Những gì được coi là PII
+
+<Tabs>
+  <Tab title="PII Việt Nam">
+    | Loại PII | Ví dụ | Ẩn danh thành |
+    |---|---|---|
+    | CCCD / CMND (số định danh cá nhân) | `012345678901` | `[REDACTED:vn.cccd]` |
+    | MST (mã số thuế) | `0123456789` | `[REDACTED:vn.mst]` |
+    | Số điện thoại Việt Nam | `0912 345 678` | `[REDACTED:vn.phone]` |
+    | Số tài khoản ngân hàng Việt Nam | `1234 5678 9012 3456` | `[REDACTED:vn.bank_account]` |
+    | Địa chỉ Việt Nam | `123 Nguyễn Du, Q1, TP.HCM` | `[REDACTED:vn.address]` |
+  </Tab>
+  <Tab title="PII quốc tế">
+    | Loại PII | Ẩn danh thành |
+    |---|---|
+    | Địa chỉ email | `[REDACTED:email]` |
+    | Số điện thoại (E.164) | `[REDACTED:phone]` |
+    | Số thẻ tín dụng (PAN) | `[REDACTED:pcc]` |
+    | Số hộ chiếu | `[REDACTED:passport]` |
+    | Ngày sinh | `[REDACTED:dob]` |
+  </Tab>
+</Tabs>
+
+<Tip>
+  Mục tiêu recall của ẩn danh PII là ≥ 99,5%. Bộ quy tắc ẩn danh giống với bộ được dùng trong pipeline log OBS, vì vậy dòng audit AI và log vận hành của bạn xử lý PII nhất quán.
+</Tip>
+
+## Bảng điều khiển sử dụng
+
+Mở **Settings → AI Usage** trong bảng điều khiển CyberOS để xem:
+
+<CardGroup cols={2}>
+  <Card title="Tiêu thụ token" icon="chart-bar">
+    Tổng token đang chạy cho chu kỳ thanh toán hiện tại, hạn ngạch còn lại, và biểu đồ phân tích theo ngày.
+  </Card>
+  <Card title="Chi phí theo module" icon="table">
+    Chi tiêu token phân tích theo module CyberOS (chat, skill, kb, v.v.) để bạn thấy tính năng nào tốn nhiều chi phí AI nhất.
+  </Card>
+  <Card title="Chi phí theo kỹ năng" icon="bolt">
+    Với các tenant dùng kỹ năng tùy chỉnh, phân tích chi phí theo từng kỹ năng giúp bạn nhận diện các quy trình tự động hóa đắt đỏ.
+  </Card>
+  <Card title="Người dùng hàng đầu" icon="users">
+    Danh sách xếp hạng thành viên (hoặc persona của agent) theo mức tiêu thụ token trong kỳ — hữu ích để phát hiện các phiên agent chạy mất kiểm soát.
+  </Card>
+</CardGroup>
+
+### Xem sổ cái chi phí
+
+Bạn có thể truy vấn các dòng chi phí riêng lẻ từ bảng điều khiển thanh toán hoặc qua API GraphQL:
+
+```graphql
+query AiUsage {
+  aiCostLedger(period: "2026-05") {
+    rows {
+      module
+      agentPersona
+      modelAlias
+      tokensIn
+      tokensOut
+      costUsd
+      cacheState
+      failoverPath
+      ts
+    }
+    totalCostUsd
+    quotaUsed
+    quotaRemaining
+  }
+}
+```
+
+## Failover nhà cung cấp
+
+Gateway tự động xử lý sự suy giảm của nhà cung cấp để các quy trình của bạn tiếp tục chạy.
+
+<Accordion title="Hành vi failover">
+  | Điều kiện | Hành động của gateway |
+  |---|---|
+  | Nhà cung cấp trả về 5xx | Thử lại một lần, sau đó đánh dấu nhà cung cấp suy giảm trong 60 giây |
+  | Ba lỗi 5xx liên tiếp | Circuit-breaker kích hoạt; định tuyến sang nhà cung cấp dự phòng |
+  | Nhà cung cấp trả về 429 (rate limit) | Backoff theo hàm mũ đến 30 giây; sau đó fallback |
+  | Cả nhà cung cấp chính và dự phòng đều suy giảm | Trả về `503 PROVIDER_UNAVAILABLE`; không bao giờ vượt qua ranh giới cư trú |
+  | Nhà cung cấp phục hồi | Circuit-breaker reset sau 60 giây; khôi phục nhà cung cấp chính tự động |
+
+  Trường `failoverPath` trong mỗi dòng chi phí ghi lại yêu cầu đã dùng nhà cung cấp chính hay dự phòng, để bạn thấy tác động của sự cố nhà cung cấp trong sổ cái chi phí.
+</Accordion>
+
+## Không lưu trữ dữ liệu (Zero-data-retention, ZDR)
+
+Với các tenant thuộc gói có ZDR (Enterprise), gateway định tuyến yêu cầu đến các nhà cung cấp có thỏa thuận ZDR, nghĩa là nhà cung cấp không lưu giữ prompt hoặc completion của bạn để huấn luyện hoặc ghi log ở phía họ. Quyết định định tuyến ZDR được ghi vào mỗi dòng audit.

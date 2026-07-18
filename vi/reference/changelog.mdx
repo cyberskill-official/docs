@@ -1,0 +1,127 @@
+---
+title: 'Changelog nền tảng CyberOS'
+sidebarTitle: 'Changelog'
+description: 'Các thay đổi đáng chú ý trên các module và dịch vụ CyberOS, bao gồm các tính năng đã phát hành, sửa đổi giao thức và các cột mốc phiên bản nền tảng.'
+---
+
+Changelog này bao gồm các thay đổi đáng chú ý đối với nền tảng CyberOS ảnh hưởng đến người dùng và nhà tích hợp. Nó nêu bật các tính năng hướng người dùng, sửa đổi giao thức và các cột mốc trạng thái module. Để xem lịch sử kỹ thuật đầy đủ theo từng dòng, hãy xem `CHANGELOG.md` trong mỗi thư mục module trong repository mã nguồn mở.
+
+## Kiểm tra phiên bản đã cài đặt của bạn
+
+<CodeGroup>
+```bash Terminal
+cat .cyberos/VERSION
+```
+
+```bash Claude Plugin
+/version
+```
+
+```bash CLI
+npx cyberos --version
+```
+</CodeGroup>
+
+<Tip>
+  Sử dụng `cat .cyberos/VERSION` trong một repo đã cài đặt để kiểm tra phiên bản CyberOS đã cài đặt của bạn. Bản phát hành nền tảng hiện tại là **1.0.0** (2026-07-14).
+</Tip>
+
+## Phiên bản 1.0.0 — 2026-07-14
+
+Bản phát hành ổn định đầu tiên của CyberOS. Việc đặt tên 1.0.0 là có chủ ý: dòng 0.x đã củng cố toàn bộ bộ máy phát triển có quản trị. 1.0.0 cam kết `engineering-spec@1` cho hợp đồng nhiệm vụ và vòng đời nhiệm vụ 10-state như những giao diện ổn định.
+
+<Tabs>
+  <Tab title="Điểm nổi bật">
+    - **Các hợp đồng ổn định.** `engineering-spec@1` và vòng đời nhiệm vụ 10-state là các giao diện ổn định đã được cam kết. Các quy trình `/create-tasks` và `/ship-tasks` được củng cố cho sử dụng production đa-repo — các ship manifest có thể resume, chọn hàng đợi tất định, gate autodetect trên 9 stack ngôn ngữ, cấu hình theo repo và các lần ghi backlog đã được kiểm toán.
+    - **Các sản phẩm bàn giao trực quan.** Mỗi nhiệm vụ render thành trang riêng theo phong cách CDS. Trung tâm trạng thái (`status-hub@2`) cung cấp ba lăng kính — board, table và releases — được tái tạo từ frontmatter nhiệm vụ, CHANGELOG này và file VERSION ở mỗi lần deploy.
+    - **CLI người dùng đã hoàn thiện.** Các lệnh: `install`, `uninstall`, `version`, `status`, `help`. Các lệnh slash plugin Claude tương ứng: `/install`, `/uninstall`, `/version`, `/status`, `/help`.
+    - **Kiểm tra cập nhật mềm.** Ở bất kỳ lần sử dụng `.cyberos` nào, CyberOS kiểm tra xem có phiên bản mới hơn khả dụng không. Nếu cũ, nó nhắc bạn chạy `cyberos install` để re-vendor.
+  </Tab>
+  <Tab title="Thay đổi so với 0.x">
+    - **Trang status được hợp nhất.** Roadmap, Backlog và Changelog không còn là ba tab riêng biệt mà trở thành ba lăng kính — board, table, releases — trên một corpus nhiệm vụ đã được lọc với một ngăn kéo đặc tả theo từng nhiệm vụ.
+    - **Đổi tên các entrypoint.** `changelog` → `status` (mở trung tâm trạng thái); `update` → `version` (chỉ kiểm tra). Không có đường `apply` riêng — re-vendor chỉ qua `install`.
+    - **`AGENTS.md` gốc được làm mỏng.** `AGENTS.md` gốc bây giờ là một con trỏ mỏng đến `.cyberos/AGENT-ENTRY.md`. Giao thức bộ nhớ Layer-1 nằm tại `modules/memory/AGENTS.md`.
+    - **Đánh số phiên bản đã sửa.** Các tag 1.x từ thời 0.x đã được rút lại. Số build của kho được tách khỏi semver thông qua một file `BUILD_NUMBER` đơn điệu.
+  </Tab>
+</Tabs>
+
+## Điểm nổi bật gần đây của các module
+
+<AccordionGroup>
+  <Accordion title="AUTH — Wave 1+2 đã phát hành">
+    **Wave 1 — Tất cả 6 nhiệm vụ MUST đã phát hành và được audit nghiêm ngặt.**
+
+    - **SAML SSO với xác minh XML Digital Signature:** Xác thực XML-DSig đầy đủ cho các SAML assertion — danh sách cho phép thuật toán nghiêm ngặt (RSA-SHA256 + SHA-256 + exc-c14n), loại bỏ enveloped-signature và xác minh chứng chỉ X.509. Các nhà cung cấp SSO doanh nghiệp (Okta, Azure AD, Google Workspace) hiện được hỗ trợ đầy đủ.
+    - **Chính sách di chuyển GeoIP:** Phát hiện vận tốc xuyên lục địa và đánh cờ bất thường geo-velocity bảo vệ mọi luồng đăng nhập. Quản trị viên có thể cấu hình danh sách cho phép du lịch theo tenant và các cửa sổ suppression để giảm dương tính giả cho những người thường xuyên đi lại.
+    - **Admin REST API:** Quản lý tenant và subject — liệt kê tenant, liệt kê subject, thu hồi/bỏ thu hồi quyền truy cập subject — với các phản hồi phân trang theo cursor và một deny-list JTI trong bộ nhớ cho vô hiệu hóa token tức thì.
+
+    Hoãn sang Wave 3: deny-list dùng Redis cho scale ngang và một phân loại lý do thu hồi có cấu trúc.
+  </Accordion>
+
+  <Accordion title="Memory (BRAIN) — Wave 2026-Q3 hoàn tất">
+    Tất cả 9 nhiệm vụ trong MEMORY Wave 2026-Q3 đã phát hành đầu-cuối với hơn 110 tiêu chí chấp nhận được bao phủ.
+
+    - **Ghi tiền điều kiện `put_if`:** Thao tác chuẩn mới chỉ commit một lần ghi nếu hash nội dung hiện tại khớp với một tiền điều kiện được cung cấp. Ngăn chặn cuộc đua lost-update trong các kịch bản đa agent đồng thời.
+    - **`cyberos dream` — hợp nhất chế độ đề xuất:** Các agent đề xuất hợp nhất bộ nhớ; các đề xuất được xếp hàng để con người xem xét trước khi bất kỳ lần ghi nào được commit. Các đề xuất được theo dõi theo ID và hiển thị trong `cyberos history`.
+    - **ACL theo kho:** Kiểm soát truy cập chi tiết trên các cây con bộ nhớ. Các truy cập bị từ chối được phát ra như các hàng kiểm toán.
+    - **Sổ transcript phiên:** Transcript phiên được mã hóa opt-in với quản lý CLI đầy đủ: `cyberos transcript start|append|end|read|list|purge-expired`.
+    - **`cyberos history`:** Chiếu lịch sử theo đường dẫn chỉ đọc với các cờ cho limit, phạm vi ngày, thứ tự theo thời gian và đầu ra JSON. Không bao giờ thay đổi kho.
+    - **Ứng dụng desktop:** Ứng dụng desktop Tauri 2 với các tab Dashboard, Search và Sync. Sync supervisor với khởi động lại tự động khi thất bại.
+  </Accordion>
+
+  <Accordion title="Thư viện Skill — Hơn 100 cặp Author/Audit">
+    - **Hơn 100 cặp kỹ năng author/audit được lập chỉ mục** trong thư viện kỹ năng CyberOS, bao phủ tất cả 47 persona CUO đang hoạt động.
+    - **Tuân thủ tiêu chuẩn mở Anthropic Agent Skills.** Tất cả các kỹ năng tuân theo định dạng hợp đồng `SKILL.md`, làm cho chúng tương thích với Claude, Codex, Cursor, Goose, Amp và bất kỳ client tương thích Agent Skills nào.
+    - **Gói `cyberskill-vn` đã phát hành.** Sáu kỹ năng thị trường Việt Nam đang trong production: `vietnam-mst-validate`, `vietnam-bank-transfer` (VietQR), `vietnam-vat-invoice` (hóa đơn) và các tiện ích hỗ trợ.
+    - **Các kỹ năng giao thức phổ quát.** `memory-capture@1`, `memory-sync@1` và `synthesis-author@1` tạo thành bundle kỹ năng giao thức bộ nhớ — có thể được gọi bởi bất kỳ persona nào cần đọc từ hoặc ghi vào BRAIN.
+    - **Lộ trình phân phối:** R0 (cache cục bộ) → R1 (bundle .skill) → R2 (OCI registry) → R3 (công dân agentskills.io) → R4 (marketplace riêng, gated dựa trên ≥50 tenant trả phí) → R5 (white-label doanh nghiệp).
+  </Accordion>
+
+  <Accordion title="CUO — ship-tasks đã củng cố, Dream Loop đã phát hành">
+    - **47 persona đang hoạt động, hơn 221 quy trình.** Thư viện persona đầy đủ với quy ước đặt tên nhất quán. Mỗi vai trò C-role có một bộ quy trình riêng.
+    - **Supervisor quy trình nâng cao.** Sáu mẫu handler cho các kịch bản đa nhiệm vụ phức tạp: tuyến tính (mặc định), tới hạn thời gian (SLA-bypass với audit vi phạm), fan-out theo từng instance, fan-out đa đầu ra theo từng người nhận, chuỗi phê duyệt tuần tự và các chuỗi xen kẽ theo cặp persona.
+    - **Mô hình backlog đơn.** Track improvement đã được gộp vào track product. Một backlog, một luồng `ship-tasks`.
+    - **Dream loop (chế độ đề xuất).** `cyberos dream` phát hành như một lệnh liền kề CUO. Các agent đề xuất hợp nhất bộ nhớ; loop hoãn các lần ghi cho đến khi con người chấp nhận.
+    - **Gate autodetect.** Hỗ trợ Go, JVM, .NET, PHP, Ruby, Rust, Python, TypeScript, Bun. Các override theo repo qua `.cyberos/config.yaml`.
+    - **Ghi backlog đã kiểm toán.** Một đường ghi vào `BACKLOG.md` — tất cả các chuyển tiếp trạng thái đi qua kỹ năng `backlog-state-update@2`, không bao giờ chỉnh sửa file trực tiếp.
+  </Accordion>
+
+  <Accordion title="Plugin Claude — Các lệnh và marketplace">
+    - **Các lệnh slash:** `/install`, `/uninstall`, `/version`, `/status`, `/help` — tương đương đầy đủ với bề mặt CLI.
+    - **Listing trên marketplace Claude Code.** Plugin CyberOS được listing trên marketplace Claude Code. Một file `.plugin` cho phép cài đặt một-nhấp từ Claude Desktop.
+    - **`/status` mở trung tâm trạng thái** trong trình duyệt mặc định, hiển thị chế độ xem board/table/releases của corpus nhiệm vụ hiện tại.
+    - **Kiểm tra cập nhật mềm ở bất kỳ lần sử dụng `.cyberos` nào.** Nếu có phiên bản mới hơn khả dụng và người dùng xác nhận, `install` re-vendor payload. Không có đường `apply` riêng.
+  </Accordion>
+</AccordionGroup>
+
+## Trạng thái module
+
+<Note>
+  Để xem changelog kỹ thuật đầy đủ, hãy xem `CHANGELOG.md` trong mỗi thư mục module trong repository mã nguồn mở tại `modules/<slug>/CHANGELOG.md`.
+</Note>
+
+| Module | Trạng thái |
+|---|---|
+| memory (BRAIN) | Đã phát hành — P0 |
+| Skill library | Đã phát hành — P0 |
+| CUO workflow engine | Đã phát hành — P0 |
+| AUTH | Đang tiến hành — P0 |
+| AI Gateway | Đang tiến hành — P0 |
+| MCP Gateway | Kế hoạch — P0 |
+| OBS (Observability) | Kế hoạch — P0 |
+| CHAT | Kế hoạch — P0 |
+| PROJ | Kế hoạch — P1 |
+| TIME | Kế hoạch — P1 |
+| CRM | Kế hoạch — P1 |
+| KB (Knowledge Base) | Kế hoạch — P1 |
+| HR | Kế hoạch — P1 |
+| EMAIL | Kế hoạch — P1 |
+| REW (Rewards/Compensation) | Kế hoạch — P1 |
+| LEARN | Kế hoạch — P1 |
+| INV (Invoicing) | Kế hoạch — P2 |
+| ESOP | Kế hoạch — P2 |
+| RES (Resources) | Kế hoạch — P3 |
+| OKR | Kế hoạch — P3 |
+| DOC (Documents) | Kế hoạch — P4 |
+| PORTAL | Kế hoạch — P4 |
+| TEN (Tenancy) | Kế hoạch — P4 |
