@@ -1,0 +1,89 @@
+---
+title: 'CyberOS là gì? Nền tảng vận hành AI-native'
+sidebarTitle: 'Giới thiệu'
+description: 'CyberOS là nền tảng vận hành AI-native liên kết — bộ nhớ, Skills, quy trình, HR, CRM, dự án, tài chính — nơi agent và con người cùng làm việc.'
+---
+
+CyberOS là nền tảng vận hành nội bộ AI-native của CyberSkill. Nó mang đến cho đội ngũ của bạn một nền tảng có quản trị duy nhất, nơi các agent AI và người vận hành làm việc song song — agent triển khai, review và kiểm thử; con người nắm giữ hai cổng chấp nhận quyết định khi nào công việc thực sự hoàn thành. Thay vì lắp ghép AI vào các công cụ hiện có sau khi đã xong, CyberOS là agentic ngay từ ngày đầu tiên: mọi hành động đều được ghi lại trong kho bộ nhớ có chuỗi kiểm toán, mọi năng lực đều là một Skill có phiên bản, và mọi đơn vị công việc đều chảy qua cùng một vòng đời có quản trị, bất kể đó là một tính năng mới, một đợt refactor hay một đợt kiểm tra tuân thủ.
+
+## CyberOS giải quyết những vấn đề gì?
+
+Hầu hết các đội ngũ đều đối mặt với ba vấn đề dai dẳng khi cố gắng làm việc với agent AI: họ không thể tin tưởng những gì agent đã làm (không có dấu vết kiểm toán), họ không thể kiểm soát khi nào agent tự hành động (không có lớp quản trị), và họ phải kết nối các công cụ riêng lẻ cho bộ nhớ, nhiệm vụ, kỹ năng và các module nghiệp vụ. CyberOS giải quyết cả ba trên một nền tảng duy nhất:
+
+- **Không có dấu vết kiểm toán** → mỗi lần ghi vào bộ nhớ đều được móc xích bằng hash và có thể phát lại; BRAIN lưu mọi quyết định, kế hoạch và review kèm chứng cứ mật mã.
+- **Không có quản trị** → engine quy trình CUO thực thi hai cổng chấp nhận bắt buộc của con người mà agent không thể tự vượt qua.
+- **Công cụ phân mảnh** → 22 module liên kết (HR, CRM, Projects, Finance và nhiều hơn nữa) chạy trên cùng nền tảng, chia sẻ cùng kho bộ nhớ và nói cùng giao thức Skills.
+
+## Các giá trị cốt lõi
+
+**Bộ nhớ có chuỗi kiểm toán (BRAIN)**
+BRAIN là lớp bộ nhớ của nền tảng — một kho cục bộ append-only tại `.cyberos/memory/store/` nơi mọi thay đổi đều được móc xích bằng hash vào các segment binlog theo tháng. Bất kỳ byte nào của lịch sử đều có thể được phát lại hoặc chứng minh bằng mật mã. Đây không phải là log được lắp ghép sau; nó chính là đường ghi.
+
+**104 Skill agent**
+Một Skill là một năng lực có phiên bản, có thể kiểm toán: một hợp đồng `SKILL.md` định nghĩa trigger, inputs, outputs và các bước xác minh, cùng với một cặp author/audit tách biệt phần công việc khỏi phần chứng cứ. CyberOS cung cấp 104 Skills — từ soạn thảo nhiệm vụ, review code đến các công cụ tuân thủ cho thị trường Việt Nam — tất cả đều tương thích với tiêu chuẩn mở Agent Skills của Anthropic. Claude, Codex, Cursor, Gemini, Grok và mọi agent hỗ trợ skill khác đều có thể gọi chúng.
+
+**Engine quy trình CUO**
+Module CUO điều phối mọi đơn vị công việc qua một vòng đời có quản trị: `draft → ready_to_implement → implementing → reviewing → testing → done`. Các thất bại được định tuyến quay lại thay vì kết thúc, do đó công việc không bao giờ biến mất vào ngõ cụt. Một backlog, một quy trình, một vòng đời — cho cả tính năng mới lẫn công việc gia cố.
+
+**Quản trị có con người trong vòng lặp**
+Hai chuyển tiếp trong mỗi nhiệm vụ là các cổng chấp nhận bắt buộc của con người. Agent mang công việc đến từng cổng cùng chứng cứ và dừng lại; chỉ có phán quyết được ghi lại của con người mới đẩy nó đi tiếp. Agent không bao giờ tự đặt trạng thái `done`. Đây không phải là tùy chọn — nó được engine quy trình bắt buộc.
+
+## Các module của nền tảng
+
+CyberOS phát hành các module theo giai đoạn. Ba module P0 (memory, CUO, skill) tạo thành nền tảng vận hành; mọi module cấp cao hơn đều phụ thuộc vào chúng.
+
+| Giai đoạn | Module | Chức năng |
+|-------|--------|--------------|
+| P0 | **memory** | Kho BRAIN append-only, có chuỗi kiểm toán + tìm kiếm ngữ nghĩa Layer-2 |
+| P0 | **CUO** | Engine quy trình — điều phối các nhiệm vụ qua vòng đời có quản trị |
+| P0 | **AUTH** | Danh tính, JWT, OAuth 2.1, WebAuthn MFA, RBAC |
+| P0 | **AI** | AI Gateway — định tuyến model, giới hạn tần suất, hạch toán token |
+| P0 | **MCP** | MCP Gateway — tích hợp gốc Model Context Protocol |
+| P0 | **OBS** | Observability — tracing, cảnh báo, triage CUO từ sự kiện production |
+| P0 | **CHAT** | Chat thời gian thực với các agent đồng đội |
+| P1 | **PROJ** | Quản lý dự án — nhiệm vụ, milestone, bảng |
+| P1 | **TIME** | Theo dõi thời gian |
+| P1 | **CRM** | Quản lý quan hệ khách hàng |
+| P1 | **KB** | Cơ sở tri thức |
+| P1 | **HR** | Nhân sự — tuyển dụng, onboarding, hợp đồng |
+| P1 | **EMAIL** | Tích hợp email |
+| P1 | **REW** | Thưởng và ghi nhận |
+| P1 | **LEARN** | Học tập và phát triển |
+| P2 | **INV** | Quản lý hóa đơn |
+| P2 | **ESOP** | Kế hoạch quyền chọn cổ phiếu cho nhân viên |
+| P3 | **RES** | Lập kế hoạch nguồn lực |
+| P3 | **OKR** | Mục tiêu và kết quả then chốt |
+| P4 | **DOC** | Quản lý tài liệu |
+| P4 | **PORTAL** | Cổng thông tin khách hàng và đối tác |
+| P4 | **TEN** | Quản lý đa tenant |
+
+<CardGroup cols={2}>
+  <Card title="Bắt đầu nhanh" icon="rocket" href="/quickstart">
+    Cài đặt CyberOS, viết nhiệm vụ đầu tiên và triển khai nó với AI trong chưa đầy 15 phút.
+  </Card>
+  <Card title="Khái niệm cốt lõi" icon="lightbulb" href="/concepts">
+    Đi sâu vào BRAIN, Skills, CUO, các trạng thái nhiệm vụ và mô hình con người trong vòng lặp.
+  </Card>
+</CardGroup>
+
+## CyberOS dành cho ai
+
+CyberOS được thiết kế cho **các đội ngũ và tổ chức** muốn làm việc với agent AI mà không mất đi khả năng kiểm soát và kiểm toán. Đặc biệt phù hợp với:
+
+- **Đội ngũ sản phẩm và kỹ thuật** đã làm việc theo hướng task-driven và muốn AI gánh vác phần triển khai giữa các quyết định của con người.
+- **Tổ chức nặng về vận hành** cần công cụ HR, CRM, tài chính và dự án chia sẻ một dấu vết kiểm toán duy nhất thay vì rải rác dữ liệu qua các sản phẩm SaaS silo.
+- **Doanh nghiệp thị trường Việt Nam** cần tuân thủ hóa đơn điện tử, API ngân hàng và khung pháp lý Việt Nam — CyberOS cung cấp gói skill `cyberskill-vn` chuyên biệt cho đúng mục đích này, với lộ trình mở rộng sang Đông Nam Á.
+- **Nhà xây dựng nền tảng** muốn một hệ điều hành agentic có thể white-label, cấp phép Apache 2.0 để mở rộng bằng các module và Skills riêng của họ.
+
+## Cách agent và con người cộng tác
+
+Mỗi đơn vị công việc trong CyberOS là một nhiệm vụ — một file markdown nhỏ trong `docs/tasks/` mô tả cần xây dựng gì và cách chứng minh nó hoạt động. Quy trình `ship-tasks` điều phối nhiệm vụ từ đầu đến cuối. Dưới đây là cách hai vai trò phân chia công việc:
+
+**Agent** triển khai các điều khoản định danh của nhiệm vụ, chạy các cổng máy (build, lint, test, coverage), review chính công việc của mình và tự động chuyển tiếp trạng thái nhiệm vụ giữa các cổng. Chúng làm mọi thứ có thể được máy xác minh.
+
+**Con người** nắm giữ hai cổng chấp nhận bắt buộc, nơi việc xác minh bằng máy là cần thiết nhưng chưa đủ:
+
+1. **Cổng review** (`reviewing → ready_to_test`): bạn đọc gói code-review của agent so với các điều khoản của nhiệm vụ và ma trận các trường hợp biên. Nói "approved" để tiếp tục, hoặc định tuyến quay lại kèm lý do.
+2. **Cổng chấp nhận cuối cùng** (`testing → done`): bạn đọc chứng cứ kiểm thử (đầu ra cổng, chứng minh theo từng tiêu chí chấp nhận) và ghi lại phán quyết. Chỉ bạn mới có thể đặt `done`.
+
+Giữa các cổng, agent chạy liên tục và tự giải quyết mọi thứ nó có thể xác minh. Mỗi phán quyết của con người được ghi lại như một hàng kiểm toán trong BRAIN, do đó toàn bộ câu chuyện vòng đời — bao gồm ai đã phê duyệt cái gì và khi nào — luôn có thể chứng minh được.

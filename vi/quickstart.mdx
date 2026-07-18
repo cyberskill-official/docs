@@ -1,0 +1,200 @@
+---
+title: 'Bắt đầu nhanh với CyberOS: Cài đặt, viết và triển khai một nhiệm vụ'
+sidebarTitle: 'Bắt đầu nhanh'
+description: 'Cài đặt CyberOS vào repository của bạn, viết nhiệm vụ đầu tiên và triển khai thay đổi đầu tiên với trợ giúp AI trong chưa đầy mười lăm phút.'
+---
+
+Hướng dẫn này đưa bạn từ số không đến một thay đổi đã được triển khai và được con người chấp nhận trong chưa đầy 15 phút. Bạn sẽ cài đặt CyberOS vào repository của mình, viết một nhiệm vụ mô tả cần xây dựng gì, kích hoạt agent AI và nắm giữ hai cổng con người quản trị mọi công việc. Không cần kiến thức trước về CyberOS.
+
+<Steps>
+
+  <Step title="Điều kiện tiên quyết">
+    Trước khi cài đặt, hãy đảm bảo bạn có sẵn những thứ sau:
+
+    - **Python 3.11+** — module bộ nhớ CyberOS và lệnh doctor chạy trên Python.
+    - **Node 24+** — cần cho CLI `npx cyberos` và MCP server.
+    - **Một agent AI** — CyberOS hoạt động với Claude, Codex, Cursor, Gemini, Grok, Command Code, Windsurf, Copilot và bất kỳ agent file-and-shell nào khác. Plugin Claude mang lại trải nghiệm mượt mà nhất với truy cập `/ship-tasks` bằng một lệnh, nhưng không bắt buộc.
+
+    Codebase hiện có của bạn không cần thay đổi gì. CyberOS cài đặt hoàn toàn vào thư mục `.cyberos/` đã được gitignore và một thư mục `docs/tasks/` được track — nó không bao giờ chạm vào các file nguồn của bạn.
+  </Step>
+
+  <Step title="Cài đặt qua npx (khuyến nghị)">
+    Chạy lệnh sau từ thư mục gốc repository của bạn:
+
+    ```bash
+    npx cyberos install
+    ```
+
+    Lệnh duy nhất này làm mọi thứ bạn cần để bắt đầu:
+
+    - **Vendor thư mục `.cyberos/`** — engine quy trình CUO, giao thức bộ nhớ BRAIN, plugin và gate runner được đặt dưới `.cyberos/`, và được thêm ngay vào `.gitignore` của bạn.
+    - **Tạo khung `docs/tasks/BACKLOG.md`** — chỉ mục nhiệm vụ của bạn được tạo nếu chưa tồn tại. Các file đã có không bao giờ bị ghi đè.
+    - **Tạo kho BRAIN cục bộ** tại `.cyberos/memory/store/` — kho bộ nhớ append-only, có chuỗi kiểm toán của bạn sẵn sàng ngay từ lần chạy đầu tiên.
+    - **Ghi các file entry cho agent** — `AGENTS.md` (xương sống chuẩn xuyên công cụ), `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, và các thư mục skill riêng cho từng agent được tạo khi cần, để mọi agent hỗ trợ skill có thể điều phối quy trình ngay lập tức.
+    - **Tự động phát hiện các lệnh cổng của bạn** — CyberOS kiểm tra repo của bạn để tìm `Cargo.toml`, `package.json`, `pyproject.toml`, `go.mod` và các dấu hiệu stack khác, sau đó kết nối các lệnh build, lint, test và coverage vào `.cyberos/gates.env` một cách tự động.
+
+    <Tip>
+      Cài đặt plugin Claude để truy cập `/ship-tasks` bằng một lệnh. Trong Claude, vào **Settings → Plugins → Add** và chọn file `dist/cyberos/cyberos.plugin`. Sau khi cài đặt, gõ `/ship-tasks` trong phiên repo của bạn sẽ điều phối nhiệm vụ đủ điều kiện tiếp theo từ đầu đến cuối mà không cần cài đặt bổ sung nào.
+    </Tip>
+  </Step>
+
+  <Step title="Hoặc cài đặt qua terminal (thay thế)">
+    Nếu bạn muốn cài đặt trực tiếp từ một payload CyberOS mà bạn đã build hoặc tải về, hãy chạy shell installer thay thế:
+
+    ```bash
+    bash /path/to/dist/cyberos/install.sh /path/to/your-repo
+    ```
+
+    Kết quả giống hệt như đường npx. Sử dụng tùy chọn này khi bạn làm việc offline, trong môi trường CI, hoặc khi bạn muốn cố định một phiên bản payload cụ thể. Bạn cũng có thể chạy lại `install.sh` bất cứ lúc nào để cập nhật một repo đã khởi tạo — nó sao lưu `gates.env` và không bao giờ ghi đè `BACKLOG.md` hoặc các nhiệm vụ hiện có của bạn.
+  </Step>
+
+  <Step title="Xác minh cài đặt">
+    Xác nhận rằng kho bộ nhớ khỏe mạnh và cài đặt đã hoàn tất:
+
+    ```bash
+    python -m cyberos doctor
+    ```
+
+    Một cài đặt thành công in ra một dòng duy nhất:
+
+    ```
+    READY
+    ```
+
+    Nếu bạn thấy bất kỳ cảnh báo hay lỗi nào, hãy chạy lại `npx cyberos install` từ thư mục gốc repo để sửa cài đặt. Lệnh `doctor` duyệt qua toàn bộ tập bất biến được định nghĩa trong `memory.invariants.yaml` và báo cáo chi tiết sức khỏe của kho.
+
+    <Note>
+      Thư mục `.cyberos/` đã được gitignore — **không bao giờ commit nó**. Nó là một cỗ máy được vendor tái tạo ở mỗi lần chạy `install`. Kho BRAIN của bạn (`.cyberos/memory/store/`) chứa dữ liệu tenant cục bộ phải được giữ ngoài version control.
+    </Note>
+  </Step>
+
+  <Step title="Viết nhiệm vụ đầu tiên của bạn">
+    Tạo một file dưới `docs/tasks/`. Sử dụng quy ước đặt tên `docs/tasks/<module>/task-<MODULE>-<NNN>-<slug>.md`, hoặc sao chép template từ `.cyberos/cuo/templates/`. Đây là khung tối thiểu:
+
+    ```markdown
+    ---
+    id: TASK-SHOP-001
+    title: Add a login rate limit
+    module: shop
+    class: product
+    status: ready_to_implement
+    priority: MUST
+    depends_on: []
+    routed_back_count: 0
+    ---
+
+    # TASK-SHOP-001 — Add a login rate limit
+
+    ## Context
+    The login endpoint has no rate limiting. A brute-force attacker
+    can try unlimited passwords. This task adds a 429 response after
+    5 attempts per minute per account.
+
+    ## 1. Normative clauses
+    1. The login endpoint MUST reject more than 5 attempts per minute per account.
+    2. A rejected attempt MUST return 429 with a Retry-After header.
+
+    ## 2. Acceptance criteria
+    - [ ] 6th attempt within a minute returns 429.
+    - [ ] Tests cover the limit and the reset window.
+    ```
+
+    **Các trường frontmatter chính:**
+    - `id` — định danh nhiệm vụ duy nhất, được dùng khắp nơi làm tham chiếu chuẩn.
+    - `class` — `product` cho năng lực mới; `improvement` cho gia cố, refactor và sửa lỗi.
+    - `status: ready_to_implement` — đánh dấu nhiệm vụ đủ điều kiện để agent nhận. Các nhiệm vụ ở trạng thái `draft` sẽ bị hàng đợi bỏ qua.
+    - `priority` — `MUST`, `SHOULD`, hoặc `COULD` theo quy ước MoSCoW.
+
+    Sau khi lưu file, thêm một dòng vào `docs/tasks/BACKLOG.md` trong phần module thích hợp. Trường `status:` của file nhiệm vụ là bản ghi chân lý; `BACKLOG.md` là chỉ mục.
+  </Step>
+
+  <Step title="Kích hoạt agent">
+    Với plugin Claude đã cài đặt, gõ lệnh slash sau trong phiên repo của bạn:
+
+    ```
+    /ship-tasks
+    ```
+
+    Plugin Claude cũng hỗ trợ các lệnh sau:
+
+    | Lệnh | Chức năng |
+    |---------|-------------|
+    | `/ship-tasks` | Điều phối nhiệm vụ đủ điều kiện tiếp theo từ đầu đến cuối |
+    | `/install` | Cài đặt hoặc cài đặt lại CyberOS vào repo hiện tại |
+    | `/update` | Cập nhật payload CyberOS đã vendor lên phiên bản mới nhất |
+    | `/changelog` | Hiển thị changelog CyberOS |
+    | `/help` | Liệt kê tất cả các lệnh plugin khả dụng |
+
+    Không có plugin, hãy dán prompt này vào bất kỳ agent file-and-shell nào (Claude, Codex, Cursor, Gemini, Grok, hoặc bất kỳ agent nào khác):
+
+    ```
+    Follow .cyberos/AGENT-ENTRY.md and drive the next eligible task in
+    docs/tasks/BACKLOG.md. HITL required. repo_root = this repo.
+    ```
+
+    Agent chọn nhiệm vụ `ready_to_implement` đầu tiên từ backlog của bạn, triển khai mọi điều khoản định danh, chạy các cổng máy của repo (`bash .cyberos/cuo/gates/run-gates.sh`), review chính công việc của mình, và chuyển tiếp trạng thái nhiệm vụ khi thực hiện. Nó chạy liên tục giữa hai cổng con người và tự giải quyết mọi thứ có thể xác minh bằng máy.
+  </Step>
+
+  <Step title="Nắm giữ hai cổng của con người">
+    Agent dừng lại và đợi bạn tại đúng hai điểm. Đây là những khoảnh khắc duy nhất quá trình cần sự chú ý của bạn, và nó không thể tiếp tục nếu không có bạn:
+
+    **Cổng 1 — Chấp nhận review (`reviewing → ready_to_test`)**
+
+    Agent trình bày những gì nó đã xây cùng với các phát hiện code-review và một ma trận các trường hợp biên. Đọc các điều khoản định danh của nhiệm vụ so với thay đổi. Nếu mọi thứ đúng, hãy nói "approved" và agent chuyển nhiệm vụ sang `ready_to_test`. Nếu có gì sai, mô tả vấn đề trong một câu — nhiệm vụ định tuyến quay lại `ready_to_implement` với `routed_back_count` được tăng lên, và agent thử lại.
+
+    **Cổng 2 — Chấp nhận cuối cùng (`testing → done`)**
+
+    Agent trình bày chứng cứ kiểm thử của mình: đầu ra cổng, kết quả coverage và chứng minh rằng mỗi tiêu chí chấp nhận đã đạt. Nếu bạn hài lòng, hãy nói "done". Trạng thái nhiệm vụ trở thành `done` và công việc hoàn tất. Nếu vẫn còn gì sai, hãy định tuyến quay lại theo cách tương tự.
+
+    Agent **không bao giờ tự đặt `done`**. Một agent tự đánh dấu công việc của chính mình là hoàn thành mà không có phán quyết được ghi lại của con người là bị hỏng — hãy báo cáo. Mọi phán quyết bạn ghi lại đều được viết thành một hàng kiểm toán trong BRAIN với danh tính của bạn, ID nhiệm vụ, trạng thái trước đó và dấu thời gian.
+  </Step>
+
+</Steps>
+
+<CodeGroup>
+
+```bash npx install
+# Install CyberOS into the current directory
+npx cyberos install
+
+# Install into a specific directory
+npx cyberos install /path/to/your-repo
+```
+
+```bash npx update
+# Update the vendored CyberOS payload in the current directory
+npx cyberos update
+
+# Update a specific repo
+npx cyberos update /path/to/your-repo
+```
+
+```bash terminal install
+# Build the payload from a CyberOS checkout (once)
+bash tools/install/build.sh
+
+# Install into your repo
+bash /path/to/dist/cyberos/install.sh /path/to/your-repo
+```
+
+```bash doctor
+# Verify the memory store is healthy
+python -m cyberos doctor
+# Expected output: READY
+```
+
+```bash export
+# Export the BRAIN memory store to a portable zip
+python -m cyberos export
+```
+
+</CodeGroup>
+
+## Bước tiếp theo là gì?
+
+Bạn đã cài đặt CyberOS, viết một nhiệm vụ và triển khai thay đổi đầu tiên. Từ đây bạn có thể:
+
+- **Đọc [Khái niệm cốt lõi](/concepts)** để hiểu sâu về mô hình bộ nhớ BRAIN, toàn bộ vòng đời nhiệm vụ và hệ thống Skills.
+- **Khám phá [module CUO](/modules/cuo)** để thấy toàn bộ doctrine quy trình, kỷ luật thực thi và hợp đồng trạng thái 10-state.
+- **Duyệt [Thư viện Skills](/modules/skill)** để khám phá 104 Skills tích hợp sẵn và học cách gọi chúng từ bất kỳ agent nào.
+- **Kiểm tra [Hướng dẫn cài đặt](/guides/install)** để biết mọi kênh cài đặt khả dụng: GitHub Action, Docker, MCP server, target Makefile và nhiều hơn nữa.

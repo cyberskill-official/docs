@@ -1,0 +1,165 @@
+---
+title: 'TIME: Giờ Tính Phí, Chi Phí và Tuân Thủ Luật Lao Động'
+sidebarTitle: 'Time'
+description: 'CyberOS TIME theo dõi giờ tính phí, chi phí và nghỉ phép với các rào chắn luật lao động Việt Nam, OCR hóa đơn và quy trình phê duyệt ba tầng.'
+---
+
+TIME là bộ máy giờ tính phí của CyberOS và là ledger cấp độ chính trực nằm giữa PROJ và INV. Nó hoạt động trên ba nguyên tắc cơ bản: một `TimeEntry` ghi lại số phút đã làm việc đối với một Engagement, Project hoặc Issue với một cờ tính phí; một `Expense` ghi lại số VND hoặc USD đã chi với nhà cung cấp, VAT và hình ảnh biên lai; một `LeaveRequest` ghi lại sự vắng mặt với một loại và một luồng phê duyệt nhiều bước. Điều làm cho TIME hơn là một bảng chấm công đơn giản là mô hình chính trực — các mục chỉ được ghi thêm ở lớp kiểm toán, mọi sửa lỗi tạo ra một dòng mới thay vì chỉnh sửa dòng gốc, và các giới hạn giờ thường xuyên và làm thêm của Bộ luật Lao động Việt Nam được thực thi như các quy tắc hệ thống cứng. Tại thời điểm đóng chu kỳ thanh toán, TIME tổng hợp các giờ tính phí đã phê duyệt theo thành viên theo vai trò theo Engagement và đẩy tóm tắt đến INV, nơi nó trở thành các dòng hóa đơn mà Account Manager xem xét trước khi gửi đến khách hàng.
+
+<Note>
+  TIME là một module P1 hiện đang trong giai đoạn thiết kế. Trang này mô tả chức năng được lên kế hoạch từ góc nhìn người dùng. Tham khảo roadmap nền tảng để biết chi tiết về tính khả dụng GA.
+</Note>
+
+---
+
+## Ghi thời gian
+
+TIME hỗ trợ ba chế độ ghi. Chọn chế độ phù hợp với cách bạn làm việc; cả ba đều tạo ra cùng một bản ghi `TimeEntry` có thể kiểm toán.
+
+<Tabs>
+  <Tab title="Bộ đếm giờ">
+    Bộ đếm giờ là cách nhanh nhất để ghi thời gian cho công việc bạn đang làm ngay bây giờ.
+
+    <Steps>
+      <Step title="Bắt đầu bộ đếm giờ">
+        Mở TIME và nhấp **Start Timer**. Chọn Engagement, Project và Issue bạn đang làm việc. Bộ đếm giờ bắt đầu ngay lập tức và tiếp tục chạy ngay cả khi bạn điều hướng ở nơi khác trong CyberOS — chỉ báo bộ đếm giờ hoạt động vẫn hiển thị trong sidebar.
+      </Step>
+      <Step title="Làm việc">
+        Bộ đếm giờ chạy trong nền. Bạn có thể điều hướng bất cứ đâu trong CyberOS; chỉ báo bộ đếm giờ hoạt động vẫn hiển thị trong sidebar.
+      </Step>
+      <Step title="Dừng bộ đếm giờ">
+        Nhấp **Stop Timer** và thêm một mô tả ngắn về những gì bạn đã làm. CyberOS tính thời lượng từ thời gian bắt đầu và dừng của bạn tự động — bạn không bao giờ gõ thời lượng.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Nhập thủ công">
+    Sử dụng nhập thủ công để ghi thời gian hồi tố — ví dụ, thời gian bạn dành trong một cuộc họp khách hàng trước khi bạn mở TIME.
+
+    Mở TIME, nhấp **Log Time**, và nhập ngày, thời lượng, Engagement, Project, Issue và một mô tả. Mục được tạo với trạng thái nháp và được bao gồm trong lần nộp hàng tuần tiếp theo của bạn.
+  </Tab>
+  <Tab title="Tự động phát hiện (đề xuất)">
+    CyberOS theo dõi hoạt động PROJ của bạn — thay đổi trạng thái Issue, bình luận và chuyển tiếp — và đề xuất các mục thời gian khớp với hoạt động đó.
+
+    Các đề xuất tự động phát hiện xuất hiện trong panel **Review proposals**. Với mỗi đề xuất, bạn thấy Issue được đề xuất, thời lượng và mô tả. Bạn có thể chấp nhận nó như hiện tại, chỉnh sửa thời lượng hoặc mô tả, hoặc bỏ qua nó.
+
+    <Tip>
+      Các mục thời gian tự động phát hiện luôn là đề xuất — bạn xác nhận trước khi chúng được lưu. CyberOS không bao giờ tạo một mục thời gian thay mặt bạn mà không có xác nhận rõ ràng của bạn.
+    </Tip>
+  </Tab>
+</Tabs>
+
+---
+
+## Luồng phê duyệt
+
+Mỗi tuần bạn nộp các mục thời gian của mình để review. Luồng có ba tầng, và mỗi bước được ghi trong audit trail.
+
+<Steps>
+  <Step title="Thành viên nộp hàng tuần">
+    Trước cuối mỗi tuần làm việc (chậm nhất là Chủ nhật 23:59), chọn **Submit Week** trong TIME. Hệ thống xác nhận rằng không có các mục chồng chéo và không có mục đơn lẻ nào dài hơn 12 giờ liên tục, sau đó khóa các mục và thông báo cho Account Manager của bạn.
+  </Step>
+  <Step title="Account Manager review">
+    Account Manager của bạn review từng mục đối với Engagement và có thể **Approve**, **Reject** (với một ghi chú), hoặc **Request revision**. Các mục được phê duyệt chảy về phía trước đến INV tại thời điểm đóng chu kỳ. Các mục bị từ chối hoặc yêu cầu chỉnh sửa trở lại với bạn dưới dạng nháp để sửa.
+  </Step>
+  <Step title="Tầm nhìn CFO">
+    CFO có một dashboard hợp nhất chỉ đọc trên tất cả các Engagement. CFO không cần phê duyệt các mục riêng lẻ nhưng có thể gắn cờ các ngoại lệ làm thêm yêu cầu sự phê duyệt rõ ràng của CFO trước khi rollup TIME → INV chạy.
+  </Step>
+</Steps>
+
+<Note>
+  Bạn không thể phê duyệt các mục thời gian của chính mình. Hệ thống từ chối bất kỳ nỗ lực phê duyệt nào khi người phê duyệt và thành viên trên mục là cùng một người.
+</Note>
+
+---
+
+## Ghi nhận chi phí
+
+Ghi nhận chi phí bằng cách tải lên một ảnh biên lai trực tiếp từ điện thoại hoặc máy tính của bạn. Pipeline OCR `hóa đơn` Việt Nam xử lý việc trích xuất.
+
+<Steps>
+  <Step title="Tải lên biên lai">
+    Trong TIME, mở **Expenses → Capture Expense** và tải lên hoặc chụp ảnh biên lai. CyberOS lưu trữ hình ảnh một cách an toàn và bắt đầu xử lý nó ngay lập tức.
+  </Step>
+  <Step title="OCR xử lý biên lai">
+    Pipeline OCR phân tích cấu trúc `hóa đơn`: tên nhà cung cấp, mã số thuế MST, các dòng, tách VAT và tổng. Kỹ năng `vietnam-mst-validate` đối chiếu MST của nhà cung cấp với đăng ký GDT. Trình phân loại gán một mã sổ cái (ví dụ, `T&E.meals` hoặc `T&E.travel.taxi`) với một điểm tin cậy.
+  </Step>
+  <Step title="Xác nhận và nộp">
+    Xem xét các trường được trích xuất trong panel **Confirm Expense**. Sửa bất cứ điều gì OCR làm sai — OCR có độ recall cao nhưng không phải là không thể sai, và bạn là nguồn sự thật. Khi đã xác nhận, nộp chi phí để AM phê duyệt.
+  </Step>
+</Steps>
+
+TIME hỗ trợ chi phí bằng **VND và USD**. Mọi bản ghi chi phí lưu số tiền theo tiền tệ gốc cộng với một snapshot tỷ giá Vietcombank được lấy vào ngày phát sinh chi phí, để giá trị VND tương đương trên hóa đơn của bạn luôn có thể tái tạo.
+
+---
+
+## Yêu cầu nghỉ phép
+
+Nộp yêu cầu nghỉ phép qua luồng quản lý nghỉ phép của TIME. Tám loại nghỉ phép được hỗ trợ:
+
+| Loại | Tiếng Việt | Ghi chú |
+|------|-----------|-------|
+| Annual leave | Nghỉ phép năm | Tích lũy theo hạn ngạch Điều 113 Bộ luật Lao động |
+| Sick leave | Nghỉ ốm | Yêu cầu quản lý phê duyệt |
+| Maternity leave | Nghỉ thai sản | Quyền lợi 6 tháng theo luật định |
+| Paternity leave | Nghỉ thai sản (cha) | Theo sửa đổi Bộ luật Lao động |
+| Sabbatical | Nghỉ nghiên cứu | Tùy thuộc vào thâm niên và phê duyệt CDO |
+| Unpaid leave | Nghỉ không lương | Phê duyệt từng trường hợp |
+| Bereavement leave | Nghỉ tang | Theo luật + chính sách công ty |
+| Public holiday | Nghỉ lễ | Được điền sẵn từ lịch nghỉ lễ công cộng Việt Nam |
+
+Để nộp yêu cầu nghỉ phép, mở **TIME → Leave → New Request**, chọn loại, nhập ngày bắt đầu và kết thúc, và thêm lý do. Quản lý của bạn nhận thông báo và phê duyệt hoặc từ chối yêu cầu. Nghỉ phép được phê duyệt đồng bộ với lịch Google hoặc Outlook của bạn như một sự kiện hai chiều.
+
+### Rào chắn Bộ luật Lao động Việt Nam
+
+TIME thực thi các giới hạn Điều 107 Bộ luật Lao động Việt Nam như các quy tắc hệ thống cứng:
+
+- **40 giờ** làm việc thường xuyên mỗi tuần (Điều 105)
+- **200 giờ** làm thêm mỗi năm — giới hạn tiêu chuẩn
+- **Tối đa 300 giờ** làm thêm mỗi năm — chỉ với sự đồng ý được ghi thành văn bản của nhân viên và thông báo MoLISA có trong hồ sơ
+
+<Warning>
+  Hệ thống sẽ chặn các mục thời gian có thể vi phạm giới hạn làm thêm Việt Nam. Nỗ lực vượt quá 300 giờ làm thêm hàng năm bị chặn và ngay lập tức page CHRO. Không có ngoại lệ — đây là quy tắc cứng, không phải cảnh báo.
+</Warning>
+
+Trình thực thi giới hạn đánh giá tổng số giờ theo tuần ISO và theo năm dương lịch bất kể chế độ ghi (bộ đếm giờ, thủ công hoặc đề xuất tự động phát hiện). Bạn không thể vượt qua giới hạn bằng cách trộn các chế độ ghi.
+
+---
+
+## Mô hình sửa lỗi
+
+Các mục TIME là **chỉ được ghi thêm** ở lớp kiểm toán. Bạn không bao giờ có thể chỉnh sửa một mục hiện có tại chỗ. Nếu bạn cần sửa một mục đã nộp hoặc đã phê duyệt, TIME tạo một mục đã sửa mới liên kết với mục gốc bị thay thế, và đánh dấu mục gốc là đã sửa.
+
+```
+Original entry A  (status=submitted)
+       │
+       └─── Correction B  (links back to A, status=submitted)
+                 │
+                 └─── AM approves B → status=approved
+                      A → status=corrected
+```
+
+INV và tất cả các bên tiêu thụ downstream luôn đọc từ mục đã phê duyệt mới nhất trong một chuỗi sửa lỗi — chúng không bao giờ thấy mục gốc đã bị thay thế.
+
+<Note>
+  Thiết kế này có nghĩa là mọi hóa đơn đều có thể kiểm toán trở lại một chuỗi các mục cụ thể với lịch sử sửa lỗi được ghi thành văn bản. Nếu một khách hàng từng tranh chấp một dòng, bạn có thể cho họ thấy chính xác những gì đã được ghi, khi nào và những sửa lỗi nào đã được thực hiện.
+</Note>
+
+---
+
+## Cầu nối TIME → INV
+
+Tại thời điểm đóng chu kỳ thanh toán, TIME chạy rollup tính phí theo chu kỳ và đẩy một tóm tắt đến INV.
+
+<Steps>
+  <Step title="Trigger rollup">
+    Rollup theo lịch (mỗi sáng thứ Hai) hoặc trigger thủ công của Account Manager khởi động rollup cho tuần đã đóng hoặc giai đoạn thanh toán.
+  </Step>
+  <Step title="Tổng hợp giờ tính phí">
+    TIME thu thập tất cả các mục tính phí đã phê duyệt cho giai đoạn, nhóm theo Engagement, thành viên và vai trò. Mỗi mục sử dụng snapshot bảng giá được ghi tại thời điểm nhập — không phải bảng giá hiện tại — để thay đổi giá hồi tố không bao giờ ảnh hưởng đến các giai đoạn đã đóng.
+  </Step>
+  <Step title="Tóm tắt được đẩy đến INV">
+    TIME đẩy rollup đến INV với mỗi dòng chứa Engagement, thành viên, vai trò, giờ, snapshot bảng giá và tổng VND. INV tạo một hóa đơn nháp để Account Manager xem xét trước khi gửi đến khách hàng.
+  </Step>
+</Steps>
+
+Nếu một số thành viên chưa nộp các mục hàng tuần của họ khi rollup chạy, TIME gắn cờ hóa đơn INV nháp là **incomplete** và liệt kê các thành viên còn thiếu. Account Manager có thể chờ đợi nộp hoặc đánh dấu hóa đơn sẵn sàng với các giờ có sẵn.

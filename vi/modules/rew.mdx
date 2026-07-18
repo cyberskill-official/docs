@@ -1,0 +1,123 @@
+---
+title: 'Module REW: Lương thưởng, Payroll và Bonus Points'
+sidebarTitle: 'REW'
+description: 'CyberOS REW là sổ cái lương thưởng: payslip chỉ append, khấu trừ bảo hiểm xã hội Việt Nam, điểm thưởng BP và cổng đồng ký CFO+CHRO.'
+---
+
+CyberOS REW là mặt phẳng tính toán và sổ cái lương thưởng — nơi các tham số Tổng Đãi ngộ trở thành payslip, và nơi mỗi payslip có thể tái tạo từng byte từ các đầu vào có hiệu lực tại thời điểm cuối kỳ. Ba bất biến cứng chi phối mọi việc REW làm: sổ cái là **chỉ append** (chỉnh sửa là các hàng thay thế, không bao giờ chỉnh sửa tại chỗ), **sàn lương cơ bản P1 là bất khả xâm phạm** (không đánh giá, không agent và không đường dẫn mã lỗi nào có thể đề xuất giảm P1 — vi phạm là sev-0), và **tham số không có hiệu lực hồi tố** (công bố lịch trình tỷ lệ mới không thể thay đổi đầu ra của bất kỳ payslip lịch sử nào). Dữ liệu lương thưởng nằm trong keyspace KMS được mã hóa riêng của REW và được loại trừ về mặt cấu trúc khỏi mọi module khác, kể cả kho bộ nhớ BRAIN.
+
+<Note>
+  REW là một **module P1** — hiện đang trong giai đoạn kế hoạch/thiết kế và chưa sẵn sàng phổ biến. Tài liệu tuân thủ đầy đủ theo Annex III §4 của EU AI Act được lên kế hoạch cho bản phát hành P2. Các tính năng được mô tả ở đây phản ánh thiết kế P1 đã lên kế hoạch.
+</Note>
+
+## Cấu trúc lương thưởng 3P
+
+REW phân tách lương thưởng bằng tiền mặt của mỗi thành viên thành ba thành phần, mỗi thành phần được điều chỉnh bởi các quy tắc riêng biệt.
+
+<CardGroup cols={3}>
+  <Card title="P1 Base" icon="shield">
+    **Lương cơ bản được bảo vệ theo hợp đồng.** Trả bằng tiền mặt hàng tháng. REW thực thi một sàn cứng: không kết quả đánh giá, thay đổi tham số hay hành động agent nào có thể dẫn đến giá trị P1 nhỏ hơn P1 của kỳ trước. Sự bảo vệ này được thực thi ở nhiều lớp hệ thống — mọi nỗ lực giảm P1 đều bị từ chối thẳng thừng. **Vi phạm = sev-0.**
+  </Card>
+  <Card title="P2 Allowance" icon="sliders">
+    **Phụ cấp tiền mặt theo tầng vai trò.** Gắn với vị trí và cấp bậc (ví dụ phụ cấp cố vấn cho L3+, phụ cấp lãnh đạo cho quản lý). P2 có thể được điều chỉnh tăng hoặc giảm khi tầng của thành viên thay đổi, tùy thuộc vào phê duyệt của CHRO. Khác với P1, P2 không có sàn theo hợp đồng.
+  </Card>
+  <Card title="P3 Performance" icon="chart-line">
+    **Phân phối hiệu suất hàng quý từ quỹ BP.** Biến thiên; có thể bằng không trong bất kỳ kỳ nào mà không vi phạm bất biến P1. Được phân phối qua các hàng `POOL_DISTRIBUTION` có trọng số theo Voting Power (VP) của mỗi thành viên, được LEARN tính. Cần sự phê chuẩn của CEO + CFO trước khi bất kỳ phân phối P3 nào được commit.
+  </Card>
+</CardGroup>
+
+## Sổ cái BP (Bonus Points)
+
+BP là một đơn vị kế toán được chỉ số theo lạm phát, tích lũy theo thời gian và chuyển đổi thành tiền mặt P3 tại các cửa sổ được chỉ định.
+
+<Tabs>
+  <Tab title="BP là gì">
+    BP là một đơn vị tổng hợp gắn với lãi suất tiết kiệm ACB để bảo vệ khỏi lạm phát. Mỗi thành viên có grant đang hoạt động đều tích lũy điểm BP hàng tháng. Khác với lương, BP tự động tích lãi — tỷ lệ ACB là một tham số có phiên bản, nên tích lũy lịch sử luôn có thể phát lại.
+  </Tab>
+  <Tab title="BP tích lũy như thế nào">
+    Điểm BP đến từ hai nguồn: tích lũy hệ thống hàng tháng (tự động, có tính xác định) và các phần thưởng BP do người sáng lập phê duyệt cho những đóng góp đặc biệt. Mỗi credit hoặc debit là một hàng bất biến trong bảng `bp_ledger_entry` — số dư luôn được tính bằng cách cộng sổ cái, không bao giờ lưu như một trường có thể thay đổi.
+  </Tab>
+  <Tab title="BP được phân phối như thế nào">
+    Tại thời điểm đóng quý, bộ điều phối bonus của REW đọc điểm VP của mỗi thành viên từ LEARN, áp dụng trọng số quỹ BP và tạo đề xuất phân phối P3. CEO + CFO ký duyệt trước khi bất kỳ tiền mặt P3 nào được commit vào payslip.
+  </Tab>
+</Tabs>
+
+## Chu kỳ Payroll hàng tháng
+
+Chu kỳ đóng chạy từ D-3 (ba ngày trước cuối tháng) đến D+3 (ngày công bố). Mỗi giai đoạn có chủ sở hữu và cổng xác định.
+
+<Steps>
+  <Step title="Phê duyệt Timesheet (D-1)">
+    TIME thực thi đóng băng cứng. Mọi giờ trong kỳ phải được quản lý của thành viên phê duyệt trước hạn đóng băng. Các entry timesheet muộn bị từ chối cho đến chu kỳ tiếp theo.
+  </Step>
+  <Step title="Tính toán 3P (D)">
+    Kernel tính toán hàm thuần túy của REW nạp timesheet đã duyệt, bản ghi nghỉ phép, số dư BP hiện tại và phiên bản tham số có hiệu lực tại thời điểm cuối kỳ. Nó tạo ra các giá trị P1, P2, P3, SI, PIT và net. Không I/O, không đồng hồ, không ngẫu nhiên — cùng đầu vào luôn tạo cùng đầu ra.
+  </Step>
+  <Step title="Khấu trừ luật định Việt Nam (D)">
+    REW áp dụng các khấu trừ luật định có phiên bản theo Nghị định 152/2020 và Thông tư 111/2013:
+    - BHXH (người lao động): **10.5%** của cơ sở bị chặn trần
+    - BHYT (người lao động): **1.5%**
+    - BHTN (người lao động): **1%**
+    - PIT: biểu lũy tiến theo Thông tư 111/2013
+
+    Đóng góp của người sử dụng lao động (BHXH 17.5%, BHYT 3%, BHTN 1%) được theo dõi riêng để báo cáo nộp.
+  </Step>
+  <Step title="Bề mặt bất thường (D)">
+    REW hiện bất kỳ payslip nào có giá trị net dịch chuyển hơn ±20% so với tháng trước. HR/Ops xem xét và hoặc xác nhận hoặc điều chỉnh đầu vào trước khi tiếp tục.
+  </Step>
+  <Step title="CFO + CHRO đồng ký (D+2)">
+    Cả CFO và CHRO đều phải gửi các assertion WebAuthn trong cửa sổ 5 phút để commit chu kỳ. Việc commit một người ký bị từ chối. Nếu một chữ ký hết hạn, cả hai phải xác thực lại.
+  </Step>
+  <Step title="CEO công bố + Lưu trữ Payslip (D+2 → D+3)">
+    CEO phê duyệt cuối cùng. REW render các PDF payslip có tính xác định với font cố định và metadata dấu thời gian đóng băng để đảm bảo tái tạo giống hệt từng byte. SHA-256 của mỗi PDF được lưu cùng với hàng payslip. PDF được lưu trữ vào S3 với object-lock 10 năm. Thành viên nhận thông báo; cổng payslip hiển thị entry mới.
+  </Step>
+  <Step title="Batch payroll VietQR (D+3)">
+    REW gửi batch payroll đến các ngân hàng Việt Nam qua VietQR. Hỗ trợ đa tiền tệ bao gồm VND và USD. CFO xác nhận batch trước khi lệnh chuyển được gửi.
+  </Step>
+</Steps>
+
+<Warning>
+  Dữ liệu lương thưởng bị loại trừ về mặt cấu trúc khỏi kho bộ nhớ BRAIN (DEC-036). Không agent nào có thể đọc hoặc ghi dữ liệu payslip. Module bộ nhớ chỉ nhận các tham chiếu sự kiện mờ (ví dụ `rew.payslip.published:<opaque_id>`) — không bao giờ nhận số tiền, tỷ lệ hoặc phân tích thành phần.
+</Warning>
+
+## Tính bất biến của Payslip
+
+Mỗi payslip được công bố đều có thể tái tạo từng byte từ các đầu vào của nó. Công việc CI kiểm tra phát lại của REW tính toán lại toàn bộ lịch sử payslip được giữ lại so với các phiên bản tham số lịch sử trên mỗi thay đổi tham số. Nếu SHA-256 của bất kỳ payslip lịch sử nào bị lệch, thay đổi tham số bị từ chối và hoàn tác.
+
+<Accordion title="Cách hoạt động của đánh phiên bản không hồi tố">
+  Các hàng tham số mang `effective_from`, `effective_to`, `superseded_by` và `version_hash`. Vai trò ứng dụng cơ sở dữ liệu không có quyền `UPDATE` hoặc `DELETE` trên các bảng tham số — chỉ `INSERT`. Khi lịch trình tỷ lệ mới được công bố, hàng trước nhận dấu thời gian `effective_to`; nó không bao giờ bị ghi đè. Một payslip được tính cho tháng 1 năm 2024 sẽ luôn tái tạo được so với các tham số có hiệu lực vào 2024-01-31 23:59:59 UTC, bất kể thay đổi tỷ lệ nào đã được công bố kể từ đó.
+</Accordion>
+
+## Quyền riêng tư lương thưởng
+
+REW duy trì sự cô lập cấu trúc nghiêm ngặt với tất cả các module khác.
+
+| Ranh giới | Thực thi |
+|---|---|
+| HR không thể đọc số liệu lương thưởng | REW và HR sử dụng các keyspace KMS được mã hóa riêng biệt; không thể JOIN qua các schema module. |
+| Agent không thể nạp dữ liệu lương thưởng | Loại trừ cấu trúc DEC-036: cầu bộ nhớ chỉ phát các tham chiếu mờ, không bao giờ là số liệu lương thưởng. |
+| Quản lý không thể xem payslip của thành viên khác | Scope `rew.payslip_read` gắn với chính thành viên; không tồn tại đường đọc nào có scope quản lý. |
+| Bộ nhớ chỉ lưu trữ tham chiếu mờ | Cầu bộ nhớ phát `rew.payslip.published:<opaque_id>` — không bao giờ là số tiền, tỷ lệ hay phân tích. |
+
+## Điều phối Bonus hàng quý
+
+<Steps>
+  <Step title="Khóa quỹ BP">
+    Tại thời điểm đóng quý, số dư quỹ bonus bị khóa. REW đọc điểm VP hiện tại của mỗi thành viên từ LEARN.
+  </Step>
+  <Step title="Đề xuất phân phối P3">
+    Kernel tính toán phân bổ quỹ theo tỷ lệ với các điểm VP, áp dụng bất kỳ hệ số hiệu suất nào từ các tín hiệu hiệu chuẩn của HR. Kết quả là một `POOL_DISTRIBUTION` nháp cho mỗi thành viên.
+  </Step>
+  <Step title="CEO + CFO ký duyệt">
+    Cả CEO và CFO đều xem xét đề xuất và đồng ký. Không ai có thể phê duyệt một mình — vị từ cửa sổ WebAuthn 5 phút tương tự được áp dụng.
+  </Step>
+  <Step title="P3 commit vào Payslip">
+    Sau khi ký, số tiền P3 được thêm vào các hàng payslip của kỳ hiện tại và chảy qua chu kỳ công bố thông thường.
+  </Step>
+</Steps>
+
+## Phân loại EU AI Act
+
+<Note>
+  REW được phân loại **rủi ro cao** theo Annex III §4 của EU AI Act (việc làm và quản lý người lao động). Gói tuân thủ đầy đủ — bao gồm quản lý rủi ro, quản trị dữ liệu, tài liệu minh bạch và bằng chứng giám sát của con người — được lên kế hoạch cho bản phát hành P2. Thành viên giữ quyền được xem xét bởi con người đối với bất kỳ tính toán tự động nào qua đường dẫn tranh chấp được CEO phân xử (SLO: 5 ngày làm việc).
+</Note>

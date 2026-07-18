@@ -1,0 +1,186 @@
+---
+title: 'CyberOS Skills: Năng Lực Agent Có Thể Xác Minh và Kiểm Toán'
+sidebarTitle: 'Skills'
+description: 'CyberOS Skills là các năng lực agent có phiên bản, có thể kiểm toán. Mỗi kỹ năng được giao dưới dạng một hợp đồng SKILL.md với đầu vào, đầu ra có cấu trúc và một audit đi kèm.'
+---
+
+Một CyberOS skill là một thư mục khép kín định nghĩa chính xác một agent có thể làm gì, làm như thế nào và làm sao để xác minh rằng nó đã hoàn thành công việc đúng cách. Mỗi kỹ năng được giao dưới dạng một **cặp author/audit**: kỹ năng author tạo ra một artifact và kỹ năng audit độc lập chấm điểm nó theo một rubric. Cặp đôi này là đơn vị phát hành — bạn không bao giờ giao một author mà không có một audit đi kèm. Mọi lần chạy có hệ quả đều để lại bằng chứng trong chuỗi kiểm toán.
+
+## Skill Là Gì?
+
+Một skill là một thư mục chứa file hợp đồng `SKILL.md` cộng với các tài liệu hỗ trợ tùy chọn, schema envelope, fixture chấp nhận và tài liệu tham chiếu. Các agent nạp skill theo tên. File `SKILL.md` khai báo các điều kiện kích hoạt, hợp đồng đầu vào/đầu ra, phạm vi bộ nhớ, các công cụ MCP được phép, các đường leo thang và các bất biến tự-audit. Vì skill là markdown thuần túy, chúng có thể đọc được bởi con người, dễ mang đi giữa các agent host, và được quản lý phiên bản cùng với mã của bạn.
+
+Các skill nằm tại `.cyberos/cuo/skills/<skill-name>/` trong bất kỳ repo CyberOS đã khởi tạo nào, và tại `modules/skill/<skill-name>/` trong mã nguồn CyberOS.
+
+## Cấu Trúc SKILL.md
+
+Frontmatter của `SKILL.md` là hợp đồng có thể đọc bởi máy. Mọi trường đều phục vụ một mục đích trong pipeline định tuyến và thực thi của CUO.
+
+<AccordionGroup>
+  <Accordion title="Trường định danh">
+    <ParamField path="name" type="string" required>
+      Định danh kỹ năng dạng kebab-case tuân theo quy ước `<artifact>-author` hoặc `<artifact>-audit`. Ví dụ: `task-author`. Phải khớp `[a-z0-9-]+`.
+    </ParamField>
+    <ParamField path="description" type="string" required>
+      Khi nào sử dụng kỹ năng này và, quan trọng hơn, khi nào **không** sử dụng nó. Router của CUO đọc trường này để phân biệt các kỹ năng có liên quan chặt chẽ (ví dụ `task-author` với `task-audit`).
+    </ParamField>
+    <ParamField path="license" type="string" required>
+      Giấy phép cho kỹ năng. Các kỹ năng có sẵn của CyberOS dùng `Apache-2.0`.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Trường invocation và pipeline">
+    <ParamField path="invocation_modes" type="array" required>
+      Cách kỹ năng có thể được gọi. Các giá trị hợp lệ: `standalone` (gọi trực tiếp), `chained` (được gọi bởi một supervisor từ đầu ra của kỹ năng khác).
+    </ParamField>
+    <ParamField path="expects" type="object" required>
+      Hợp đồng đầu vào. Chứa `schema_ref` (đường dẫn đến `envelopes/input.json`), `required_fields`, `optional_fields` (bao gồm `chain_to` cho việc định tuyến xuống dưới) và `standalone_interview_ref` (câu hỏi phỏng vấn chế độ chat khi không có envelope nào được cung cấp).
+    </ParamField>
+    <ParamField path="produces" type="object" required>
+      Hợp đồng đầu ra. Chứa `schema_ref` (đường dẫn đến `envelopes/output.json`), `output_kind` và `human_summary_ref` (mẫu được render cho người dùng sau mỗi batch).
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Trường phạm vi và bảo mật">
+    <ParamField path="allowed_memory_scopes" type="object" required>
+      Khai báo phạm vi bộ nhớ nào kỹ năng có thể đọc và ghi. CUO supervisor thực thi điều này tại thời gian chạy. Ví dụ phạm vi đọc: `project:*`, `module:*`, `company:locked-decisions`. Ví dụ phạm vi ghi: `project:*`, `memories:projects`.
+    </ParamField>
+    <ParamField path="allowed_mcp_tools" type="array" required>
+      Danh sách rõ ràng các công cụ MCP mà kỹ năng này có thể gọi. Ví dụ: `kb.read`, `kb.search`, `memory.write_memory`, `audit.append`, `chat.notify`.
+    </ParamField>
+    <ParamField path="escalation" type="object" required>
+      Định tuyến persona cho các trường hợp biên. `to_persona_on_legal` định tuyến câu hỏi pháp lý (ví dụ đến `cuo-clo`). `to_persona_on_security` định tuyến câu hỏi bảo mật (ví dụ đến `cuo-cseco`). `to_human_on_irreversible: true` dừng lại để con người xem xét trước bất kỳ hành động không thể đảo ngược nào.
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+## Quy Ước Cặp Author/Audit
+
+Mọi loại artifact trong CyberOS đều có hai kỹ năng: một **author** tạo ra artifact và một **audit** chấm điểm nó. Author tự nhiên nối vào audit theo mặc định (qua `chain_to` trong envelope đầu ra). Bạn không bao giờ giao một cái mà không có cái kia.
+
+| Kỹ năng Author | Kỹ năng Audit | Artifact được tạo |
+|---|---|---|
+| `task-author` | `task-audit` | File đặc tả nhiệm vụ |
+| `statement-of-work-author` | `statement-of-work-audit` | Tuyên bố công việc |
+| `product-requirements-document-author` | `product-requirements-document-audit` | Tài liệu yêu cầu sản phẩm |
+| `code-review-author` | `code-review-audit` | Gói code review |
+| `budget-author` | `budget-audit` | Tài liệu ngân sách |
+| `hire-decision-author` | `hire-decision-audit` | Bản ghi quyết định tuyển dụng |
+| `contract-review-author` | `contract-review-audit` | Báo cáo review hợp đồng |
+| `postmortem-author` | `postmortem-audit` | Tài liệu postmortem |
+| `board-deck-author` | `board-deck-audit` | Slide trình bày hội đồng |
+| `implementation-plan-author` | `implementation-plan-audit` | Kế hoạch triển khai |
+
+## Danh Mục Kỹ Năng Có Sẵn
+
+CyberOS được giao kèm **100+ cặp kỹ năng author/audit** bao phủ toàn bộ công việc vận hành trên mọi persona C-suite. Một mẫu đại diện:
+
+- **Kỹ thuật:** `task-author`, `implementation-plan-author`, `code-review-author`, `architecture-decision-record-author`, `edge-case-matrix-author`, `software-design-document-author`, `software-requirements-specification-author`, `postmortem-author`, `runbook-author`, `threat-model-author`
+- **Sản phẩm:** `product-requirements-document-author`, `product-roadmap-author`, `product-metrics-review-author`, `stage-gate-author`, `test-strategy-author`
+- **Tài chính:** `budget-author`, `forecast-author`, `thirteen-week-cash-flow-author`, `capital-allocation-memo-author`, `monthly-close-author`
+- **Con người & pháp lý:** `hire-decision-author`, `workforce-plan-author`, `contract-review-author`, `statement-of-work-author`, `non-disclosure-agreement-triage-author`
+- **Điều hành:** `board-deck-author`, `investor-update-author`, `strategy-document-author`, `objectives-and-key-results-set-author`, `ai-strategy-author`
+
+Danh mục đầy đủ các cặp đã giao nằm trong `modules/skill/MODULE.md`. Mỗi cặp tuân theo cùng bố cục thư mục, cùng mẫu schema envelope và cùng hệ thống chấm điểm rubric 10 điểm.
+
+## Skills Đến Repo Của Bạn Như Thế Nào
+
+Các kỹ năng được vendor vào dự án của bạn trong quá trình cài đặt và được cập nhật mỗi khi bạn chạy lại install. Bạn không bao giờ quản lý phiên bản kỹ năng thủ công.
+
+```bash
+# Install or update CyberOS (vendors skills into .cyberos/cuo/skills/)
+npx cyberos install
+
+# Or via the Claude plugin
+/install
+```
+
+Sau khi cài đặt, tất cả các kỹ năng có sẵn nằm tại `.cyberos/cuo/skills/<skill-name>/`. Claude plugin cũng cung cấp kỹ năng `ship-tasks` trực tiếp dưới dạng lệnh `/ship-tasks` — nó đóng gói bản sao doctrine quy trình của riêng nó và chạy cùng các gate như quy trình đầy đủ.
+
+## Tạo Một Kỹ Năng Tùy Chỉnh
+
+<Steps>
+  <Step title="Sao chép template scaffold">
+    Đi vào thư mục skills và sao chép template author và audit cho loại artifact mới của bạn:
+
+    ```bash
+    cd .cyberos/cuo/skills
+    cp -r _template/author  my-artifact-author
+    cp -r _template/audit   my-artifact-audit
+    ```
+  </Step>
+
+  <Step title="Đặt tên kỹ năng">
+    Chọn một tên kebab-case tuân theo quy ước `<artifact>-author` / `<artifact>-audit`. Chỉ sử dụng ký tự `[a-z0-9-]`. Ví dụ: `release-note-author` + `release-note-audit`, `onboarding-checklist-author` + `onboarding-checklist-audit`.
+  </Step>
+
+  <Step title="Điền vào SKILL.md của author">
+    Mở `my-artifact-author/SKILL.md` và thay thế mọi placeholder `<ARTIFACT>` và `<artifact>`. Cập nhật các trường bắt buộc sau:
+
+    - `name` — tên kỹ năng kebab-case của bạn
+    - `description` — khi nào dùng nó và khi nào **không** dùng
+    - `expects.required_fields` — các trường mà caller phải cung cấp
+    - `produces.output_kind` — loại artifact mà kỹ năng này ghi
+    - `depends_on_contracts` — bất kỳ hợp đồng artifact nào mà kỹ năng này đọc
+  </Step>
+
+  <Step title="Viết các tài liệu hỗ trợ của author">
+    Điền vào bốn tài liệu hỗ trợ chính trong thư mục author:
+
+    - `INVARIANTS.md` — các kiểm tra tự-audit mà kỹ năng phải vượt qua mỗi lần chạy (ngưỡng tin cậy, chuỗi sửa lỗi, vi phạm phạm vi)
+    - `PIPELINE.md` — cách kỹ năng tạo artifact và bàn giao cho audit đi kèm
+    - `STANDALONE_INTERVIEW.md` — các câu hỏi kỹ năng sẽ hỏi khi được gọi ở chế độ chat không có envelope đầu vào
+    - `HUMAN_SUMMARY.md` — bản tóm tắt người dùng thấy trong chat sau khi mỗi batch hoàn thành
+  </Step>
+
+  <Step title="Định nghĩa schema đầu vào và đầu ra">
+    Chỉnh sửa `envelopes/input.json` và `envelopes/output.json` với các định nghĩa JSON Schema cho envelope đầu vào và đầu ra của kỹ năng. Envelope đầu ra phải bao gồm `next_skill_recommendation` trỏ đến audit đi kèm.
+  </Step>
+
+  <Step title="Điền SKILL.md của audit và RUBRIC.md">
+    Mở `my-artifact-audit/SKILL.md` và thay thế các placeholder. `description` của kỹ năng audit nên khai báo phiên bản rubric mà nó triển khai.
+
+    Chỉnh sửa `RUBRIC.md` với các quy tắc audit đặc thù cho artifact của bạn. Tuân theo các họ quy tắc được dùng trên tất cả các audit có sẵn: `FM` (giả tạo), `SEC` (bảo mật), `COND` (điều kiện), `QA` (chất lượng), `SAFE` (an toàn), `STALE` (cũ kỹ). Sử dụng chuỗi `rule_id` ổn định — thay đổi một `rule_id` là một breaking change.
+  </Step>
+
+  <Step title="Thêm fixture chấp nhận và lặp lại">
+    Thêm fixture đầu vào/đầu ra golden vào `acceptance/`. Chạy kỹ năng audit mới của bạn trên một artifact mẫu do kỹ năng author tạo ra. Lặp lại cả hai kỹ năng cho đến khi audit đạt 10/10. Không giao một cặp kỹ năng dưới 10/10 trên rubric của chính nó.
+  </Step>
+
+  <Step title="Nối chain (tùy chọn)">
+    Nếu bạn muốn author tự động nối vào audit sau mỗi artifact, đặt `chain_to` trong `optional_fields` mặc định của author:
+
+    ```yaml
+    optional_fields:
+      chain_to:               # default: ['my-artifact-audit']
+    ```
+
+    CUO supervisor đọc `produces.next_skill_recommendation` từ envelope đầu ra và xếp kỹ năng audit vào hàng đợi trừ khi caller từ chối.
+  </Step>
+</Steps>
+
+<Tip>
+  Mỗi gói kỹ năng là khép kín. Không tham chiếu các gói anh chị em cho nội dung prompt, nội dung rubric, hoặc fixture. Không thêm trường frontmatter cấp cao nhất — các phần mở rộng CyberOS nằm dưới `metadata.cyberos-*` hoặc trong các file `.md` anh chị em như `INVARIANTS.md` và `RUBRIC.md`.
+</Tip>
+
+## Chuẩn Mở Anthropic Agent Skills
+
+CyberOS skills là [Anthropic Agent Skills](https://agentskills.io/specification) hợp lệ nguyên bản. Một kỹ năng được viết cho CyberOS hoạt động không cần sửa đổi trên bất kỳ client nào tương thích Agent Skills:
+
+- **Claude** (Claude Code, Cowork, Claude Desktop)
+- **OpenAI Codex CLI**
+- **Cursor**
+- **Goose**
+- **Amp**
+- **Gemini CLI**, **Grok**, **Mistral**, và hơn 20 client tuân thủ khác
+
+Giao thức là chuẩn mở Anthropic, cộng với các phần mở rộng CyberOS opt-in bên trong map `metadata` được đặc tả cho phép. CyberOS không bao giờ thêm trường SKILL.md cấp cao nhất và không bao giờ tạo ra một định dạng manifest thay thế. Markdown frontmatter được chọn có chủ đích — nó là mẫu số chung thấp nhất trên mọi agent host.
+
+<CardGroup cols={2}>
+  <Card title="Viết Skills" icon="pen-nib" href="/guides/authoring-skills">
+    Hướng dẫn hoàn chỉnh để viết, kiểm thử và giao một cặp kỹ năng author/audit chất lượng production từ đầu.
+  </Card>
+  <Card title="Khái Niệm Cốt Lõi" icon="book-open" href="/concepts">
+    Hiểu các khái niệm nền tảng của CyberOS: vòng đời nhiệm vụ, giao thức bộ nhớ, chuỗi kiểm toán và mô hình persona.
+  </Card>
+</CardGroup>

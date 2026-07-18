@@ -1,0 +1,188 @@
+---
+title: 'TEN: Quản lý vòng đời tenant, gói và thanh toán'
+sidebarTitle: 'Tenancy'
+description: 'CyberOS TEN quản lý tổ chức của bạn dưới dạng tenant: gói, giới hạn chỗ ngồi, thanh toán qua Stripe hoặc PSP Việt Nam, cư trú dữ liệu, và offboarding.'
+---
+
+TEN là mặt phẳng điều khiển SaaS quản lý tổ chức CyberOS của bạn: bậc gói, số lượng chỗ ngồi, thanh toán, cư trú dữ liệu, và toàn bộ vòng đời từ đăng ký đến offboarding. Nếu bạn là admin của tổ chức hoặc thuộc nhóm tài chính, TEN là nơi bạn quản lý chỗ ngồi, xem lại hóa đơn, cấu hình ghi đè lưu trữ dữ liệu, và — nếu ngày đó đến — kích hoạt quy trình offboarding với sự tin tưởng rằng dữ liệu của bạn có thể mang đi được và việc rời đi diễn ra rõ ràng.
+
+<Note>
+  TEN là lát cắt P2 / module đầy đủ P4. Hạ tầng thanh toán ra mắt ở P2 để hỗ trợ định giá gói dọc; đăng ký tự phục vụ đầy đủ và giao diện tenant-admin hoàn chỉnh ra mắt ở P4. Cho đến khi tự phục vụ hoạt động, đội vận hành CyberSkill cung cấp tenant cho khách hàng gói dọc. Liên hệ account manager của bạn để cung cấp tổ chức của bạn.
+</Note>
+
+## Bậc gói
+
+Chọn gói phù hợp với quy mô đội và nhu cầu sử dụng AI của bạn. Tất cả các gói đều bao gồm các module CyberOS cốt lõi; các bậc cao hơn mở khóa module nâng cao và tăng giới hạn tài nguyên.
+
+| Bậc | Chỗ ngồi | Lưu trữ BRAIN | Token AI / tháng | Hỗ trợ |
+|---|---|---|---|---|
+| **Free** | Tối đa 5 | 100 MB | 50.000 | Cộng đồng |
+| **Pro** ($29/chỗ/tháng) | Không giới hạn | 5 GB | 5.000.000 | Email |
+| **Enterprise** | Không giới hạn | Tùy chỉnh | Tùy chỉnh (thương lượng) | CSM chuyên trách |
+
+<Tip>
+  Các tổ chức Việt Nam có thể thanh toán bằng VND qua các PSP Việt Nam (VnPay, Momo, ZaloPay). Liên hệ account manager của bạn để biết chi tiết giá VND.
+</Tip>
+
+### Khả dụng module theo gói
+
+Một số module nâng cao bị khóa ở bậc Free và mở khóa khi nâng cấp:
+
+| Module | Free | Pro | Enterprise |
+|---|---|---|---|
+| Các module cốt lõi (memory, CUO, CHAT, PROJ, v.v.) | ✅ | ✅ | ✅ |
+| Tất cả module P0 + P1 | ❌ | ✅ | ✅ |
+| DOC (chữ ký điện tử) | ❌ | ❌ | ✅ |
+| PORTAL (cổng thông tin khách hàng) | ❌ | ❌ | ✅ |
+| ESOP | ❌ | ❌ | ✅ |
+
+## Phương thức thanh toán
+
+CyberOS hỗ trợ cả phương thức thanh toán quốc tế và nội địa Việt Nam. Phạm vi PCI không bao giờ chạm đến CyberOS — dữ liệu thẻ được xử lý hoàn toàn bởi Stripe hoặc PSP Việt Nam liên quan.
+
+<Tabs>
+  <Tab title="Quốc tế (Stripe)">
+    Thanh toán bằng thẻ tín dụng hoặc ghi nợ theo USD, EUR, hoặc SGD. Stripe tự động tạo hóa đơn hàng tháng của bạn. Bạn có thể truy cập tất cả hóa đơn trong **Settings → Billing → Invoices**.
+
+    Các loại tiền được hỗ trợ: USD · EUR · SGD
+
+    Stripe xử lý toàn bộ tuân thủ PCI. CyberOS không bao giờ lưu trữ hoặc xử lý số thẻ.
+  </Tab>
+  <Tab title="Nội địa Việt Nam">
+    Thanh toán bằng Đồng Việt Nam (VND) qua bất kỳ PSP nào sau đây:
+
+    | PSP | Phương thức |
+    |---|---|
+    | **VnPay** | Mã QR hoặc tài khoản ngân hàng liên kết |
+    | **Momo** | Ví điện tử Momo |
+    | **ZaloPay** | Ví điện tử ZaloPay hoặc ngân hàng liên kết |
+
+    Các PSP Việt Nam được SBV (Ngân hàng Nhà nước Việt Nam) cấp phép. Tất cả các giao dịch VND tuân thủ Thông tư 18/2018/TT-NHNN.
+  </Tab>
+</Tabs>
+
+## Đo lường sử dụng
+
+CyberOS đo lường sử dụng theo bốn trục. Bạn có thể xem sử dụng thời gian thực và lịch sử trong **Settings → Billing → Usage**.
+
+<CardGroup cols={2}>
+  <Card title="Chỗ ngồi" icon="users">
+    Số lượng Thành viên đang hoạt động trong tenant của bạn. Số chỗ ngồi được kiểm tra so với giới hạn gói khi bạn mời thành viên mới.
+  </Card>
+  <Card title="Token AI" icon="brain">
+    Tổng số token được tiêu thụ qua tất cả các module trong chu kỳ thanh toán hiện tại. Được AI Gateway kiểm tra so với hạn ngạch hàng tháng của bạn trước mỗi yêu cầu.
+  </Card>
+  <Card title="Cuộc gọi API" icon="webhook">
+    Tổng số cuộc gọi API được thực hiện tới các dịch vụ CyberOS trong chu kỳ thanh toán hiện tại. Thông tin tại các bậc gói hiện tại.
+  </Card>
+  <Card title="Lưu trữ" icon="database">
+    Tổng dung lượng lưu trữ được sử dụng trong BRAIN (memory), corpus KB, và các tệp đính kèm. Được kiểm tra so với giới hạn lưu trữ của gói.
+  </Card>
+</CardGroup>
+
+### Xem sử dụng trong bảng điều khiển thanh toán
+
+Điều hướng đến **Settings → Billing → Usage** và chọn một kỳ thanh toán để xem:
+
+- Phân tích từng trục đo lường so với giới hạn gói
+- Biểu đồ chuỗi thời gian theo ngày cho tiêu thụ token AI
+- Phân tích cuộc gọi API theo từng module
+- Phân tích lưu trữ theo loại dữ liệu (memory, KB, tệp đính kèm)
+
+Bạn cũng có thể xuất CSV mức sử dụng hàng tháng qua **Settings → Billing → Usage → Export CSV**.
+
+## Cư trú dữ liệu
+
+Khi tenant của bạn được cung cấp, bạn chọn một khu vực cư trú dữ liệu. Cài đặt này quyết định dữ liệu của bạn được lưu ở đâu và các điểm cuối model AI nào được sử dụng cho tuân thủ.
+
+<Warning>
+  Cư trú dữ liệu không thể thay đổi sau khi tạo tenant. Hãy chọn cẩn thận khi đăng ký.
+</Warning>
+
+| Cư trú | Vị trí | Chế độ tuân thủ | Nhà cung cấp AI trong phạm vi |
+|---|---|---|---|
+| **vn-1** | Việt Nam | PDPL (Luật 91/2025) · Nghị định 13/2023 | Bedrock AP-SE-1 + PDPL DPA · Anthropic với VN DPA |
+| **sg-1** | Singapore | PDPA-SG · PDPL-VN xuyên biên giới theo DPA | Bedrock AP-SE-1 · Anthropic · OpenAI |
+| **eu-1** | Frankfurt | GDPR · EU AI Act · EU Data Boundary | Bedrock EU-CENTRAL · Vertex EU · Anthropic EU |
+| **us-1** | US East | CCPA · luật quyền riêng tư cấp bang | Bedrock US-EAST · Anthropic · OpenAI · Vertex US |
+
+Cư trú được thực thi ở mọi lớp — shard Postgres, khu vực lưu trữ đối tượng, lựa chọn nhà cung cấp AI Gateway, và khu vực lưu trữ OBS. Dữ liệu của bạn không bao giờ rời khỏi khu vực đã chọn, ngay cả khi có failover nhà cung cấp.
+
+## Hành động của tenant admin
+
+Với vai trò tenant admin, bạn quản lý tổ chức từ **Settings → Tenancy**.
+
+### Quản lý chỗ ngồi
+
+<Steps>
+  <Step title="Mời một thành viên">
+    Vào **Settings → Tenancy → Seats → Invite Member**. Nhập địa chỉ email và chọn vai trò. Người được mời nhận được email chứa magic-link. Chỗ ngồi được thêm vào số chỗ ngồi hoạt động khi họ chấp nhận.
+  </Step>
+  <Step title="Xóa một chỗ ngồi">
+    Tìm thành viên trong **Settings → Tenancy → Seats**, nhấp vào hàng của họ, và chọn **Revoke Seat**. Đăng nhập của họ bị vô hiệu hóa ngay lập tức. Nếu họ được giao các tác vụ đang hoạt động, hãy giao lại trước khi thu hồi.
+  </Step>
+  <Step title="Giám sát mức sử dụng chỗ ngồi">
+    Thẻ số lượng chỗ ngồi trong **Settings → Billing → Usage** hiển thị mức sử dụng chỗ ngồi hiện tại so với giới hạn gói.
+  </Step>
+</Steps>
+
+### Nâng cấp hoặc hạ cấp gói
+
+- **Nâng cấp** — có hiệu lực ngay lập tức. Các module mới mở khóa, hạn ngạch cao hơn áp dụng theo tỷ lệ, và một hóa đơn theo tỷ lệ được tạo.
+- **Hạ cấp** — có hiệu lực vào cuối chu kỳ thanh toán hiện tại. Nếu mức sử dụng của bạn vượt quá giới hạn bậc mới, một khoảng ân hạn 30 ngày được áp dụng trước khi thực thi. Bạn sẽ thấy cảnh báo vượt hạn rõ ràng trước khi xác nhận hạ cấp.
+
+### Nhật ký audit
+
+Nhật ký audit đầy đủ của tenant bạn có sẵn trong **Settings → Tenancy → Audit Log**. Mọi hành động admin — thay đổi chỗ ngồi, thay đổi gói, ghi đè lưu trữ, khởi tạo offboarding — đều được ghi lại với người thực hiện, dấu thời gian, và liên kết chuỗi mật mã.
+
+### Ghi đè lưu trữ dữ liệu
+
+Để cấu hình ghi đè lưu trữ, vào **Settings → Tenancy → Data Retention**. Bạn có thể tăng thời gian lưu trữ vượt mặc định của nền tảng (ví dụ: để đáp ứng mức tối thiểu của cơ quan quản lý). Giảm thời gian lưu trữ dưới mức mặc định yêu cầu phê duyệt của DPO.
+
+| Chính sách lưu trữ | Mặc định | Tối thiểu (mức sàn quy định) |
+|---|---|---|
+| Log | 30 ngày | 30 ngày |
+| Chuỗi audit | 365 ngày | 365 ngày |
+| Log quyết định (AI) | 180 ngày | 180 ngày (Điều 12 EU AI Act) |
+| Tài liệu pháp lý | Mãi mãi | Mãi mãi |
+
+## Offboarding và xuất dữ liệu
+
+CyberOS cung cấp thời gian ân hạn 90 ngày cho bất kỳ việc hủy nào — dù tự nguyện hay do không thanh toán — trước khi bất kỳ dữ liệu nào bị xóa không thể khôi phục.
+
+<Warning>
+  Offboarding là quy trình xác nhận hai bước. Bạn phải nhập slug tenant của mình hai lần để xác nhận. Sau khi cửa sổ 90 ngày hết hạn, việc xóa được chứng thực bằng mật mã và không thể đảo ngược.
+</Warning>
+
+### Lịch trình offboarding 90 ngày
+
+| Giai đoạn | Ngày | Bạn có thể làm gì |
+|---|---|---|
+| **Terminating-A (chỉ đọc)** | Ngày 1–30 | Đọc tất cả dữ liệu; tải xuống gói xuất; không có ghi mới |
+| **Terminating-B (có thể khôi phục)** | Ngày 31–90 | Không đăng nhập; đội hỗ trợ CyberSkill có thể khôi phục tenant theo yêu cầu của bạn |
+| **Terminated** | Ngày 91+ | Xóa không thể đảo ngược với chứng thực mật mã |
+
+### Khả năng mang dữ liệu theo Điều 20 GDPR — gói xuất đã ký
+
+Tại bất kỳ thời điểm nào trong thời gian là tenant (và trong suốt thời gian ân hạn offboarding), bạn có thể tạo một gói xuất đã ký chứa tất cả dữ liệu tenant của mình:
+
+<Steps>
+  <Step title="Yêu cầu xuất">
+    Vào **Settings → Tenancy → Data Export** và nhấp **Generate Export Bundle**. Đối với yêu cầu DSAR, sử dụng **Settings → Tenancy → DSAR Requests**.
+  </Step>
+  <Step title="Tải xuống gói">
+    Gói được chuẩn bị trong vài phút và có sẵn để tải xuống trong 24 giờ. Nó bao gồm:
+    - Tất cả các tệp bộ nhớ BRAIN với các đoạn chuỗi audit
+    - Xuất dữ liệu theo từng module (PROJ, CRM, KB, v.v.) dưới dạng dump SQL
+    - Tất cả các tệp đính kèm
+    - Lịch sử thanh toán đầy đủ và cấu hình tenant
+    - Một manifest chuỗi giám sát được ký bằng Ed25519
+  </Step>
+  <Step title="Xác minh gói">
+    Manifest bao gồm hash SHA-256 và chữ ký Ed25519 mà bạn có thể xác minh độc lập, chứng minh gói không bị sửa đổi kể từ khi xuất.
+  </Step>
+</Steps>
+
+### API DSAR
+
+Đối với yêu cầu truy cập chủ thể dữ liệu theo Điều 14 PDPL hoặc Điều 15 GDPR, sử dụng các endpoint DSAR trong **Settings → Tenancy → DSAR Requests**. Gói được tự động giới hạn phạm vi theo bản ghi của chủ thể dữ liệu trên tất cả các module.

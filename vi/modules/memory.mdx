@@ -1,0 +1,144 @@
+---
+title: 'BRAIN Memory: Kho Tri Thức Chuỗi Kiểm Toán của CyberOS'
+sidebarTitle: 'Memory (BRAIN)'
+description: 'CyberOS BRAIN là kho bộ nhớ chỉ-ghi-thêm, được liên kết chuỗi kiểm toán. Mọi thao tác ghi đều có thể xác minh và truy vết ngược về đúng thao tác đã tạo ra nó.'
+---
+
+CyberOS BRAIN là năng lực ghi nhớ của nền tảng — **BRAIN** là tên bạn gọi, `memory` là tên bạn viết trong mã. Bên dưới nó là hai lớp phối hợp cùng chia sẻ một nguồn sự thật duy nhất: một kho Layer 1 chống giả mạo trên đĩa cục bộ, và một dịch vụ Layer 2 phái sinh cấu trúc phân tầng, có thể tìm kiếm được từ nó. Mọi thứ mà bất kỳ agent hay con người nào ghi lại — quyết định, sự kiện, con người, dự án — đều đi qua kho này và được liên kết chuỗi với nhau để không byte nào có thể thay đổi mà không phá vỡ chuỗi.
+
+## Layer 1 — Kho Giao Thức
+
+Kho giao thức là bản ghi có thẩm quyền. Nó nằm trên đĩa tại `.cyberos/memory/store/` tương đối so với thư mục gốc dự án của bạn, bên trong cây `.cyberos/` được gitignore cùng với bộ máy quy trình CUO.
+
+<Note>
+  Kho là dữ liệu của tenant. Nó luôn được gitignore và không bao giờ được commit vào hệ thống quản lý phiên bản. Giữ nó ở cục bộ; sử dụng `cyberos export` khi bạn cần một snapshot có thể mang đi được.
+</Note>
+
+### Cấu Trúc Kho
+
+Mỗi kho là một artefact khép kín, có thể nén zip với cấu trúc dự đoán được:
+
+```
+.cyberos/memory/store/
+├── manifest.json            # store metadata and config
+├── HEAD                     # 8-byte LE u64 sequence counter (atomic)
+├── .lock                    # exclusive write lock + lease record
+├── audit/
+│   ├── *.binlog             # binary-framed audit log segments (one per month)
+│   ├── checkpoints/         # signed tree-head anchors per consolidation
+│   └── current.binlog       # the active segment
+├── memories/
+│   └── <kind>/              # decisions | facts | people | projects |
+│                            # preferences | drift | refinements
+├── meta/                    # company, module, member, client, project, persona context
+├── conflicts/               # soft-tombstone bodies
+├── exports/                 # deterministic export targets
+└── index/
+    └── manifest.json        # rebuild marker for the derived index
+```
+
+### Bốn Thao Tác Chính Tắc
+
+Mọi thay đổi lên kho được biểu diễn như đúng một trong bốn thao tác chính tắc. Không có thao tác thứ năm.
+
+| Thao tác | Ngữ nghĩa |
+|---|---|
+| `put(path, body, meta)` | Tạo hoặc thay thế một file bộ nhớ. Idempotent khi truyền tham số giống nhau. |
+| `move(src, dst)` | Đổi tên một file trong kho. Giữ nguyên hash nội dung. |
+| `delete(path, mode)` | `mode` là `"tombstone"` (mặc định) hoặc `"purge"` (xóa theo GDPR, yêu cầu phê duyệt rõ ràng). |
+| `put_if(path, body, meta, precondition)` | Tạo hoặc thay thế, có điều kiện SHA-256 của nội dung hiện tại khớp với `precondition`. Giá trị `null` cho `precondition` nghĩa là "phải không tồn tại". Không khớp sẽ phát ra một dòng audit `memory.precondition_failed`; chuỗi chỉ tiến lên cho dòng phụ trợ này. |
+
+### Chuỗi Kiểm Toán Merkle
+
+Mỗi bản ghi kiểm toán mang hai trường chuỗi: `prev_chain` (hash chuỗi của bản ghi trước đó) và `chain`, được tính như sau:
+
+```
+chain = SHA-256(canonical_json(record_minus_chain) || prev_chain)
+```
+
+Các phân đoạn binlog theo tháng được đóng khung nhị phân (`[u32 length][u32 crc32c][u64 seq][u64 ts_ns][payload]`). Tại thời điểm hợp nhất, các phân đoạn đã niêm phong được nén bằng zstd xác định và một tree-head anchor có chữ ký được ghi vào `audit/checkpoints/`. Điều này có nghĩa là bạn có thể phát lại bất kỳ bản ghi nào, chứng minh bất kỳ thao tác ghi nào đã xảy ra, hoặc phát hiện bất kỳ sự giả mạo cấp byte nào — kể cả xuyên máy và theo thời gian.
+
+## Layer 2 — Dịch Vụ Brain
+
+Layer 2 đọc kho Layer 1 và xây dựng cấu trúc phái sinh trên đó:
+
+<CardGroup cols={3}>
+  <Card title="Embeddings" icon="vector-square">
+    Embeddings theo từng sự kiện cho phép truy hồi ngữ nghĩa trên mọi bộ nhớ mà kho đã từng ghi lại.
+  </Card>
+  <Card title="Tóm tắt" icon="file-lines">
+    Các bản tóm tắt cuộn được tính trên các dòng audit gần đây để agent có thể tải snapshot tiết kiệm ngữ cảnh thay vì dữ liệu ledger thô.
+  </Card>
+  <Card title="Tầng Nóng / Ấm / Lạnh" icon="layer-group">
+    Bộ nhớ được phân tầng theo thời gian `occurred_at`. Truy hồi trả lời các truy vấn trên chỉ mục nóng với đầy đủ nguồn gốc ngược về đúng các dòng Layer 1.
+  </Card>
+</CardGroup>
+
+Truy cập vào dịch vụ Layer 2 được kiểm soát bằng sự đồng ý và giới hạn theo tenant với bảo mật cấp hàng theo nguyên tắc fail-closed.
+
+## Sử Dụng Hàng Ngày
+
+### Cài đặt và Thiết lập
+
+Một kho mới được tạo tự động khi bạn chạy `npx cyberos install` trong bất kỳ dự án nào. Trình cài đặt sẽ tạo `.cyberos/memory/store/` và kết nối nó với bộ máy quy trình. Để bỏ qua việc tạo kho (ví dụ trong môi trường chỉ CI), đặt `CYBEROS_NO_MEMORY=1`.
+
+Nếu bạn cần trỏ các agent đến một vị trí kho khác, truyền `--store <path>` hoặc đặt biến môi trường `CYBEROS_STORE`. Thứ tự phân giải là: override tường minh → `.cyberos/memory/store/` gần nhất khi đi lên từ thư mục làm việc.
+
+<Warning>
+  Các đường dẫn sandbox và tạm thời (ví dụ `/tmp/`, thư mục scratch của runner) bị từ chối rõ ràng bởi các bất biến của kho. Nếu bạn đang chạy bên trong một CI runner, đặt `CYBEROS_HOST_MOUNT_PREFIX` để miễn trừ một điểm mount ổn định, hoặc vô hiệu hóa bộ nhớ với `CYBEROS_NO_MEMORY=1`.
+</Warning>
+
+### Lệnh CLI
+
+```bash
+# Check store health — walks all invariants and reports pass/fail
+python -m cyberos doctor
+
+# Repair a recoverable frozen store
+python -m cyberos doctor --repair
+
+# Export a deterministic, portable zip (byte-identical across runs and platforms)
+python -m cyberos export out.zip
+```
+
+`cyberos doctor` phái sinh trạng thái hiện tại của kho:
+
+| Trạng thái | Ý nghĩa |
+|---|---|
+| `READY` | Tất cả các bất biến đều đạt; cho phép ghi. |
+| `FROZEN_RECOVERABLE` | Một bất biến bị lỗi; cho phép đọc, từ chối ghi. Chạy `doctor --repair` hoặc yêu cầu con người can thiệp. |
+| `FROZEN_HUMAN` | Phân kỳ nghiêm trọng (ví dụ hỏng chuỗi); khôi phục yêu cầu `doctor --repair --reason <text>` với các bước rõ ràng của con người. |
+
+### API Python
+
+Bề mặt công khai được giữ nhỏ có chủ đích:
+
+```python
+from cyberos.core.writer import Writer, AuditRecord, WriterConfig
+from cyberos.core.reader import Reader
+from cyberos.core import ops               # put, move, delete, put_if
+from cyberos.core.frontmatter import parse, serialize, Frontmatter
+from cyberos.core.walker import MmapWalker
+```
+
+Mọi thứ nặng hơn (SQLite, mmap, msgspec, hashlib) được nạp lười từ các handler của lệnh con, nên `python -m cyberos --help` khi khởi động lạnh chạy dưới 30 ms.
+
+## BRAIN Trong Thực Tế
+
+<Tip>
+  Thêm `.cyberos/memory/store/` vào `.gitignore` của bạn trước lần commit đầu tiên. Trình cài đặt làm điều này cho bạn, nhưng hãy kiểm tra lại bất kỳ repo nào được khởi tạo thủ công. Commit kho sẽ làm lộ dữ liệu tenant và phá vỡ cam kết một-người-ghi.
+</Tip>
+
+<Note>
+  Kho thực thi **cam kết một-người-ghi**: chỉ một tiến trình có thể giữ `LOCK_EX` trên `.lock` tại một thời điểm. Bản ghi lock mang một lease JSON (`pid`, `host`, `monotonic_ns`, `expiry_ns`) với TTL 10 giây và chu kỳ gia hạn 3 giây. Các lease cũ do một writer bị kill để lại được thu hồi trong micro giây. Nếu hai agent cần chia sẻ bộ nhớ, hãy dùng `cyberos import` để hợp nhất một kho vào kho khác — không bao giờ chia sẻ một thư mục kho giữa các writer đồng thời.
+</Note>
+
+<Warning>
+  Các đường dẫn sandbox và tạm thời bị từ chối ở cấp giao thức (bất biến `layout-no-sandbox-path` trong `memory.invariants.yaml`). Một kho được tạo tại `/tmp/` hoặc bên trong một lớp scratch của container sẽ bị từ chối trong lần chạy `doctor` tiếp theo. Sử dụng một đường dẫn ổn định, được mount từ host và đặt `CYBEROS_HOST_MOUNT_PREFIX` nếu cần.
+</Warning>
+
+<CardGroup cols={1}>
+  <Card title="Cài đặt CyberOS" icon="rocket" href="/guides/install">
+    Chạy `npx cyberos install` trong repo của bạn để tạo kho, bộ máy quy trình và điểm truy cập agent chỉ trong một bước.
+  </Card>
+</CardGroup>

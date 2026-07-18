@@ -1,0 +1,128 @@
+---
+title: 'Con người trong quy trình (Human-in-the-Loop): Hai Gate chấp nhận CyberOS của bạn'
+sidebarTitle: 'Human Gates'
+description: 'CyberOS yêu cầu sự phê duyệt của con người tại hai điểm cho mỗi nhiệm vụ. Tìm hiểu mỗi gate mong đợi gì, cách phê duyệt hoặc trả lại, và tại sao các agent không thể bỏ qua chúng.'
+---
+
+Con người trong quy trình (human-in-the-loop, HITL) là không thể thương lượng trong CyberOS. Nền tảng được xây dựng xung quanh một quy tắc cơ bản: agent thực hiện công việc cơ giới, nhưng con người đưa ra các phán đoán quan trọng. Trên thực tế, điều này có nghĩa mọi nhiệm vụ đều có chính xác hai điểm mà quy trình dừng lại và chờ bạn — nó không thể tiến hành cho đến khi bạn ghi lại một phán quyết. Đây không phải là các trạm kiểm tra xem xét tùy chọn; đây là những điểm dừng cứng. Một agent bỏ qua chúng, hoặc tuyên bố đã đặt `ready_to_test` hoặc `done` mà không có ý kiến của bạn, đang hành xử sai.
+
+## Gate 1 — Chấp nhận xem xét
+
+**Chuyển đổi:** `reviewing → ready_to_test`
+
+Khi agent hoàn thành triển khai và tự xem xét công việc của mình, nó dừng lại và trình bày một gói xem xét. Bạn phải đọc và đưa ra phán quyết trước khi quy trình tiếp tục.
+
+### Agent trình bày gì
+
+- Tóm tắt những gì nó đã xây dựng và những file nào đã thay đổi
+- Cách mỗi điều khoản quy phạm trong nhiệm vụ ánh xạ tới thay đổi thực tế
+- Các phát hiện xem xét — bất cứ điều gì nó tìm thấy trong quá trình tự xem xét
+- Bất kỳ sai lệch nào so với các điều khoản nhiệm vụ hoặc câu hỏi mở
+
+### Bạn kiểm tra gì
+
+Đi qua các điều khoản quy phạm của nhiệm vụ từng cái một. Với mỗi điều khoản, hãy hỏi: thay đổi có thực sự triển khai điều này không? Kiểm tra gói xem xét đã hoàn chỉnh — độ bao phủ điều khoản thiếu hoặc mơ hồ là lý do để trả lại.
+
+### Cách phê duyệt
+
+Nói `approved` (hoặc ngôn ngữ tự nhiên tương đương). Agent chuyển nhiệm vụ sang `ready_to_test` và tiếp tục chạy các gate và thu thập bằng chứng kiểm thử.
+
+### Cách trả lại
+
+Đưa một câu giải thích chính xác điều gì sai. Ví dụ:
+
+> "Điều khoản 2 yêu cầu phản hồi 429, nhưng triển khai trả về 400."
+
+Agent đưa nhiệm vụ trở lại `ready_to_implement`, tăng `routed_back_count` thêm 1, và bắt đầu vòng làm lại.
+
+---
+
+## Gate 2 — Chấp nhận cuối cùng
+
+**Chuyển đổi:** `testing → done`
+
+Sau khi agent chạy tất cả các gate và chứng minh mỗi tiêu chí chấp nhận, nó dừng lại lần nữa và trình bày bằng chứng kiểm thử. Đây là gate cuối cùng trước khi một nhiệm vụ được coi là đã ship.
+
+### Agent trình bày gì
+
+- Đầu ra gate đầy đủ (kết quả build, lint, test — tất cả phải xanh)
+- Chứng minh cho mỗi tiêu chí chấp nhận — với mỗi ô trong tiêu chí chấp nhận của nhiệm vụ, bằng chứng cho thấy nó được đáp ứng
+- Tóm tắt những gì đã được kiểm thử và như thế nào
+
+### Bạn kiểm tra gì
+
+Đi qua các tiêu chí chấp nhận từng cái một. Với mỗi tiêu chí, kiểm tra bằng chứng mà agent trình bày. Bằng chứng có thuyết phục không? Đầu ra gate có cho thấy màu xanh trên toàn bộ không?
+
+### Cách phê duyệt
+
+Nói `done` (hoặc tương đương). Trạng thái nhiệm vụ trở thành `done` — trạng thái thành công cuối cùng. Thay đổi đã sẵn sàng để bạn hoàn thiện.
+
+<Warning>
+  Không bao giờ chấp nhận tại Gate 2 với các gate thất bại. Nếu agent trình bày đầu ra gate đỏ — build hỏng, lỗi lint, hoặc test thất bại — hãy từ chối và gửi lại. Agent phải sửa mọi thất bại và chạy lại các gate trước khi yêu cầu chấp nhận cuối cùng của bạn.
+</Warning>
+
+### Cách trả lại
+
+Đưa một câu giải thích vấn đề. Ví dụ:
+
+> "Test reset rate-limit không có trong đầu ra test — tiêu chí chấp nhận chưa được chứng minh."
+
+`routed_back_count` tăng lên lần nữa, và agent khởi động lại từ `ready_to_implement`.
+
+---
+
+## Quy tắc về việc agent tự chấp nhận
+
+Các agent không bao giờ đặt `ready_to_test` hoặc `done`. Hai chuyển đổi trạng thái này chỉ dành cho con người — agent đưa nhiệm vụ đến gate với bằng chứng và dừng lại. Chỉ phán quyết được ghi lại của bạn mới đưa nhiệm vụ vượt qua gate.
+
+Nếu một agent tuyên bố đã đặt `done` mà không dừng lại chờ ý kiến của bạn, đó là hành vi hỏng. Không chấp nhận đầu ra. Báo cáo nó.
+
+---
+
+## Sau Gate 2: hoàn thiện thay đổi
+
+Khi bạn đã chấp nhận tại Gate 2, việc hoàn thiện thay đổi là trách nhiệm của bạn:
+
+```bash
+git add .
+git commit -m "feat(myapp): your change description (TASK-ID)"
+git push origin your-branch
+# open a PR in your usual flow
+```
+
+Các agent không bao giờ commit, push, merge, hoặc deploy thay bạn. Gate đóng lại khi bạn nói `done`; những gì xảy ra tiếp theo luôn là hành động của con người.
+
+---
+
+## Thực hành tốt nhất khi trả lại
+
+Trả lại là một phần bình thường của quy trình — hãy sử dụng thoải mái. Trường `routed_back_count` trong frontmatter nhiệm vụ tồn tại chính xác để theo dõi các vòng lặp này, và không có giới hạn về số lần bạn có thể trả lại.
+
+<AccordionGroup>
+  <Accordion title="Cụ thể về những gì sai">
+    Một thông điệp trả lại chính xác sẽ sửa nhiệm vụ nhanh hơn. So sánh:
+
+    - ❌ `"Nó sai."`
+    - ✅ `"Rate-limiter trả về 400, không phải 429 như điều khoản 2 yêu cầu."`
+
+    Agent dùng thông điệp của bạn để nhắm vào việc làm lại. Các thông điệp mơ hồ dẫn đến các bản sửa mơ hồ.
+  </Accordion>
+
+  <Accordion title="Kiểm tra routed_back_count để tìm mẫu">
+    Nếu `routed_back_count` cao (3 trở lên), vấn đề thường nằm ở bản thân đặc tả nhiệm vụ — một điều khoản mơ hồ, một ràng buộc bị thiếu, hoặc một tiêu chí chấp nhận quá mơ hồ để chứng minh. Cân nhắc trả lại với yêu cầu viết lại đặc tả thay vì sửa triển khai.
+  </Accordion>
+
+  <Accordion title="Không có giới hạn về số lần trả lại">
+    Trả lại bao nhiêu lần cũng được. Quy trình không có áp lực thời gian và không có số lượng vòng lặp tối đa. Giữ tiêu chuẩn — một nhiệm vụ chưa hoàn thành cho đến khi nó thực sự hoàn thành.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Đội đa agent
+
+Nếu đội bạn sử dụng nhiều agent — ví dụ, Claude Code cho triển khai và Cursor cho xem xét — mỗi agent đọc cùng `.cyberos/AGENT-ENTRY.md` và tuân theo cùng hai gate. Các gate được thực thi bởi quy trình, không phải bởi plugin. Bất kỳ agent nào đang điều khiển nhiệm vụ tại thời điểm gate phải dừng lại và trình bày bằng chứng trước khi bất kỳ chuyển đổi trạng thái nào sang `ready_to_test` hoặc `done` là hợp lệ.
+
+<Tip>
+  Hai gate là nơi chuyên môn của bạn quan trọng nhất. Agent xử lý công việc triển khai cơ giới; bạn giữ tiêu chuẩn chất lượng. Một lần trả lại cẩn thận tại Gate 1 tiết kiệm nhiều thời gian hơn nhiều so với việc bắt lỗi tại Gate 2.
+</Tip>

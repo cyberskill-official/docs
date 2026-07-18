@@ -8,90 +8,188 @@
     "light": "#45250c"
   },
   "navigation": {
-    "tabs": [
+    "languages": [
       {
-        "tab": "Documentation",
-        "groups": [
+        "language": "en",
+        "default": true,
+        "tabs": [
           {
-            "group": "Get Started",
-            "pages": [
-              "introduction",
-              "quickstart",
-              "concepts"
+            "tab": "Documentation",
+            "groups": [
+              {
+                "group": "Get Started",
+                "pages": [
+                  "introduction",
+                  "quickstart",
+                  "concepts"
+                ]
+              },
+              {
+                "group": "Core Modules",
+                "pages": [
+                  "modules/memory",
+                  "modules/cuo",
+                  "modules/skill",
+                  "modules/auth",
+                  "modules/chat"
+                ]
+              },
+              {
+                "group": "Productivity Modules",
+                "pages": [
+                  "modules/proj",
+                  "modules/time",
+                  "modules/crm",
+                  "modules/kb",
+                  "modules/email"
+                ]
+              },
+              {
+                "group": "People & Finance",
+                "pages": [
+                  "modules/hr",
+                  "modules/rew",
+                  "modules/learn",
+                  "modules/esop"
+                ]
+              },
+              {
+                "group": "Platform",
+                "pages": [
+                  "modules/ai-gateway",
+                  "modules/mcp-gateway",
+                  "modules/obs",
+                  "modules/ten",
+                  "modules/portal"
+                ]
+              }
             ]
           },
           {
-            "group": "Core Modules",
-            "pages": [
-              "modules/memory",
-              "modules/cuo",
-              "modules/skill",
-              "modules/auth",
-              "modules/chat"
-            ]
-          },
-          {
-            "group": "Productivity Modules",
-            "pages": [
-              "modules/proj",
-              "modules/time",
-              "modules/crm",
-              "modules/kb",
-              "modules/email"
-            ]
-          },
-          {
-            "group": "People & Finance",
-            "pages": [
-              "modules/hr",
-              "modules/rew",
-              "modules/learn",
-              "modules/esop"
-            ]
-          },
-          {
-            "group": "Platform",
-            "pages": [
-              "modules/ai-gateway",
-              "modules/mcp-gateway",
-              "modules/obs",
-              "modules/ten",
-              "modules/portal"
+            "tab": "Guides",
+            "groups": [
+              {
+                "group": "Installation",
+                "pages": [
+                  "guides/install",
+                  "guides/plugin-setup",
+                  "guides/first-task"
+                ]
+              },
+              {
+                "group": "Skills & Workflows",
+                "pages": [
+                  "guides/authoring-skills",
+                  "guides/ship-tasks-workflow",
+                  "guides/human-in-the-loop"
+                ]
+              },
+              {
+                "group": "Vietnamese Market",
+                "pages": [
+                  "guides/vn-compliance",
+                  "guides/vietqr-invoicing"
+                ]
+              },
+              {
+                "group": "Reference",
+                "pages": [
+                  "reference/glossary",
+                  "reference/changelog"
+                ]
+              }
             ]
           }
         ]
       },
       {
-        "tab": "Guides",
-        "groups": [
+        "language": "vi",
+        "tabs": [
           {
-            "group": "Installation",
-            "pages": [
-              "guides/install",
-              "guides/plugin-setup",
-              "guides/first-task"
+            "tab": "Tài liệu",
+            "groups": [
+              {
+                "group": "Bắt đầu",
+                "pages": [
+                  "vi/introduction",
+                  "vi/quickstart",
+                  "vi/concepts"
+                ]
+              },
+              {
+                "group": "Module cốt lõi",
+                "pages": [
+                  "vi/modules/memory",
+                  "vi/modules/cuo",
+                  "vi/modules/skill",
+                  "vi/modules/auth",
+                  "vi/modules/chat"
+                ]
+              },
+              {
+                "group": "Module năng suất",
+                "pages": [
+                  "vi/modules/proj",
+                  "vi/modules/time",
+                  "vi/modules/crm",
+                  "vi/modules/kb",
+                  "vi/modules/email"
+                ]
+              },
+              {
+                "group": "Nhân sự & Tài chính",
+                "pages": [
+                  "vi/modules/hr",
+                  "vi/modules/rew",
+                  "vi/modules/learn",
+                  "vi/modules/esop"
+                ]
+              },
+              {
+                "group": "Nền tảng",
+                "pages": [
+                  "vi/modules/ai-gateway",
+                  "vi/modules/mcp-gateway",
+                  "vi/modules/obs",
+                  "vi/modules/ten",
+                  "vi/modules/portal"
+                ]
+              }
             ]
           },
           {
-            "group": "Skills & Workflows",
-            "pages": [
-              "guides/authoring-skills",
-              "guides/ship-tasks-workflow",
-              "guides/human-in-the-loop"
-            ]
-          },
-          {
-            "group": "Vietnamese Market",
-            "pages": [
-              "guides/vn-compliance",
-              "guides/vietqr-invoicing"
-            ]
-          },
-          {
-            "group": "Reference",
-            "pages": [
-              "reference/glossary",
-              "reference/changelog"
+            "tab": "Hướng dẫn",
+            "groups": [
+              {
+                "group": "Cài đặt",
+                "pages": [
+                  "vi/guides/install",
+                  "vi/guides/plugin-setup",
+                  "vi/guides/first-task"
+                ]
+              },
+              {
+                "group": "Kỹ năng & Quy trình",
+                "pages": [
+                  "vi/guides/authoring-skills",
+                  "vi/guides/ship-tasks-workflow",
+                  "vi/guides/human-in-the-loop"
+                ]
+              },
+              {
+                "group": "Thị trường Việt Nam",
+                "pages": [
+                  "vi/guides/vn-compliance",
+                  "vi/guides/vietqr-invoicing"
+                ]
+              },
+              {
+                "group": "Tham khảo",
+                "pages": [
+                  "vi/reference/glossary",
+                  "vi/reference/changelog"
+                ]
+              }
             ]
           }
         ]

@@ -1,0 +1,244 @@
+---
+title: 'Khái niệm cốt lõi của CyberOS: Bộ nhớ, Kỹ năng và Quy trình'
+sidebarTitle: 'Khái niệm'
+description: 'Hiểu về bộ nhớ BRAIN, Skills, quy trình CUO, các trạng thái nhiệm vụ, các cổng con người trong vòng lặp và cấu trúc thư mục .cyberos/ trong CyberOS.'
+---
+
+CyberOS được xây dựng trên năm ý tưởng gắn kết: một BRAIN ghi nhớ mọi thứ với chứng cứ mật mã, một hệ thống Skills đóng gói những gì agent có thể làm thành các năng lực có thể kiểm toán, một engine quy trình CUO quản trị cách công việc di chuyển từ ý tưởng đến hoàn thành, một định dạng nhiệm vụ làm cho mỗi đơn vị công việc dễ hiểu với cả agent và con người, và một mô hình con người trong vòng lặp đảm bảo agent không bao giờ tự đưa ra quyết định cuối cùng. Hiểu cách năm khái niệm này khớp nối với nhau sẽ giúp bạn tự tin sử dụng mọi phần của nền tảng.
+
+---
+
+## BRAIN / Bộ nhớ
+
+BRAIN là lớp bộ nhớ của CyberOS. Khi bạn nói với nó như một người dùng, bạn gọi nó là BRAIN; trong code, đường dẫn file và biến môi trường, nó là `memory`. Cả hai tên cùng tồn tại theo thiết kế.
+
+### Layer 1 — kho giao thức cục bộ
+
+Kho Layer-1 nằm tại `.cyberos/memory/store/` tại thư mục gốc của mỗi repository đã khởi tạo CyberOS. Nó là **append-only**: một khi file bộ nhớ được ghi, nội dung của nó bất biến. Các thay đổi tiếp theo được biểu diễn dưới dạng các thao tác file mới, không bao giờ là chỉnh sửa tại chỗ các file hiện có. Đây không phải là lựa chọn được đưa ra vì tiện lợi — đó là một bất biến giao thức cứng được đặc tả (`AGENTS.md`) bắt buộc.
+
+Mỗi thay đổi là một trong bốn thao tác chuẩn:
+
+| Thao tác | Chức năng |
+|-----------|-------------|
+| `put` | Ghi một file bộ nhớ mới tại đường dẫn cho trước |
+| `move` | Di chuyển vị trí một file bộ nhớ (ghi lại như một thao tác mới, không phải là rename) |
+| `delete` | Đánh dấu tombstone mềm cho file bộ nhớ (thân file được bảo tồn trong `conflicts/`) |
+| `put_if` | Ghi có điều kiện — chỉ commit nếu một tiền điều kiện đúng |
+
+Các hàng được móc xích bằng hash vào các segment nhật ký nhị phân theo tháng (`audit/current.binlog`) với kiểm tra chéo Merkle Mountain Range, do đó bất kỳ byte lịch sử nào cũng có thể được phát lại hoặc chứng minh bằng mật mã. Kho cũng mang một bộ đếm `HEAD` (số thứ tự `u64` little-endian 8-byte được ghi nguyên tử) và một file `.lock` để phối hợp.
+
+Chạy `python -m cyberos doctor` bất cứ lúc nào để duyệt toàn bộ tập bất biến và xác nhận sức khỏe kho. Chạy `python -m cyberos export` để tạo một zip tất định, di động của toàn bộ kho.
+
+### Layer 2 — dịch vụ brain
+
+Dịch vụ brain Layer-2 đọc Layer 1 và suy ra cấu trúc cấp cao hơn từ đó:
+
+- **Embedding theo sự kiện** cho tìm kiếm tương tự ngữ nghĩa.
+- **Tóm tắt cuộn** nén các lịch sử dài thành các snapshot có thể truy xuất.
+- **Phân tầng hot/warm/cold** dựa trên độ mới — bộ nhớ gần đây nhanh để truy xuất; bộ nhớ cũ hơn được phân tầng nhưng vẫn có thể chứng minh.
+
+Các truy vấn recall trả lời trên chỉ mục hot với con trỏ chứng cứ về đúng các hàng Layer-1. Truy cập được điều khiển bằng consent và giới hạn theo tenant với bảo mật cấp hàng fail-closed.
+
+<Note>
+  Các kho là dữ liệu tenant — luôn được gitignore, không bao giờ commit vào version control. Khối `.gitignore` được quản lý của thư mục `.cyberos/` thực thi điều này tự động ở mỗi lần chạy `install`.
+</Note>
+
+---
+
+## Skills
+
+Một Skill là một năng lực agent có phiên bản, có thể kiểm toán. Nó không phải là một prompt template hay một lệnh gọi hàm — nó là một thư mục đóng gói mọi thứ agent cần để thực thi một năng lực cụ thể và để lại chứng cứ.
+
+### Cấu trúc của một Skill
+
+Mỗi Skill chứa:
+
+- **Hợp đồng `SKILL.md`** — đặc tả định danh: trigger (cách gọi nó), inputs, outputs và các bước xác minh. Đây là tài liệu mà cả agent và người kiểm toán đọc.
+- **Thành phần author** — logic triển khai thực hiện công việc.
+- **Thành phần audit** — một thành phần riêng biệt xác minh đầu ra của author một cách độc lập. Các thành phần author và audit luôn là một cặp; không có Skill nào được phát hành mà thiếu cả hai.
+
+Sự tách biệt author/audit này là nền tảng. Thành phần audit không thể là cùng code như author; nó là một trình xác minh độc lập. Điều này có nghĩa mỗi lần chạy Skill để lại hai mảnh chứng cứ: đã làm gì và làm có đúng không.
+
+### Cách gọi Skills
+
+Skills được gọi theo tên. Với plugin Claude, gõ trực tiếp `/skill-name`. Không có nó, hãy bảo bất kỳ agent file-and-shell nào tuân theo hợp đồng `SKILL.md` của Skill. `npx cyberos install` vendor các Skill author/audit vào mỗi dự án đã khởi tạo dưới `.cyberos/cuo/skills/` và cài các symlink skill gốc vào thư mục ưa thích của từng agent (`.claude/skills/`, `.codex/skills/`, `.grok/skills/`, v.v.).
+
+### 104 Skills tích hợp sẵn
+
+CyberOS cung cấp 104 Skills bao trùm toàn bộ pipeline phát triển phần mềm — từ soạn thảo nhiệm vụ (`task-author`, `task-audit`) và review code (`code-review-audit`, `code-review-author`) qua kiểm soát coverage, chèn observability và quản lý trạng thái backlog. Các Skill chuyên biệt bao gồm các công cụ cho thị trường Việt Nam (`vietnam-vat-invoice`, `vietnam-bank-transfer`, `vietnam-mst-validate`) và các Skill nghiệp vụ cho tài liệu chiến lược, bộ slide hội đồng quản trị, quyết định tuyển dụng, chứng cứ SOC 2 và nhiều hơn nữa.
+
+Tất cả Skills tuân thủ **tiêu chuẩn mở Anthropic Agent Skills**, có nghĩa chúng tương thích với Claude, Codex, Cursor, Gemini, Grok, Command Code, Windsurf và bất kỳ agent nào khác đã áp dụng tiêu chuẩn này.
+
+---
+
+## CUO / Engine quy trình
+
+CUO là engine quy trình. Công việc của nó là điều phối mọi đơn vị công việc — một nhiệm vụ — qua một vòng đời có quản trị duy nhất, với các cổng máy xác minh những gì có thể xác minh và các cổng con người quyết định những gì không thể.
+
+### Quy trình ship-tasks
+
+Có đúng một quy trình: `ship-tasks`. Nó chọn nhiệm vụ đủ điều kiện đầu tiên từ `docs/tasks/BACKLOG.md` (nhiệm vụ đầu tiên ở trạng thái `ready_to_implement`) và điều phối nó từ đầu đến cuối. Cả các nhiệm vụ năng lực mới (`class: product`) lẫn các nhiệm vụ gia cố (`class: improvement`) đều chạy qua cùng bộ máy — không có backlog riêng hay quy trình riêng cho các cải tiến.
+
+### Các trạng thái nhiệm vụ
+
+Một nhiệm vụ mang đúng một trạng thái tại bất kỳ thời điểm nào. Vòng đời đầy đủ có 10 giá trị hợp lệ:
+
+<Accordion title="Vòng đời nhiệm vụ đầy đủ (10 trạng thái)">
+
+**Các trạng thái vòng đời (theo thứ tự):**
+
+| # | Trạng thái | Ai đặt | Ý nghĩa |
+|---|--------|-------------|---------|
+| 1 | `draft` | tác giả nhiệm vụ | Đặc tả đang được viết; chưa được audit hay đủ điều kiện xếp hàng |
+| 2 | `ready_to_implement` | Skill task-audit / đường rework | Đặc tả đạt audit 10/10; đủ điều kiện vào hàng đợi build. **Cũng là trạng thái mà bất kỳ thất bại trong chu kỳ nào cũng quay về** |
+| 3 | `implementing` | quy trình ship-tasks | Build đang diễn ra |
+| 4 | `ready_to_review` | ship-tasks | Triển khai hoàn tất; chờ reviewer nhận |
+| 5 | `reviewing` | ship-tasks | Reviewer đang đọc diff so với các điều khoản định danh |
+| 6 | `ready_to_test` | **phán quyết của con người** | Review được chấp nhận; chờ tester nhận |
+| 7 | `testing` | ship-tasks | Tester đang chạy kiểm tra coverage và tiêu chí chấp nhận |
+| 8 | `done` | **phán quyết của con người** | Tất cả điều khoản đã được truy vết đến các test đạt VÀ con người đã chấp nhận. Thành công cuối cùng |
+
+**Các off-ramp (do người vận hành quyết định):**
+
+| Trạng thái | Ý nghĩa |
+|--------|---------|
+| `on_hold` | Chủ động hoãn — bị hàng đợi bỏ qua, ở lại backlog như một ứng viên trong tương lai |
+| `closed` | Hủy cuối cùng — sẽ không được build (bị từ chối, bị thay thế, hoặc won't-do). Ở lại vì mục đích dấu vết kiểm toán |
+
+</Accordion>
+
+### Vì sao thất bại vòng lại, không thất bại cuối cùng
+
+Khi có gì đó sai — cầu dao ngắt sau năm lần test thất bại liên tiếp, reviewer tìm thấy blocker, hoặc cổng coverage trả về đỏ — trạng thái nhiệm vụ trở lại `ready_to_implement` với `routed_back_count` được tăng lên một. Không có trạng thái thất bại cuối cùng. Lý do thất bại được ghi vào một hàng kiểm toán; nhiệm vụ đơn giản là sẵn sàng để thử lại với ngữ cảnh thất bại có sẵn. Thiết kế này có nghĩa công việc không bao giờ biến mất vào ngõ cụt: mỗi nhiệm vụ hoặc đang tiến hành, đang on hold, đã done, hoặc đã closed bởi một quyết định chủ ý của người vận hành.
+
+---
+
+## Nhiệm vụ
+
+Một nhiệm vụ là một file markdown mô tả một đơn vị công việc đủ chính xác để agent triển khai và con người xác minh rằng việc triển khai là đúng.
+
+### Định dạng file nhiệm vụ
+
+Mỗi file nhiệm vụ nằm dưới `docs/tasks/<module>/` và tuân theo cấu trúc frontmatter + body này:
+
+```markdown
+---
+id: TASK-MODULE-001
+title: Short imperative description of the work
+module: module-name
+class: product          # product = new capability; improvement = hardening/refactor/fix
+status: ready_to_implement
+priority: MUST          # MUST | SHOULD | COULD
+depends_on: []
+routed_back_count: 0
+---
+
+# TASK-MODULE-001 — Short imperative description
+
+## Context
+Why this task matters, in 2–4 sentences.
+
+## 1. Normative clauses
+1. The system MUST do X.
+2. A failure MUST return Y.
+
+## 2. Acceptance criteria
+- [ ] Clause 1 is covered by a passing test named `test_x`.
+- [ ] Clause 2 is covered by a passing test named `test_y`.
+```
+
+### Chỉ mục BACKLOG.md
+
+`docs/tasks/BACKLOG.md` là chỉ mục phẳng của tất cả các nhiệm vụ. Nó được giữ đồng bộ với các file nhiệm vụ — mỗi nhiệm vụ tồn tại có một hàng trong phần module thích hợp. Trường `status:` trong frontmatter của file nhiệm vụ là bản ghi chân lý; hàng backlog là mục chỉ mục. Các nhiệm vụ class improvement mang thẻ `(improvement)` trên hàng backlog để loại có thể nhìn thấy ngay; các hàng class product không có thẻ.
+
+<Tip>
+  Giữ các nhiệm vụ đủ nhỏ để hoàn thành trong một lần. Một nhiệm vụ với hơn khoảng năm điều khoản định danh là dấu hiệu để tách nó. Các nhiệm vụ nhỏ hơn di chuyển nhanh hơn qua vòng đời, tạo ra chứng cứ sạch hơn ở mỗi cổng, và dễ định tuyến quay lại và thử lại hơn khi có gì đó sai.
+</Tip>
+
+---
+
+## Con người trong vòng lặp
+
+Con người trong vòng lặp (HITL) không phải là một tính năng bạn có thể tắt — nó là một bất biến bắt buộc của mô hình quản trị CyberOS. Hai chuyển tiếp trong vòng đời nhiệm vụ là các cổng chấp nhận mà agent không bao giờ được tự vượt qua:
+
+### Cổng 1 — Chấp nhận review
+
+**Chuyển tiếp: `reviewing → ready_to_test`**
+
+Agent trình bày một gói code-review: diff, một review so với mọi điều khoản định danh, và một ma trận các trường hợp biên. Bạn đọc chứng cứ và quyết định. Các lựa chọn của bạn:
+
+- **Phê duyệt** — nói "approved" và nhiệm vụ tiến tới `ready_to_test`.
+- **Định tuyến quay lại** — mô tả những gì sai trong một câu. Nhiệm vụ trở về `ready_to_implement` với lý do được ghi lại và `routed_back_count` được tăng lên.
+
+### Cổng 2 — Chấp nhận cuối cùng
+
+**Chuyển tiếp: `testing → done`**
+
+Agent trình bày chứng cứ kiểm thử: đầu ra cổng (build, lint, test, coverage tất cả xanh), và chứng minh rằng mỗi tiêu chí chấp nhận trong file nhiệm vụ có một test đã đặt tên đạt. Bạn đọc chứng cứ và quyết định:
+
+- **Chấp nhận** — nói "done" và nhiệm vụ đạt thành công cuối cùng.
+- **Định tuyến quay lại** — nhiệm vụ trở về `ready_to_implement` cho một lượt khác.
+
+### Vì sao agent không thể đặt `done`
+
+Các cổng máy — build xanh, các test đạt, coverage đầy đủ — là cần thiết nhưng không bao giờ đủ. Phán quyết cuối cùng đòi hỏi một con người đọc chứng cứ và đưa ra quyết định được ghi lại. Đây là một lựa chọn thiết kế có chủ ý: nó ngăn agent tự chứng nhận công việc của chính mình, bảo toàn chuỗi kiểm toán đầy đủ, và giữ con người chịu trách nhiệm về mọi thứ được triển khai.
+
+Mỗi phán quyết của con người và mỗi override của người vận hành phát ra một hàng kiểm toán (`memory.status_overridden`) ghi lại actor, ID nhiệm vụ, trạng thái trước, trạng thái mới và lý do. BRAIN lưu các hàng này trong chuỗi kiểm toán, do đó toàn bộ câu chuyện vòng đời luôn có thể chứng minh được.
+
+<Warning>
+  Nếu một agent đánh dấu công việc của chính mình là `done` mà không có phán quyết được ghi lại của bạn, đó là hành vi bị hỏng. Đừng chấp nhận nó — hãy báo cáo. Quy trình `ship-tasks` được thiết kế để dừng tại cả hai cổng và trình bày chứng cứ; một agent bỏ qua cổng đã lệch khỏi quy trình.
+</Warning>
+
+---
+
+## Cây thư mục `.cyberos/`
+
+CyberOS vendor mọi thứ nó cần vào một thư mục `.cyberos/` duy nhất được gitignore tại thư mục gốc repository của bạn. Cấu trúc thư mục tách ba module cốt lõi một cách rõ ràng:
+
+```
+.cyberos/
+├── cuo/                    # CUO workflow engine
+│   ├── ship-tasks.md       # The normative workflow doctrine
+│   ├── EXECUTION-DISCIPLINE.md
+│   ├── STATUS-REFERENCE.md # The 10-state lifecycle contract
+│   ├── gates/
+│   │   └── run-gates.sh    # Machine gate runner
+│   ├── skills/             # Vendored author/audit Skills
+│   └── templates/          # Task file templates
+├── memory/                 # BRAIN memory protocol
+│   ├── store/              # The live audit-chained store (tenant data)
+│   │   ├── manifest.json
+│   │   ├── HEAD
+│   │   ├── .lock
+│   │   ├── audit/          # Monthly binlog segments
+│   │   └── memories/       # Memory files by kind
+│   └── (protocol docs)     # AGENTS.md spec, schema, invariants
+├── plugin/                 # Claude plugin and agent entry files
+│   └── AGENT-ENTRY.md      # The canonical cross-agent trigger
+├── mcp/                    # MCP server (Node stdio, zero dependencies)
+│   └── cyberos-mcp.mjs
+├── gates.env               # Auto-detected gate commands for this repo
+├── config.yaml             # Per-repo gate overrides (all-commented by default)
+└── VERSION                 # Installed CyberOS version
+```
+
+Thư mục con `store/` dưới `memory/` là phần duy nhất của `.cyberos/` chứa dữ liệu sống mà bạn không thể tái tạo. Mọi thứ khác được xây lại ở mỗi lần chạy `install`. File `VERSION` cho bạn biết phiên bản CyberOS nào hiện đang được vendor, và `npx cyberos install --check` cho bạn biết liệu có phiên bản mới hơn khả dụng hay không.
+
+---
+
+## Tìm hiểu thêm
+
+<CardGroup cols={2}>
+  <Card title="Memory BRAIN" icon="brain" href="/modules/memory">
+    Đặc tả giao thức Layer-1 đầy đủ, bốn thao tác chuẩn, dịch vụ ngữ nghĩa Layer-2 và các lệnh `doctor` / `export`.
+  </Card>
+  <Card title="Workflow Engine" icon="gears" href="/modules/cuo">
+    Doctrine ship-tasks hoàn chỉnh, kỷ luật thực thi, các cổng máy và hợp đồng trạng thái 10-state chi tiết.
+  </Card>
+  <Card title="Thư viện Skills" icon="puzzle-piece" href="/modules/skill">
+    104 Skills tích hợp sẵn, định dạng hợp đồng SKILL.md, mẫu author/audit và cách xuất bản Skills của riêng bạn.
+  </Card>
+  <Card title="Bắt đầu nhanh" icon="rocket" href="/quickstart">
+    Từng bước: cài đặt CyberOS, viết một nhiệm vụ, kích hoạt agent và nắm giữ hai cổng.
+  </Card>
+</CardGroup>

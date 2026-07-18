@@ -1,0 +1,169 @@
+---
+title: 'PORTAL: Cổng thông tin khách hàng white-label cho các công ty dịch vụ'
+sidebarTitle: 'Portal'
+description: 'CyberOS PORTAL mang lại cho khách hàng của bạn một cổng thông tin có thương hiệu để xem dự án, hóa đơn và tài liệu — được bảo mật bởi SSO IdP của chính họ và cô lập theo từng khách hàng.'
+---
+
+PORTAL là bề mặt hướng tới khách hàng của CyberOS. Nếu bạn điều hành một công ty tư vấn, agency, hoặc công ty dịch vụ chuyên nghiệp, PORTAL mang lại cho mỗi khách hàng của bạn một cổng thông tin web có thương hiệu, nơi họ có thể xem các dự án bạn đang thực hiện cho họ, xem xét và thanh toán hóa đơn, truy cập hợp đồng đã ký, và đặt câu hỏi với trợ lý AI có thương hiệu dựa trên lịch sử dự án của chính họ — tất cả mà không bao giờ nhìn thấy tên sản phẩm CyberOS trừ khi bạn muốn. Góc nhìn của mỗi khách hàng được cô lập với mọi khách hàng khác ở ba lớp độc lập, và khách hàng đăng nhập qua nhà cung cấp danh tính của chính họ, nên bạn không bao giờ phải quản lý mật khẩu của họ.
+
+<Note>
+  PORTAL là một module P4. Liên hệ đội sales để truy cập sớm.
+</Note>
+
+## Những gì khách hàng thấy trong cổng thông tin của họ
+
+<CardGroup cols={2}>
+  <Card title="Dự án (PROJ)" icon="kanban">
+    Tất cả các dự án PROJ nơi Engagement của khách hàng là cha, được lọc thành các mục được đánh dấu `client-visible`. Khách hàng thấy trạng thái, mốc, và tiến độ — không thấy bình luận nội bộ hoặc vấn đề riêng tư.
+  </Card>
+  <Card title="Hóa đơn (INV)" icon="file-invoice">
+    Tất cả hóa đơn thuộc phạm vi tài khoản của khách hàng, với số dư chưa thanh toán, lịch sử thanh toán, và liên kết thanh toán trực tiếp tới Stripe hoặc VietQR. Khách hàng không bao giờ thấy hóa đơn của các tài khoản khác.
+  </Card>
+  <Card title="Tài liệu (DOC)" icon="file-signature">
+    Các hợp đồng và thỏa thuận đã ký mà khách hàng là một bên. Khách hàng có thể xem trạng thái ký, tải xuống bản đã ký, và thấy liên kết ký được cá nhân hóa cho các tài liệu đang chờ chữ ký của họ.
+  </Card>
+  <Card title="Chuỗi CHAT" icon="message-circle">
+    Bất kỳ chuỗi CHAT nào mà khách hàng là thành viên — thường là các chuỗi cho cập nhật dự án hoặc hội thoại hỗ trợ bắt đầu từ chính cổng thông tin.
+  </Card>
+  <Card title="Trợ lý AI có thương hiệu" icon="sparkles">
+    Một biến thể CUO được nạp sẵn lịch sử dự án của khách hàng. Khách hàng có thể đặt câu hỏi như "Chi tiêu SOW của chúng tôi trong quý này đến nay là bao nhiêu?" và nhận được câu trả lời có căn cứ với trích dẫn đến dữ liệu hóa đơn hoặc dự án thực tế.
+  </Card>
+</CardGroup>
+
+## Thương hiệu white-label
+
+Khách hàng của bạn thấy thương hiệu của bạn trong cổng thông tin, không phải CyberOS.
+
+### Tên miền phụ tùy chỉnh
+
+Theo mặc định, cổng thông tin khách hàng của bạn có sẵn tại `clients.<your-slug>.cyberos.world`. Để sử dụng tên miền của riêng bạn:
+
+<Steps>
+  <Step title="Yêu cầu CNAME của bạn">
+    Trong **Settings → Portal → Branding**, nhập tên miền bạn muốn sử dụng (ví dụ: `portal.acmecorp.com`). Hệ thống phát hành một thách thức TXT DNS để xác minh quyền sở hữu.
+  </Step>
+  <Step title="Thêm bản ghi TXT DNS">
+    Thêm bản ghi TXT được cung cấp tại nhà cung cấp DNS của bạn dưới `_cyberos-challenge.<your-domain>`. Điều này chứng minh bạn sở hữu tên miền.
+  </Step>
+  <Step title="Xác minh và kích hoạt">
+    Nhấp **Verify** trong cài đặt cổng thông tin. CyberOS xác thực bản ghi TXT, yêu cầu chứng chỉ TLS từ AWS ACM, và kích hoạt tên miền tùy chỉnh của bạn. Quy trình mất khoảng 3–5 phút sau khi DNS lan truyền.
+  </Step>
+</Steps>
+
+### Gói thương hiệu
+
+Cấu hình gói thương hiệu của bạn trong **Settings → Portal → Branding**:
+
+<ParamField path="logo" type="file">
+  Tải lên logo của bạn (SVG hoặc PNG, tối đa 2 MB). Hiển thị trong header cổng thông tin và các mẫu email hướng đến khách hàng. Tệp SVG được làm sạch tự động.
+</ParamField>
+
+<ParamField path="accent_color" type="string" placeholder="#00A37C">
+  Màu chính của thương hiệu của bạn dưới dạng mã hex. Được sử dụng cho nút, liên kết, và điểm nhấn trong toàn bộ cổng thông tin.
+</ParamField>
+
+<ParamField path="typography_pack" type="string" default="Inter">
+  Họ phông chữ cho giao diện cổng thông tin. Các gói được hỗ trợ: `Inter`, `Plus Jakarta Sans`, `Geist`, `DM Sans`.
+</ParamField>
+
+<ParamField path="email_templates" type="object">
+  Ghi đè các mẫu email giao dịch mặc định (lời mời, thông báo hóa đơn, ký tài liệu) bằng phiên bản có thương hiệu của riêng bạn.
+</ParamField>
+
+<ParamField path="powered_by_cyberos" type="boolean" default="false">
+  Hiển thị hoặc ẩn dòng chữ "Powered by CyberOS" trong footer cổng thông tin. Mặc định là ẩn — thương hiệu của bạn ở vị trí trung tâm.
+</ParamField>
+
+## Xác thực khách hàng qua IdP của chính họ
+
+Khách hàng đăng nhập qua nhà cung cấp danh tính của chính họ. Bạn cấu hình kết nối một lần cho mỗi khách hàng; sau đó, IdP của họ quản lý tất cả quyền truy cập — bao gồm cả việc xóa.
+
+### Các giao thức được hỗ trợ
+
+- **SAML 2.0** — hoạt động với Okta, Azure AD, Google Workspace, OneLogin, Ping Identity, và bất kỳ IdP nào tuân thủ SAML 2.0 khác
+- **OIDC** — hoạt động với Okta, Azure AD, Google Workspace, Auth0, và bất kỳ IdP nào tuân thủ OIDC
+
+### Cấu hình IdP của khách hàng
+
+<Steps>
+  <Step title="Thêm tài khoản khách hàng">
+    Trong **Settings → Portal → Clients**, nhấp **Add Client**. Nhập tên tổ chức và slug của khách hàng.
+  </Step>
+  <Step title="Cấu hình SSO của họ">
+    Trong cài đặt của khách hàng, chọn **SSO → Configure SAML** hoặc **Configure OIDC**. Nhập URL metadata IdP của họ (cho SAML) hoặc URL discovery (cho OIDC). Cổng thông tin tạo một URL Assertion Consumer Service (ACS) để đưa cho đội IT của khách hàng.
+  </Step>
+  <Step title="Kiểm tra kết nối">
+    Nhấp **Test SSO**. Bạn được chuyển hướng đến trang đăng nhập IdP của khách hàng. Đăng nhập thành công xác nhận cấu hình.
+  </Step>
+</Steps>
+
+### Cấp quyền JIT
+
+Khi người dùng khách hàng đăng nhập lần đầu tiên, cổng thông tin tự động tạo tài khoản của họ (một `ClientMember`) bằng cách sử dụng các thuộc tính từ assertion SSO — thường là địa chỉ email, tên hiển thị, và vai trò. Bạn không cần tạo trước tài khoản người dùng.
+
+Ánh xạ vai trò được cấu hình trong cài đặt SSO của khách hàng. Nếu assertion IdP không chứa yêu cầu vai trò có thể nhận diện, người dùng được cấp vai trò `viewer` đặc quyền thấp nhất theo mặc định.
+
+### Không có tài khoản mồ côi
+
+Khi bạn xóa một người dùng khỏi IdP của khách hàng (hoặc khách hàng offboard một nhân viên), lần đăng nhập tiếp theo của họ bị từ chối tự động. Không cần bước riêng biệt nào ở phía CyberOS. Với khách hàng sử dụng SCIM 2.0, các sự kiện hủy cấp phép thu hồi phiên trong vòng 30 giây.
+
+## Cô lập dữ liệu
+
+Dữ liệu cổng thông tin của mỗi khách hàng được cô lập với mọi khách hàng khác ở ba lớp độc lập:
+
+| Lớp | Cách hoạt động |
+|---|---|
+| **Bảo mật cấp hàng (RLS)** | Mọi kho dữ liệu liên quan đến cổng thông tin đều thực thi bảo mật cấp hàng được giới hạn phạm vi theo từng tài khoản khách hàng. Một truy vấn được cấu hình sai không thể trả về hàng của khách hàng khác. |
+| **Kiểm tra scope API** | Mọi trường dữ liệu đều yêu cầu cấp scope `portal.read` gắn với tài khoản của khách hàng. Lớp API chèn vị từ tài khoản khách hàng vào mọi truy vấn trước khi nó đến kho dữ liệu bên dưới. |
+| **ACL prefix S3** | Tất cả tài sản tệp (logo, tệp đính kèm) được lưu trữ dưới prefix khóa S3 theo từng khách hàng với chính sách IAM chặn truy cập chéo khách hàng. |
+
+Cách tiếp cận ba lớp có nghĩa là một cấu hình sai duy nhất ở bất kỳ lớp nào cũng được hai lớp còn lại phát hiện.
+
+## Thiết lập cổng thông tin khách hàng
+
+<Steps>
+  <Step title="Cấu hình gói thương hiệu của bạn">
+    Đặt logo, màu nhấn, và kiểu chữ trong **Settings → Portal → Branding**. Tùy chọn cấu hình CNAME tùy chỉnh (được mô tả ở trên).
+  </Step>
+  <Step title="Thêm tài khoản khách hàng">
+    Trong **Settings → Portal → Clients**, nhấp **Add Client**. Nhập tên tổ chức khách hàng và gán các engagement PROJ, hóa đơn INV, và tài liệu DOC nên được hiển thị cho khách hàng này.
+  </Step>
+  <Step title="Thiết lập IdP SSO của khách hàng">
+    Cấu hình SAML hoặc OIDC cho khách hàng như được mô tả trong phần xác thực ở trên. Đội IT của khách hàng cung cấp metadata IdP của họ; bạn nhập nó trong cài đặt SSO của khách hàng.
+  </Step>
+  <Step title="Mời admin khách hàng đầu tiên">
+    Đối với khách hàng chưa cấu hình SSO, hoặc như một phương án dự phòng, gửi lời mời magic-link đến người liên hệ chính của khách hàng. Họ đăng nhập, thiết lập cổng thông tin, và có thể mời đồng nghiệp của họ khi SSO đã hoạt động.
+  </Step>
+</Steps>
+
+## Quy trình do khách hàng khởi tạo
+
+Khách hàng có thể khởi tạo yêu cầu trực tiếp từ cổng thông tin. Mỗi loại yêu cầu được hiện thực hóa thành một chuỗi CHAT ở phía bạn và được CUO tự động định tuyến đến đúng Account Manager.
+
+<AccordionGroup>
+  <Accordion title="Yêu cầu dự án mới">
+    Khách hàng điền vào một biểu mẫu ngắn mô tả dự án họ muốn bắt đầu. Điều này tạo một chuỗi CHAT trong không gian làm việc của bạn được gắn thẻ tài khoản khách hàng, được định tuyến sẵn đến Account Manager của họ.
+  </Accordion>
+  <Accordion title="Truy vấn về hóa đơn">
+    Khách hàng đánh dấu một câu hỏi về một hóa đơn cụ thể. Điều này tạo một chuỗi CHAT liên kết trực tiếp đến hóa đơn được đề cập, được định tuyến đến nhóm tài chính của bạn hoặc AM của họ.
+  </Accordion>
+  <Accordion title="Ticket hỗ trợ">
+    Khách hàng mô tả một vấn đề hoặc câu hỏi về một dự án đang chạy. Tạo một chuỗi CHAT trong kênh `#<client>-portal`, được định tuyến tự động đến Account Manager chịu trách nhiệm dựa trên quyền sở hữu CRM.
+  </Accordion>
+</AccordionGroup>
+
+Đội của bạn phản hồi trong CHAT như bình thường. Nếu khách hàng là thành viên của chuỗi, họ sẽ thấy phản hồi trong phần CHAT của cổng thông tin của họ.
+
+## Vòng đời khách hàng
+
+<Steps>
+  <Step title="Đã cung cấp">
+    Bạn tạo tài khoản khách hàng. Tên miền phụ mặc định được gán và thương hiệu mặc định được áp dụng.
+  </Step>
+  <Step title="Hoạt động">
+    Lần đăng nhập SSO đầu tiên của khách hàng thành công. Cổng thông tin hoạt động; lăng kính dữ liệu, trợ lý AI, và các kênh quy trình do khách hàng khởi tạo đều đang hoạt động.
+  </Step>
+  <Step title="Offboarding (nếu engagement kết thúc)">
+    Kích hoạt offboarding từ **Settings → Portal → Clients → [client] → Offboard**. Khách hàng giữ quyền truy cập chỉ đọc trong 30 ngày, trong thời gian đó họ có thể xuất dữ liệu của mình. Sau 30 ngày, dữ liệu được xóa theo chính sách lưu trữ của tenant bạn.
+  </Step>
+</Steps>

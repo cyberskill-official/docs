@@ -1,0 +1,131 @@
+---
+title: 'Thanh toán VietQR và lập hóa đơn Hóa Đơn'
+sidebarTitle: 'VietQR & Lập hóa đơn'
+description: 'Sử dụng CyberOS CRM và INV để tạo mã thanh toán VietQR Napas247 và các hóa đơn VAT tuân thủ trực tiếp từ deal và engagement.'
+---
+
+CyberOS xử lý thu tiền thanh toán và lập hóa đơn VAT Việt Nam một cách native — không cần bộ kết nối bên thứ ba, không cần plugin Misa, không cần xuất XML thủ công. Việc tạo VietQR và phát hành hóa đơn được xây dựng vào luồng deal CRM như những thao tác hạng nhất, được hỗ trợ bởi các kỹ năng `vietnam-bank-transfer` và `vietnam-vat-invoice` từ gói `cyberskill-vn`.
+
+## VietQR để thu tiền deal
+
+### VietQR là gì
+
+VietQR là **tiêu chuẩn thanh toán QR mở Napas247** được sử dụng trên toàn hệ thống ngân hàng Việt Nam. Bất kỳ ứng dụng ngân hàng Việt Nam nào — Vietcombank, ACB, Techcombank, MB, và tất cả các ngân hàng kết nối Napas — đều có thể quét mã VietQR và tự động điền số tài khoản người nhận, số tiền chuyển, và tham chiếu thanh toán. Không có sự khóa vào ứng dụng nào: VietQR là tiêu chuẩn liên ngân hàng, không phải một ví.
+
+### Tạo mã VietQR
+
+<Steps>
+  <Step title="Mở deal trong CRM">
+    Điều hướng đến **CRM → Deals** và mở deal mà bạn muốn yêu cầu thanh toán. Deal phải có số tiền được đặt bằng VND.
+  </Step>
+  <Step title="Nhấp Generate VietQR">
+    Trên trang chi tiết deal, nhấp **Generate VietQR**. CyberOS gọi kỹ năng `vietnam-bank-transfer`, kỹ năng này lắp ráp một payload QR tuân thủ EMVCo bằng thông tin tài khoản ngân hàng đã cấu hình của bạn.
+  </Step>
+  <Step title="Chia sẻ mã QR">
+    Hình ảnh QR được tạo và chuỗi payload thô xuất hiện ngay lập tức. Chia sẻ hình ảnh QR trực tiếp với khách hàng của bạn qua email, CHAT, hoặc bằng cách nhúng vào tài liệu đề xuất. Mã được cache trong **24 giờ** — tạo lại nếu chưa nhận được thanh toán sau khoảng thời gian đó.
+  </Step>
+</Steps>
+
+<Note>
+  Để xác thực MST hoạt động chính xác trên tài khoản liên kết với deal, hãy đảm bảo tài khoản có trường MST được điền trong CRM trước khi tạo mã VietQR. Tham chiếu thanh toán được nhúng trong QR sử dụng tên chuẩn GDT của tài khoản.
+</Note>
+
+### QR mã hóa những gì
+
+Mỗi payload VietQR chứa:
+
+| Trường | Nguồn |
+|---|---|
+| Bank BIN | Ngân hàng đã cấu hình của bạn (ví dụ `970418` cho Vietcombank) |
+| Số tài khoản | Tài khoản nhận của tenant bạn, đặt trong TEN → Banking |
+| Số tiền (VND) | Giá trị `amount_minor_vnd` của deal |
+| Tham chiếu thanh toán | Tên deal + ID deal, cắt bớt đến 25 ký tự |
+
+Ứng dụng ngân hàng của khách hàng tự động điền cả bốn trường khi quét. Không cần nhập thủ công ở phía họ.
+
+### Khi nào sử dụng VietQR
+
+Sử dụng VietQR khi bạn gửi một yêu cầu thanh toán đến khách hàng Việt Nam kèm theo đề xuất deal hoặc hóa đơn. Nó loại bỏ ma sát copy-paste của số tài khoản + số tiền + tham chiếu, giảm lỗi thanh toán. VietQR đặc biệt hữu ích cho các khoản đặt cọc giữa deal và thanh toán cuối cho các engagement tư vấn.
+
+<Tip>
+  Các tính năng VietQR và hóa đơn có sẵn cho các tenant residency `vn-1` ngay từ đầu. Các tenant quốc tế có thể kích hoạt chúng thủ công trong **TEN → Compliance → VN Features**.
+</Tip>
+
+## Hóa Đơn (Hóa đơn VAT)
+
+### Tự động phát hành khi đóng deal
+
+Khi một deal chuyển sang `closed_won` — hoặc bằng cách nhấp **Close as Won** trong SPA hoặc thông qua công cụ MCP `cyberos.crm.close_deal` — CyberOS tự động đưa việc phát hành hóa đơn vào hàng đợi thông qua module INV.
+
+<Warning>
+  Việc phát hành hóa đơn không hoàn toàn tự động. Người quản lý tài khoản phải **xác nhận số tiền hóa đơn và người nhận** trước khi INV phát hành tài liệu. Gate xác nhận của con người này là bắt buộc: hóa đơn là tài liệu thuế ràng buộc pháp lý, và CyberOS không phát hành một hóa đơn nào mà không có sự ký duyệt rõ ràng của AM.
+</Warning>
+
+Hộp thoại xác nhận hiển thị:
+
+- Thông tin người bán (tên công ty của bạn, MST, địa chỉ)
+- MST người mua và tên chuẩn GDT
+- Các mục hàng từ deal
+- Phân chia VAT theo loại mặt hàng (tiêu chuẩn 10%, giảm 5%, xuất khẩu 0%)
+- Tổng số tiền bằng VND
+
+Nhấp **Confirm & Issue** để phát hành hóa đơn. Nếu bất kỳ trường nào không chính xác, chỉnh sửa deal trước khi xác nhận.
+
+### Tiêu chuẩn tuân thủ
+
+Tất cả hóa đơn do CyberOS phát hành đều tuân thủ **Nghị định 123/2020/NĐ-CP** (hóa đơn điện tử bắt buộc cho tất cả doanh nghiệp từ ngày 1 tháng 7 năm 2022) và **Thông tư 78/2021/TT-BTC** (schema XML của GDT). Kỹ năng `vietnam-vat-invoice` lắp ráp XML hóa đơn, và INV lưu trữ:
+
+- XML đã phát hành tại một URL S3 vĩnh viễn (giữ trong 10 năm theo Nghị định 123)
+- Số hóa đơn theo định dạng `C<YY><TEMPLATE>/<SEQUENCE>`
+- Liên kết đến deal CRM gốc và, nếu có, engagement PROJ
+
+### Dữ liệu hóa đơn bao gồm
+
+| Trường | Nguồn |
+|---|---|
+| Tên người bán, MST, địa chỉ | TEN → Company Profile |
+| Tên, MST người mua | Tài khoản CRM (đã xác thực GDT) |
+| Các mục hàng | Các mục hàng của deal CRM |
+| Tỷ lệ VAT mỗi mục | Ánh xạ loại mặt hàng trong cài đặt INV |
+| Số hóa đơn | Tự động gán bởi INV (tuần tự theo mẫu) |
+| Ngày phát hành | Ngày xác nhận của AM |
+
+### Nơi lưu trữ hóa đơn
+
+Tất cả hóa đơn đã phát hành nằm trong **INV → Invoices**. Mỗi bản ghi hóa đơn liên kết trở lại:
+
+- Deal CRM gốc
+- Engagement PROJ (nếu deal đã được chuyển thành engagement)
+- URL file XML để tải xuống hoặc nộp lên cổng GDT
+
+## OCR biên lai chi phí
+
+Luồng thu thập chi phí của TIME bao gồm một pipeline OCR biên lai hóa đơn Việt Nam để bạn không bao giờ phải nhập thủ công chi tiết biên lai.
+
+<Steps>
+  <Step title="Tải lên biên lai">
+    Trong **TIME → Expenses**, chạm **Capture Receipt** và chụp ảnh hoặc tải lên biên lai hóa đơn Việt Nam của bạn. CyberOS tải hình ảnh lên lưu trữ S3 đã mã hóa và đưa vào hàng đợi OCR.
+  </Step>
+  <Step title="OCR xử lý biên lai">
+    Pipeline OCR (AWS Textract ở P1) phân tích cấu trúc hóa đơn: tên nhà cung cấp, MST, các mục hàng, số tiền VAT, và tổng. Kỹ năng `vietnam-mst-validate` đối chiếu MST của nhà cung cấp với registry GDT. Thời gian OCR thông thường dưới 8 giây.
+  </Step>
+  <Step title="Xem xét và xác nhận">
+    Các trường được trích xuất được trình bày để bạn xem xét. Tất cả các trường đều có thể chỉnh sửa — sửa bất kỳ lỗi OCR nào trước khi lưu. Khi bạn xác nhận, chi phí được tạo với MST nhà cung cấp, phân chia VAT, và phân loại được điền sẵn.
+  </Step>
+</Steps>
+
+<Note>
+  Để xác thực MST hoạt động, hãy đảm bảo tài khoản có trường MST được điền trong CRM trước khi tạo mã VietQR. Đối với OCR chi phí, cùng một kiểm tra MST chạy tự động đối với MST nhà cung cấp được phân tích từ biên lai — không yêu cầu liên kết tài khoản CRM cho việc thu thập chi phí.
+</Note>
+
+## PSP Việt Nam cho tính phí SaaS (Kế hoạch)
+
+Tại mốc lộ trình P4, CyberOS sẽ hỗ trợ các nhà cung cấp dịch vụ thanh toán Việt Nam cho việc tính phí đăng ký của tenant:
+
+| PSP | Trường hợp sử dụng | Trạng thái |
+|---|---|---|
+| VnPay | Tính phí đăng ký thẻ + ví | Kế hoạch — P4 |
+| Momo (M_Service) | Tính phí ví điện tử người tiêu dùng | Kế hoạch — P4 |
+| ZaloPay (VNG) | Tính phí ví điện tử người tiêu dùng | Kế hoạch — P4 |
+
+Cho đến khi P4 ra mắt, các thanh toán đăng ký tenant sử dụng xử lý thẻ quốc tế. Các tenant Việt Nam có thể sử dụng VietQR để thu tiền từ khách hàng deal ngay hôm nay bất kể mục lộ trình này.

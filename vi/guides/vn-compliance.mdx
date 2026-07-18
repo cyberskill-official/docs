@@ -1,0 +1,141 @@
+---
+title: 'Tuân thủ thị trường Việt Nam trong CyberOS'
+sidebarTitle: 'Tuân thủ VN'
+description: 'CyberOS được xây dựng ưu tiên thị trường Việt Nam: xác thực MST, bảo vệ dữ liệu cá nhân PDPL, luật lao động Nghị định 145, bảng lương BHXH, và nộp DPIA cho MoPS — tất cả đều native.'
+---
+
+CyberOS được thiết kế cho thị trường Việt Nam đầu tiên. Mọi quy định bên dưới là một tính năng nền tảng hạng nhất, không phải một plugin hay bổ sung — từ việc thực thi lưu trú dữ liệu PDPL ở tầng tenancy đến các giới hạn giờ làm thêm theo Nghị định 145 được hardcode vào đường ghi của TIME.
+
+<Tip>
+  Tất cả các tính năng tuân thủ Việt Nam đều được bật mặc định cho các tenant có residency `vn-1`. Không cần cấu hình bổ sung.
+</Tip>
+
+## Bảo vệ dữ liệu cá nhân Việt Nam (PDPL)
+
+Luật Bảo vệ Dữ liệu Cá nhân của Việt Nam (Nghị định 13/2023/NĐ-CP) — thường được gọi là PDPL — là khung pháp lý chính điều chỉnh cách CyberOS xử lý dữ liệu cá nhân cho các tenant thị trường Việt Nam. CyberOS nhắm đến tầng residency `vn-1`, kích hoạt các quy tắc lưu trú dữ liệu của PDPL (Nghị định 53/2022) như một phần của gói tuân thủ `vn-1`.
+
+<CardGroup cols={2}>
+  <Card title="PDPL Điều 38 — Chuyển giao xuyên biên giới" icon="globe">
+    Điều 38 hạn chế việc chuyển giao dữ liệu cá nhân ra ngoài Việt Nam nếu không đáp ứng một trong các cơ sở pháp lý được phê duyệt. Đối với các tenant `vn-1`, CyberOS lưu trữ dữ liệu cá nhân trong vùng `hanoi-1` theo mặc định. Mọi chuyển giao xuyên biên giới đều được đưa lên DPO được chỉ định để phê duyệt trước khi tiến hành.
+  </Card>
+  <Card title="Cờ ân hạn cho SME" icon="clock">
+    Các doanh nghiệp vừa và nhỏ đủ điều kiện hưởng thời gian ân hạn chuyển tiếp theo các quy định hướng dẫn PDPL. Đặt `pdpl_sme_grace: true` trong thiết lập tenant của bạn để bật cờ thời gian ân hạn. CyberOS theo dõi ngày hết hạn và thông báo cho DPO 90 ngày trước khi nó hết hiệu lực.
+  </Card>
+  <Card title="DSAR APIs" icon="file-export">
+    Các API Yêu cầu Truy cập Dữ liệu Cá nhân (DSAR) có sẵn trên mọi module lưu trữ dữ liệu cá nhân — liên hệ CRM, các mục và chi phí TIME, hồ sơ HR, và hồ sơ lương thưởng REW. Gọi `GET /dsar/export?subject=<email>` để nhận một gói ZIP có cấu trúc đáp ứng Điều 14 PDPL.
+  </Card>
+  <Card title="Chỉ định DPO" icon="user-shield">
+    Điều 28 PDPL yêu cầu một Nhân viên Bảo vệ Dữ liệu (DPO) đối với việc xử lý có rủi ro cao. CyberOS cho phép bạn chỉ định bất kỳ admin tenant nào làm DPO trong **TEN → Compliance → DPO Designation**. Trong quá trình onboarding, nền tảng mặc định chỉ định chủ tài khoản sáng lập làm DPO.
+  </Card>
+</CardGroup>
+
+## Tuân thủ Luật Lao động
+
+CyberOS thực thi luật lao động Việt Nam ở tầng dữ liệu — các ràng buộc được viết vào đường ghi của module TIME, không phải gắn thêm như các kiểm tra báo cáo sau đó.
+
+### Giới hạn giờ làm việc theo Nghị định 145/2020
+
+Nghị định 145/2020 thực thi Điều 107 Bộ luật Lao động 2019. TIME thực thi các quy tắc cứng sau:
+
+<Steps>
+  <Step title="Giờ làm việc thường xuyên được theo dõi">
+    CyberOS theo dõi giờ làm việc thường xuyên cho mỗi thành viên theo tuần ISO. Giới hạn là **40 giờ thời gian thường xuyên mỗi tuần**. Các mục sẽ đẩy một thành viên vượt quá 40 giờ trong một tuần sẽ tự động được đánh dấu là làm thêm giờ — không cần phân loại thủ công.
+  </Step>
+  <Step title="Trần làm thêm giờ tiêu chuẩn">
+    Trần làm thêm giờ hàng năm mặc định là **200 giờ mỗi năm** (giới hạn tiêu chuẩn Điều 107 Bộ luật Lao động). TIME đánh giá mỗi mục làm thêm giờ mới đối với tổng cộng dồn hàng năm. Các mục sẽ vượt quá 200 giờ bị chặn tại API và thông báo cho CHRO.
+  </Step>
+  <Step title="Làm thêm giờ mở rộng với sự đồng thuận">
+    Được phép lên đến **300 giờ làm thêm mỗi năm** với sự đồng thuận có văn bản của nhân viên và thông báo cho MoLISA đã nộp. Trong TIME, dải 200–300 giờ bị kiểm soát: thành viên phải có hồ sơ đồng thuận đã ký trong HR và một thông báo MoLISA phải được ghi nhận trước khi đường ghi TIME cho phép các mục trong dải này. Việc cố gắng ghi làm thêm giờ trên 300 giờ là chặn cứng bất kể có sự đồng thuận hay không.
+  </Step>
+</Steps>
+
+<Warning>
+  Việc thực thi trần làm thêm giờ là một quy tắc cứng không thể thương lượng. Các mục vi phạm Điều 107 Bộ luật Lao động bị từ chối tại API và kích hoạt thông báo tự động cho CHRO. Không có đường ghi đè nếu không nộp hồ sơ đồng thuận HR và thông báo MoLISA đúng cách trước.
+</Warning>
+
+### Các loại nghỉ phép — Nghị định 145 và Bộ luật Lao động 2019
+
+HR theo dõi tám loại nghỉ phép theo luật, mỗi loại được gắn thẻ với cơ sở pháp lý của nó để các hồ sơ của bạn sẵn sàng cho kiểm tra của MoLISA.
+
+| Loại nghỉ phép | Cơ sở pháp lý | Ghi chú |
+|---|---|---|
+| Nghỉ phép năm | Bộ luật Lao động 2019 Điều 113 | Tích lũy từ ngày 1; tối thiểu 12 ngày/năm cho nhân viên tiêu chuẩn |
+| Nghỉ ốm | Bộ luật Lao động 2019 Điều 112 | Do BHXH chi trả; yêu cầu giấy chứng nhận y tế |
+| Nghỉ thai sản | Bộ luật Lao động 2019 Điều 139, Nghị định 145/2020 | 6 tháng cho mẹ; do BHXH chi trả |
+| Nghỉ chăm con | Bộ luật Lao động 2019 Điều 34, Nghị định 145/2020 | 5–14 ngày tùy loại sinh |
+| Nghỉ tang | Bộ luật Lao động 2019 Điều 115 | 3 ngày cho người thân trực hệ |
+| Nghỉ kết hôn | Bộ luật Lao động 2019 Điều 115 | 3 ngày |
+| Nghỉ dài hạn (sabbatical) | Chính sách nội bộ + Bộ luật Lao động 2019 Điều 116 | Yêu cầu mốc kỷ niệm việc làm |
+| Nghỉ không lương | Bộ luật Lao động 2019 Điều 115 | Theo thỏa thuận; không lương, BHXH bị tạm dừng |
+
+<Note>
+  Quyền lợi nghỉ thai sản và nghỉ chăm con được điều chỉnh bởi Bộ luật Lao động 2019 và thực thi theo Nghị định 145/2020. CyberOS gắn thẻ các hồ sơ nghỉ phép với cả điều luật Bộ luật Lao động và Nghị định liên quan để báo cáo tính lương ở REW có thể phân biệt nghỉ phép do BHXH tài trợ với nghỉ phép do người sử dụng lao động tài trợ.
+</Note>
+
+## Thuế và lập hóa đơn
+
+### Xác thực MST
+
+Mỗi khi bạn ghi hoặc cập nhật một tài khoản trong CRM với trường MST (Mã số thuế — Vietnamese business tax code), CyberOS gọi kỹ năng `vietnam-mst-validate`. Kỹ năng này truy vấn registry của Tổng cục Thuế (GDT) theo thời gian thực và:
+
+- Xác nhận mã hợp lệ và đang hoạt động
+- Trả về tên công ty và địa chỉ chuẩn của GDT
+- Đánh dấu bất kỳ sự không khớp nào giữa tên bạn nhập và tên chuẩn của GDT
+
+Kết quả xác thực được cache trong 7 ngày để xử lý sự cố ngừng hoạt động của registry GDT một cách nhẹ nhàng. Nếu registry không tiếp cận được, việc ghi được cho phép nhưng tài khoản được đánh dấu `vn_mst_validated: false` và một cảnh báo được đưa lên AM.
+
+### Hóa Đơn (Hóa đơn VAT) — Nghị định 123/2020
+
+Khi một deal CRM chuyển sang `closed_won`, CyberOS tự động kích hoạt kỹ năng `vietnam-vat-invoice` thông qua module INV. Hóa đơn (hóa đơn VAT điện tử) kết quả tuân thủ Nghị định 123/2020/NĐ-CP và Thông tư 78/2021/TT-BTC. Người quản lý tài khoản phải xác nhận số tiền và người nhận trước khi hóa đơn được phát hành — đây là một gate xác nhận bắt buộc của con người.
+
+Dữ liệu hóa đơn bao gồm thông tin người bán, MST người mua, các mục hàng, và phân chia VAT được tính theo loại mặt hàng (tiêu chuẩn 10%, giảm 5%, hoặc 0% cho xuất khẩu). Các hóa đơn đã phát hành được lưu trữ trong INV với liên kết đến deal CRM và được giữ trong 10 năm theo yêu cầu của Nghị định 123.
+
+### PIT và các khoản khấu trừ tính lương trong REW
+
+REW tính các khoản khấu trừ theo luật sau trên mỗi lần chạy tính lương cho nhân viên Việt Nam:
+
+| Khoản khấu trừ | Tỷ lệ (Nhân viên) | Cơ sở pháp lý |
+|---|---|---|
+| BHXH (Bảo hiểm xã hội) | 10.5% | Nghị định 152/2020 |
+| BHYT (Bảo hiểm y tế) | 1.5% | Nghị định 152/2020 |
+| BHTN (Bảo hiểm thất nghiệp) | 1.0% | Bộ luật Lao động 2019 |
+| PIT (Thuế thu nhập cá nhân) | Lũy tiến 5–35% | Luật PIT (bậc lũy tiến) |
+
+<Note>
+  Các khoản đóng góp bên phía người sử dụng lao động (BHXH 17.5%, BHYT 3%, BHTN 1%) được tính trong REW và hiển thị trên bảng tóm tắt tính lương nhưng không bị khấu trừ khỏi lương ròng của nhân viên.
+</Note>
+
+### OCR Chi phí — Biên lai hóa đơn Việt Nam
+
+Tải lên hình ảnh biên lai hóa đơn Việt Nam trong TIME và pipeline OCR sẽ tự động trích xuất MST, tên người bán, các mục hàng, và phân chia VAT. Các trường trích xuất có thể chỉnh sửa trước khi bạn lưu chi phí, và kỹ năng `vietnam-mst-validate` đối chiếu MST của nhà cung cấp với registry GDT như một phần của luồng OCR.
+
+## Các loại pháp nhân Việt Nam trong CRM
+
+CRM ánh xạ các loại pháp nhân Việt Nam sang trường `account_type`. Mỗi loại kiểm soát mẫu hóa đơn được sử dụng khi đóng deal:
+
+| Mã | Tiếng Việt | Tiếng Anh | Mẫu Hóa Đơn |
+|---|---|---|---|
+| `sole_proprietor` | Hộ kinh doanh | Sole proprietor | 06GTKT (đơn giản) |
+| `llc` | Công ty TNHH | LLC | 01GTKT |
+| `jsc` | Công ty cổ phần | JSC | 01GTKT |
+| `fdi` | FDI | Foreign-invested enterprise | 01GTKT |
+| `individual` | Cá nhân | Individual | 06GTKT |
+
+## Ngôn ngữ và bản địa hóa
+
+CyberOS được trang bị đầy đủ giao diện tiếng Việt và tiếng Anh cho các tenant `vn-1`. Các tính năng cụ thể của Việt Nam sau đây được kích hoạt mặc định:
+
+- **Tìm kiếm bigram tiếng Việt (PGroonga)** trong module KB để tìm kiếm toàn văn chính xác qua nội dung tiếng Việt mà không cần tokenisation theo ranh giới từ
+- **Logic xưng hô (Anh/Chị/Em)** trong các trường liên hệ CRM — nền tảng suy ra xưng hô tiếng Việt chính xác từ tín hiệu giới tính và thâm niên và hiển thị trên mọi thẻ liên hệ và mẫu email gửi đi
+- **Phân tích địa chỉ tiếng Việt** trên các tài khoản CRM — phường/xã, quận/huyện, và tỉnh/thành phố được phân tích thành các trường có cấu trúc
+
+## Tóm tắt tính năng tuân thủ
+
+| Module | Tính năng tuân thủ VN |
+|---|---|
+| TIME | Giới hạn làm thêm giờ theo Nghị định 145 (40 h thường/tuần, 200 h OT/năm, 300 h với sự đồng thuận + thông báo MoLISA) |
+| HR | 8 loại nghỉ phép theo luật được gắn thẻ với Bộ luật Lao động 2019 và Nghị định 145/2020 |
+| REW | Khấu trừ tính lương BHXH 10.5%, BHYT 1.5%, BHTN 1%; tính toán PIT lũy tiến |
+| CRM | Xác thực MST với registry GDT, phát hành hóa đơn khi đóng deal, mã thanh toán VietQR |
+| KB | Tìm kiếm toàn văn bigram tiếng Việt qua PGroonga |
+| TEN | Gate chuyển giao xuyên biên giới theo PDPL Điều 38, DSAR APIs, residency dữ liệu `vn-1`, chỉ định DPO, cờ ân hạn SME |
