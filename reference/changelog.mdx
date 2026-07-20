@@ -26,6 +26,24 @@ npx cyberos --version
   Use `cat .cyberos/VERSION` in an installed repo to check your installed CyberOS version. The current platform release is **1.0.0** (2026-07-14).
 </Tip>
 
+## Week of 2026-07-20 — Post-1.0.0 Patches
+
+The first week after the 1.0.0 release focused on tightening install/uninstall behaviour and proving the release pipeline end-to-end. No breaking changes; safe to pick up on any 1.0.0 install via `cyberos install` (see [Installation](/guides/install)).
+
+### Fixes
+
+- **Orphaned status hook no longer blocks commits.** If you deleted a repo's `.cyberos/` directory (or cloned a repo where it was gitignored) without running `cyberos uninstall`, the leftover `pre-commit` hook could fail every commit that touched `VERSION`, `CHANGELOG.md`, or `docs/tasks/` with `ERROR .cyberos/lib/status-page.sh required`. The hook now warns twice, names both remedies, and exits cleanly. Machines with an intact install are unaffected.
+- **Release pipeline verified end-to-end.** The 1.0.0 release checklist ran through to completion (20/20) — the tag → build → publish flow, the GitHub release notes, and the docs-site status page all render from the same corpus. If you follow the [changelog](/reference/changelog) page for release evidence, it is now the source of truth for shipped state.
+
+### Updates
+
+- **Uninstall is now the inverse of install.** Continuing the pre-1.0.0 hardening, `cyberos uninstall` on any repo it manages now removes its own MCP registrations, cleans every managed skill link across the Claude / Grok / Codex / OpenCode / Cursor families, and byte-exactly strips the entries it added to `.gitignore` and the pre-commit hook. Operator files it never wrote are preserved. See [Installation](/guides/install).
+- **macOS parity for the developer test suite.** The repo's own test suite now runs on macOS (bash 3.2 + BSD userland) as well as Linux. Contributors on Apple Silicon and Intel Macs can run the full suite locally without a Linux VM. Shipped payload code is unchanged.
+
+<Tip>
+  Run `cyberos version` to check for updates. If a newer payload is available, `cyberos install` re-vendors it in place — no separate apply step.
+</Tip>
+
 ## Version 1.0.0 — 2026-07-14
 
 The first stable release of CyberOS. The 1.0.0 designation is deliberate: the 0.x line hardened the governed development machinery end to end. 1.0.0 commits to the `engineering-spec@1` task contract and the 10-state task lifecycle as stable interfaces.

@@ -26,6 +26,24 @@ npx cyberos --version
   Sử dụng `cat .cyberos/VERSION` trong một repo đã cài đặt để kiểm tra phiên bản CyberOS đã cài đặt của bạn. Bản phát hành nền tảng hiện tại là **1.0.0** (2026-07-14).
 </Tip>
 
+## Tuần 2026-07-20 — Các bản vá sau 1.0.0
+
+Tuần đầu tiên sau bản phát hành 1.0.0 tập trung vào việc siết chặt hành vi cài đặt/gỡ cài đặt và xác minh toàn bộ pipeline phát hành. Không có thay đổi phá vỡ tương thích; an toàn để cập nhật trên bất kỳ bản cài đặt 1.0.0 nào qua `cyberos install` (xem [Cài đặt](/vi/guides/install)).
+
+### Sửa lỗi
+
+- **Hook trạng thái mồ côi không còn chặn commit.** Nếu bạn xóa thư mục `.cyberos/` của repo (hoặc clone một repo mà thư mục này bị gitignore) mà không chạy `cyberos uninstall`, hook `pre-commit` còn sót lại có thể làm hỏng mọi commit chạm vào `VERSION`, `CHANGELOG.md` hoặc `docs/tasks/` với thông báo `ERROR .cyberos/lib/status-page.sh required`. Hook giờ đây cảnh báo hai lần, nêu tên hai cách khắc phục và thoát sạch. Các máy có bản cài đặt còn nguyên không bị ảnh hưởng.
+- **Pipeline phát hành đã được xác minh toàn diện.** Checklist phát hành 1.0.0 đã chạy đến hoàn thành (20/20) — luồng tag → build → publish, release notes trên GitHub và trang status trên site tài liệu đều render từ cùng một corpus. Nếu bạn theo dõi trang [changelog](/vi/reference/changelog) để tìm bằng chứng phát hành, đây chính là nguồn chân lý cho trạng thái đã ship.
+
+### Cập nhật
+
+- **Uninstall giờ đây là nghịch đảo của install.** Tiếp tục quá trình củng cố trước 1.0.0, `cyberos uninstall` trên bất kỳ repo nào nó quản lý giờ đây gỡ các đăng ký MCP của chính nó, dọn sạch mọi liên kết skill được quản lý trên các họ Claude / Grok / Codex / OpenCode / Cursor, và strip byte-chính-xác các mục nó đã thêm vào `.gitignore` và pre-commit hook. Các tệp của người vận hành mà nó chưa từng ghi được bảo toàn. Xem [Cài đặt](/vi/guides/install).
+- **Bộ test dành cho nhà phát triển đã chạy được trên macOS.** Bộ test của chính repo giờ đây chạy được trên macOS (bash 3.2 + BSD userland) cũng như Linux. Người đóng góp trên Apple Silicon và Intel Mac có thể chạy toàn bộ suite tại chỗ mà không cần Linux VM. Mã payload đã ship không thay đổi.
+
+<Tip>
+  Chạy `cyberos version` để kiểm tra cập nhật. Nếu có payload mới hơn, `cyberos install` sẽ vendor lại tại chỗ — không cần bước apply riêng.
+</Tip>
+
 ## Phiên bản 1.0.0 — 2026-07-14
 
 Bản phát hành ổn định đầu tiên của CyberOS. Việc đặt tên 1.0.0 là có chủ ý: dòng 0.x đã củng cố toàn bộ bộ máy phát triển có quản trị. 1.0.0 cam kết `engineering-spec@1` cho hợp đồng nhiệm vụ và vòng đời nhiệm vụ 10-state như những giao diện ổn định.
