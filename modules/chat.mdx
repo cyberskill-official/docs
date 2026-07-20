@@ -10,7 +10,7 @@ CyberOS CHAT is the built-in messaging layer for your whole team — channels, d
   **CHAT is a P0 module currently in active development.** Core messaging, threads, @genie call-outs, and voice/video calls are available now. Some features described in this page — such as advanced CRM auto-logging triggers and full moderation tooling — are being rolled out progressively. Check the [changelog](/reference/changelog) for the latest status.
 </Warning>
 
-## Key Features
+## Key features
 
 <CardGroup cols={2}>
   <Card title="Channels and Threads" icon="messages">
@@ -29,7 +29,7 @@ CyberOS CHAT is the built-in messaging layer for your whole team — channels, d
 
 ---
 
-## Working with Channels and Threads
+## Working with channels and threads
 
 CHAT organises conversations at two levels: **channels** for ongoing topics, and **threads** for focused replies within a channel.
 
@@ -52,15 +52,15 @@ A channel is either a **group** channel (named, visible in the sidebar, with one
   </Step>
 </Steps>
 
-### @Mentions
+### @mentions
 
 Type `@` followed by any teammate's name to mention them. They receive a notification badge in their sidebar, a desktop notification if they have granted permission, and a distinct highlight when they view the message. A badge distinguishes a **mention** (your name was invoked) from an ordinary **unread** message.
 
-### Attaching Files
+### Attaching files
 
 Drag a file onto the message pane, paste from your clipboard, or click the **paperclip** icon in the composer to attach files. Images render inline; other files appear as downloadable cards. The file size and count limits are set by your admin.
 
-### Keyboard Shortcuts
+### Keyboard shortcuts
 
 | Shortcut | Action |
 |---|---|
@@ -75,7 +75,7 @@ Drag a file onto the message pane, paste from your clipboard, or click the **pap
 
 `@genie` is the CUO-powered AI teammate available in every channel. Invoking `@genie` in a message causes the AI to read the recent thread context, query your tenant's Knowledge Base and Memory, and post a grounded reply inline — directly in the thread, visible to everyone in the channel.
 
-### Example Interaction
+### Example interaction
 
 > **Minh Tran** → `#project-alpha`  
 > `@genie can you summarise where we left off on the Q3 CRM integration? I've been out this week.`
@@ -92,7 +92,7 @@ Drag a file onto the message pane, paste from your clipboard, or click the **pap
   Genie's replies are grounded in your tenant's actual content — it reads the current thread, your KB articles, and team Memory. Always check the cited sources for full detail. You can ask Genie to go deeper: `@genie can you pull the open issues from PROJ-412?`
 </Tip>
 
-### What @genie Can Help With
+### What @genie can help with
 
 <AccordionGroup>
   <Accordion title="Catch-me-up summaries">
@@ -111,7 +111,7 @@ Drag a file onto the message pane, paste from your clipboard, or click the **pap
 
 ---
 
-## Meeting Notes and CRM Integration
+## Meeting notes and CRM integration
 
 CHAT is wired into the CRM activity feed. When your team communicates with or about a **tracked domain contact** — a person or company your CRM is following — those interactions are automatically logged as CRM activities, so the account record stays current without anyone manually copying notes.
 
@@ -127,7 +127,7 @@ CHAT is wired into the CRM activity feed. When your team communicates with or ab
 
 ---
 
-## Notification Preferences
+## Notification preferences
 
 You control how each channel notifies you. Click the **bell** icon in the channel header to choose:
 
@@ -141,7 +141,7 @@ Desktop notifications appear when your browser tab is in the background and you 
 
 ---
 
-## Message Actions
+## Message actions
 
 Hover over any message to reveal the action bar, or long-press on touch devices to open the action sheet.
 
@@ -160,7 +160,7 @@ Hover over any message to reveal the action bar, or long-press on touch devices 
   </Card>
 </CardGroup>
 
-### Reporting a Message
+### Reporting a message
 
 If you see content that violates your workspace's conduct standards, hover over the message and click **Report**. Select the reason (spam, harassment, illegal content, etc.) and an optional note. The report is filed privately; the sender is not notified. Admins review reports in the moderation queue.
 
@@ -170,9 +170,9 @@ If you see content that violates your workspace's conduct standards, hover over 
 
 ---
 
-## Admin Configuration
+## Admin configuration
 
-### Workspace Setup
+### Workspace setup
 
 Tenant Admins configure CHAT at **Admin → CHAT → Settings**:
 
@@ -188,11 +188,11 @@ Tenant Admins configure CHAT at **Admin → CHAT → Settings**:
   Maximum number of files that can be attached to a single message. Defaults to 10.
 </ParamField>
 
-### Creating and Managing Channels
+### Creating and managing channels
 
 Admins can create, archive, and manage all channels from **Admin → CHAT → Channels**. Archiving a channel makes it read-only and removes it from active sidebars, but the full message history is retained.
 
-### Moderation Queue
+### Moderation queue
 
 Admins and members with the moderator role can access the moderation queue at **Admin → CHAT → Moderation**. Reports are ranked by severity (self-harm > illegal content > violence > harassment > spam) and presented oldest-first within each severity tier. When reviewing a report about a direct message, only the single reported message is shown — not the surrounding DM thread.
 
@@ -202,7 +202,7 @@ Admins and members with the moderator role can access the moderation queue at **
 
 ---
 
-## Presence and Read Receipts
+## Presence and read receipts
 
 CHAT shows live presence for members who are viewing the same channel as you. A small coloured dot next to an avatar indicates:
 

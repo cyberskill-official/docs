@@ -10,7 +10,7 @@ CyberOS HR is the single source of truth for everyone who works at your company 
   HR is a **P1 module** — currently in planned/design phase and not yet generally available. Features described here reflect the planned P1 design.
 </Note>
 
-## Member Lifecycle State Machine
+## Member lifecycle state machine
 
 A member moves through a defined set of states from the moment an offer letter is generated to the moment the employment relationship ends. Each state transition fires events that downstream modules consume automatically — you never need to manually update AUTH, TIME, or ESOP separately.
 
@@ -42,7 +42,7 @@ A member moves through a defined set of states from the moment an offer letter i
   Every state transition writes an immutable audit row to the memory module and emits a NATS event (e.g. `hr.member.joined`, `hr.member.terminated`). Downstream modules consume these events; you do not need to trigger them manually.
 </Note>
 
-## Onboarding Orchestration
+## Onboarding orchestration
 
 When a new member transitions to `active`, HR fires a multi-module onboarding playbook automatically. The entire fan-out runs as an idempotent saga — if one downstream step times out, it retries without re-executing steps that already succeeded.
 
@@ -71,11 +71,11 @@ When a new member transitions to `active`, HR fires a multi-module onboarding pl
   The onboarding orchestrator carries an idempotency key per step. If the playbook is re-fired (e.g. after a system restart), only incomplete steps execute — already-provisioned accounts are not duplicated.
 </Tip>
 
-## Leave Management
+## Leave management
 
 HR tracks eight leave types, each with a Vietnamese statutory basis. Entitlements are first-class schema fields — they accrue automatically, enforce caps at write time, and are auditable by a Decree 13/2023 inspector without any manual data export.
 
-### Leave Type Catalogue
+### Leave type catalogue
 
 | Code | Statutory Basis | Default Entitlement | Notes |
 |---|---|---|---|
@@ -88,7 +88,7 @@ HR tracks eight leave types, each with a Vietnamese statutory basis. Entitlement
 | `bereavement` | Labour Code Art. 115 | 3 days (immediate family) | Covers direct ascendants, descendants, and spouse. |
 | `public_holiday` | Labour Code Art. 112 | 11 days/yr (VN) | Auto-charged from the public-holiday calendar; no request needed. |
 
-### Annual Leave Accrual
+### Annual leave accrual
 
 Annual leave accrues automatically each quarter based on the rules in Decree 145/2020. You do not need to run a manual accrual job — the system updates `leave_balance.annual_remaining` at each quarter boundary.
 
@@ -96,11 +96,11 @@ Annual leave accrues automatically each quarter based on the rules in Decree 145
   The accrual is computed lazily at quarter boundaries rather than in real time, which keeps audit outputs deterministic and reproducible. The exact accrual date is visible in `leave_balance.last_accrual_at`.
 </Note>
 
-### Sick Leave Self-Reporting
+### Sick leave self-reporting
 
 Members self-report sick leave. The system validates the submission against the BHXH-tier cap at write time and rejects any request that would exceed the statutory ceiling. If a medical certificate is required (requests ≥ 3 days), the system marks the request as pending until the document is attached or waived by the approving manager.
 
-## Contract Types
+## Contract types
 
 HR supports five contract types, each with automatic renewal-reminder logic.
 
@@ -126,7 +126,7 @@ HR supports five contract types, each with automatic renewal-reminder logic.
   Missing a fixed-term renewal triggers a Vietnamese labour-law compliance issue. The 90-day reminder is automated, but confirming the renewed contract before `effective_to` is a manual CHRO obligation.
 </Warning>
 
-## PII Protection
+## PII protection
 
 HR stores government-issued ID photos (CCCD) in a **separate KMS keyspace** from all other HR data. This means a query against the `member` table cannot accidentally over-fetch CCCD data — the photo columns live in an isolated `cccd_record` table encrypted under a distinct key.
 
@@ -140,7 +140,7 @@ Key PII boundaries enforced at the schema level:
 - **Contract PDFs** — KMS-wrapped, stored in S3 with 10-year object-lock, accessible via time-limited pre-signed URLs only.
 - **Compensation data** — structurally absent from all HR tables. REW owns all compensation numbers (see [REW](/modules/rew)).
 
-## Performance Signals
+## Performance signals
 
 HR aggregates read-only performance signals from three modules to support 1:1 preparation and quarterly reviews. HR **never writes** to these signals and **never holds compensation numbers** — REW owns those.
 
@@ -160,7 +160,7 @@ HR aggregates read-only performance signals from three modules to support 1:1 pr
   Aggregated performance signals are inputs to a human decision — they are never applied automatically to compensation. REW's compensation change flow requires CHRO + CFO co-sign regardless of what HR signals indicate.
 </Note>
 
-## Vietnamese Labour Law Compliance
+## Vietnamese labour law compliance
 
 CyberOS HR enforces Vietnamese regulatory requirements as hard system constraints, not advisory warnings.
 

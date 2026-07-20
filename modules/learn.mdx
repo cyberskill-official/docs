@@ -10,11 +10,11 @@ CyberOS LEARN is the capability ledger — what each member can do, how good the
   LEARN is a **P1 module** — currently in planned/design phase and not yet generally available. Features described here reflect the planned P1 design.
 </Note>
 
-## Skills Catalogue
+## Skills catalogue
 
 LEARN maintains a closed skill catalogue — members cannot invent free-text skills. Every skill belongs to a discipline, carries a 1–5 mastery scale, and requires concrete evidence before a level claim is accepted.
 
-### Disciplines and Skill Tree
+### Disciplines and skill tree
 
 <CardGroup cols={3}>
   <Card title="Engineering" icon="code">
@@ -34,7 +34,7 @@ LEARN maintains a closed skill catalogue — members cannot invent free-text ski
   </Card>
 </CardGroup>
 
-### Mastery Levels and Evidence Requirements
+### Mastery levels and evidence requirements
 
 Each level from 1 to 5 requires at least one piece of linked evidence. The system accepts four evidence types:
 
@@ -49,7 +49,7 @@ Each level from 1 to 5 requires at least one piece of linked evidence. The syste
   For level-4 to level-5 jumps, a council review is mandatory regardless of how many endorsements you have. The threshold is a versioned parameter — your manager can confirm the current requirement for your discipline.
 </Tip>
 
-### Certification Expiry Alerts
+### Certification expiry alerts
 
 LEARN monitors the `expires_at` field on every external certification and fires `learn.cert.expiring` events at **90, 30, and 7 days** before expiry. The CUO/CHRO-skill agent surfaces these as proactive notifications to the member. Renewing a certification before it lapses preserves continuity of the mastery level it supports.
 
@@ -57,7 +57,7 @@ LEARN monitors the `expires_at` field on every external certification and fires 
 
 VP is a quarterly score that quantifies each member's concrete contribution to the company. REW reads VP at quarter close to weight the BP bonus-pool distribution.
 
-### What VP Measures
+### What VP measures
 
 VP is a deterministic pure function of three input dimensions:
 
@@ -81,7 +81,7 @@ All weights are versioned parameters — changing them requires a three-way CEO 
   </Tab>
 </Tabs>
 
-### VP Roll-Up and REW Integration
+### VP roll-up and REW integration
 
 LEARN recomputes VP for all members monthly. The `vp_snapshot` table records each member's total and per-discipline breakdown alongside the `parameter_version_id` used for that computation. A CI replay job asserts byte-identical output for the last 12 snapshots on every parameter change — if any snapshot drifts, the change is rejected.
 
@@ -93,7 +93,7 @@ LEARN recomputes VP for all members monthly. The `vp_snapshot` table records eac
 
 The Specialist Council is CyberOS's adaptation of the Vietnamese academic peer-review format for professional promotion decisions. It ensures every promotion is backed by structured evidence and multiple independent judgements — not a single manager's opinion.
 
-### Council Workflow
+### Council workflow
 
 <Steps>
   <Step title="Manager Nomination">
@@ -123,7 +123,7 @@ The Specialist Council is CyberOS's adaptation of the Vietnamese academic peer-r
   Per-judge individual scores **never leave LEARN**. This is the psychological-safety contract that makes honest peer review possible. HR's access role is structurally blocked from reading individual judge data — only the aggregate outcome summary and recommendation are ever forwarded to HR.
 </Warning>
 
-### Promotion Gate Criteria — Example (L2 → L3 Engineering)
+### Promotion gate criteria — example (L2 → L3 engineering)
 
 | Criterion | Threshold | Source |
 |---|---|---|
@@ -139,7 +139,7 @@ The Specialist Council is CyberOS's adaptation of the Vietnamese academic peer-r
   **EU AI Act Art. 14 — Human Oversight:** The Specialist Council is the decision-maker for promotions, not an algorithm. LEARN's computation (VP score, criteria checking) is advisory evidence. The human council deliberates, and the CEO issues the final decision. This design satisfies the human-oversight requirement for high-risk employment-decision systems under Annex III §4.
 </Note>
 
-## Career Path Visualisation
+## Career path visualisation
 
 Every member can view their own skill progression and exactly what remains to qualify for the next level.
 
@@ -152,7 +152,7 @@ Every member can view their own skill progression and exactly what remains to qu
   </Tab>
 </Tabs>
 
-## Manager Workflow
+## Manager workflow
 
 Skill-level proposals are evidence-driven and surface automatically — you confirm or return them, you do not initiate them from scratch.
 

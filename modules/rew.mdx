@@ -10,7 +10,7 @@ CyberOS REW is the compensation computation and ledger plane — the place where
   REW is a **P1 module** — currently in planned/design phase and not yet generally available. Full EU AI Act Annex III §4 conformity documentation is planned for the P2 release. Features described here reflect the planned P1 design.
 </Note>
 
-## The 3P Compensation Structure
+## The 3P compensation structure
 
 REW decomposes every member's cash compensation into three components, each governed by distinct rules.
 
@@ -26,7 +26,7 @@ REW decomposes every member's cash compensation into three components, each gove
   </Card>
 </CardGroup>
 
-## BP (Bonus Points) Ledger
+## BP (bonus points) ledger
 
 BP is an inflation-indexed unit of account that accumulates over time and converts to P3 cash at designated windows.
 
@@ -42,7 +42,7 @@ BP is an inflation-indexed unit of account that accumulates over time and conver
   </Tab>
 </Tabs>
 
-## Monthly Payroll Cycle
+## Monthly payroll cycle
 
 The close cycle runs from D-3 (three days before month end) through D+3 (publish day). Each stage has a defined owner and gate.
 
@@ -80,7 +80,7 @@ The close cycle runs from D-3 (three days before month end) through D+3 (publish
   Compensation data is structurally excluded from the BRAIN memory store (DEC-036). No agent can read or write payslip data. The memory module receives only opaque event references (e.g. `rew.payslip.published:<opaque_id>`) — never amounts, rates, or component breakdowns.
 </Warning>
 
-## Payslip Immutability
+## Payslip immutability
 
 Every published payslip is reproducible byte-for-byte from its inputs. REW's replay-check CI job recomputes the full retained payslip history against the historical parameter versions on every parameter change. If any historical payslip's SHA-256 drifts, the parameter change is rejected and rolled back.
 
@@ -88,7 +88,7 @@ Every published payslip is reproducible byte-for-byte from its inputs. REW's rep
   Parameter rows carry `effective_from`, `effective_to`, `superseded_by`, and a `version_hash`. The database application role has no `UPDATE` or `DELETE` grant on parameter tables — only `INSERT`. When a new rate schedule is published, the prior row receives an `effective_to` timestamp; it is never overwritten. A payslip computed for January 2024 will always reproduce against the parameters effective on 2024-01-31 23:59:59 UTC, regardless of what rate changes have been published since.
 </Accordion>
 
-## Compensation Privacy
+## Compensation privacy
 
 REW maintains strict structural isolation from all other modules.
 
@@ -99,7 +99,7 @@ REW maintains strict structural isolation from all other modules.
 | Managers cannot see other members' payslips | `rew.payslip_read` scope is member-self-bound; no manager-scoped read path exists. |
 | Memory stores only opaque references | The memory bridge emits `rew.payslip.published:<opaque_id>` — never amounts, rates, or breakdowns. |
 
-## Quarterly Bonus Orchestration
+## Quarterly bonus orchestration
 
 <Steps>
   <Step title="BP Fund Lock">
@@ -116,7 +116,7 @@ REW maintains strict structural isolation from all other modules.
   </Step>
 </Steps>
 
-## EU AI Act Classification
+## EU AI Act classification
 
 <Note>
   REW is classified as **high-risk** under EU AI Act Annex III §4 (employment and worker management). A full conformity pack — covering risk management, data governance, transparency documentation, and human oversight evidence — is planned for the P2 release. Members retain the right to a human review of any automated computation via the CEO-adjudicated dispute path (SLO: 5 working days).

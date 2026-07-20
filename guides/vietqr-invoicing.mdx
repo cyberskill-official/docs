@@ -6,13 +6,13 @@ description: 'Use CyberOS CRM and INV to generate Napas247 VietQR payment codes 
 
 CyberOS handles Vietnamese payment collection and VAT invoicing natively — no third-party connector, no Misa plugin, no manual XML export. VietQR generation and hóa đơn emission are built into the CRM deal flow as first-class operations, backed by the `vietnam-bank-transfer` and `vietnam-vat-invoice` skills from the `cyberskill-vn` pack.
 
-## VietQR for Deal Collection
+## VietQR for deal collection
 
-### What VietQR Is
+### What VietQR is
 
 VietQR is the **Napas247 open QR payment standard** used across Vietnam's banking system. Any Vietnamese banking app — Vietcombank, ACB, Techcombank, MB, and all Napas-connected banks — can scan a VietQR code and pre-fill the recipient's account number, transfer amount, and payment reference automatically. There is no app lock-in: VietQR is an interbank standard, not a wallet.
 
-### Generating a VietQR Code
+### Generating a VietQR code
 
 <Steps>
   <Step title="Open the deal in CRM">
@@ -30,7 +30,7 @@ VietQR is the **Napas247 open QR payment standard** used across Vietnam's bankin
   For MST validation to work correctly on the deal's associated account, ensure the account has an MST field filled in CRM before generating the VietQR code. The payment reference embedded in the QR uses the account's canonical GDT name.
 </Note>
 
-### What the QR Encodes
+### What the QR encodes
 
 Each VietQR payload contains:
 
@@ -43,7 +43,7 @@ Each VietQR payload contains:
 
 The client's banking app pre-fills all four fields on scan. No manual entry is required on their end.
 
-### When to Use VietQR
+### When to use VietQR
 
 Use VietQR when you are sending a payment request to a Vietnamese client alongside a deal proposal or invoice. It removes the copy-paste friction of account number + amount + reference, reducing payment errors. VietQR is especially useful for mid-deal deposits and final settlement on consulting engagements.
 
@@ -51,9 +51,9 @@ Use VietQR when you are sending a payment request to a Vietnamese client alongsi
   VietQR and hóa đơn features are available for `vn-1` residency tenants out of the box. International tenants can enable them manually under **TEN → Compliance → VN Features**.
 </Tip>
 
-## Hóa Đơn (VAT Invoice)
+## Hóa Đơn (VAT invoice)
 
-### Auto-Emission on Deal Close
+### Auto-emission on deal close
 
 When a deal moves to `closed_won` — either by clicking **Close as Won** in the SPA or via the `cyberos.crm.close_deal` MCP tool — CyberOS automatically queues hóa đơn emission through the INV module.
 
@@ -71,7 +71,7 @@ The confirmation dialog shows:
 
 Click **Confirm & Issue** to emit the invoice. If any field is incorrect, edit the deal before confirming.
 
-### Compliance Standard
+### Compliance standard
 
 All hóa đơn emitted by CyberOS conform to **Decree 123/2020/NĐ-CP** (mandatory e-invoice for all businesses since 1 July 2022) and **Circular 78/2021/TT-BTC** (GDT XML schema). The `vietnam-vat-invoice` skill assembles the invoice XML, and INV stores:
 
@@ -79,7 +79,7 @@ All hóa đơn emitted by CyberOS conform to **Decree 123/2020/NĐ-CP** (mandato
 - The invoice number in the `C<YY><TEMPLATE>/<SEQUENCE>` format
 - A link to the originating CRM deal and, if applicable, the PROJ Engagement
 
-### Invoice Data Included
+### Invoice data included
 
 | Field | Source |
 |---|---|
@@ -90,7 +90,7 @@ All hóa đơn emitted by CyberOS conform to **Decree 123/2020/NĐ-CP** (mandato
 | Invoice number | Auto-assigned by INV (sequential per template) |
 | Issue date | Date of AM confirmation |
 
-### Where Invoices Are Stored
+### Where invoices are stored
 
 All issued invoices live in **INV → Invoices**. Each invoice record links back to:
 
@@ -98,7 +98,7 @@ All issued invoices live in **INV → Invoices**. Each invoice record links back
 - The PROJ Engagement (if the deal was converted to an engagement)
 - The XML file URL for download or submission to the GDT portal
 
-## Expense Receipt OCR
+## Expense receipt OCR
 
 TIME's expense capture flow includes a Vietnamese hóa đơn OCR pipeline so you never have to manually key in receipt details.
 
@@ -118,7 +118,7 @@ TIME's expense capture flow includes a Vietnamese hóa đơn OCR pipeline so you
   For MST validation to work, ensure the account has an MST field filled in CRM before generating the VietQR code. For expense OCR, the same MST check runs automatically against the vendor MST parsed from the receipt — no CRM account link is required for expense capture.
 </Note>
 
-## Vietnamese PSPs for SaaS Billing (Planned)
+## Vietnamese PSPs for SaaS billing (planned)
 
 At the P4 roadmap milestone, CyberOS will support Vietnamese payment service providers for tenant subscription billing:
 

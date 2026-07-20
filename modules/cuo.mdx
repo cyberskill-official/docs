@@ -6,11 +6,11 @@ description: 'CUO is the CyberOS workflow engine — it drives every task throug
 
 CUO is the CyberOS workflow engine — the layer that transforms a task file into a shipped, audited change. It drives work through a single governed lifecycle, routing each task to the right C-suite persona, running agent steps between two mandatory human-acceptance gates, and recording every transition in an audit chain. Whether you are building a new feature or hardening an existing one, all work moves through the same machinery.
 
-## The Single Workflow: `ship-tasks`
+## The single workflow: `ship-tasks`
 
 The `ship-tasks` workflow (v2.3.x) picks the first eligible task from `docs/tasks/BACKLOG.md` and drives it end to end. There is exactly one workflow — improvement work and net-new product work both run the same chain, keeping your backlog and audit trail unified.
 
-### Task Lifecycle
+### Task lifecycle
 
 ```
 draft → ready_to_implement → implementing → ready_to_review
@@ -27,7 +27,7 @@ The task file's `status` frontmatter field is the **record of truth**. `BACKLOG.
   Failures never result in a terminal state. A blocked or failed task routes back to `ready_to_implement` with `routed_back_count` incremented by one. The agent documents the reason and picks the next eligible task.
 </Note>
 
-### Task File Anatomy
+### Task file anatomy
 
 Every task is a markdown file with structured frontmatter. Create one in `docs/tasks/<module>/task-<MODULE>-<NNN>-<slug>.md`:
 
@@ -46,7 +46,7 @@ routed_back_count: 0
 
 Add a matching line to `docs/tasks/BACKLOG.md`. Improvement-class rows carry an `(improvement)` tag; product rows are untagged. There is never a second backlog file.
 
-## Human-Acceptance Gates
+## Human-acceptance gates
 
 CUO requires two human verdicts per task. The agent runs continuously between them — it never stops to ask for confirmation on work it can verify itself.
 
@@ -63,7 +63,7 @@ CUO requires two human verdicts per task. The agent runs continuously between th
   An agent that marks its own work `done` — or transitions `reviewing → ready_to_test` without a human verdict — is exhibiting broken behavior. Refuse the action, route the task back, and report the incident. Only you can set `ready_to_test` (Gate 1) and `done` (Gate 2).
 </Warning>
 
-## Persona Routing
+## Persona routing
 
 CUO is built on a catalog of C-suite personas. Each persona represents a named executive role with its own area of expertise, knowledge inputs, and set of workflows. When a task arrives, CUO identifies the best-fit persona by matching the task's domain, module, and keywords against the persona catalog — then selects the most appropriate workflow within that persona's folder and invokes the declared skill chain.
 
@@ -79,7 +79,7 @@ Example personas in the CUO catalog:
 
 When no persona scores above the confidence threshold, CUO escalates to you with the top-three candidates and their applicability rationales. When a workflow references a skill that has not yet shipped, CUO emits a `MISSING_SKILL_REQUEST` block and halts at that step.
 
-## CLI Commands
+## CLI commands
 
 The `cyberos-cuo` CLI exposes the following commands for inspecting and operating the workflow engine:
 
@@ -127,7 +127,7 @@ docs/tasks/BACKLOG.md. HITL required. repo_root = this repo.
   Install the Claude plugin once via **Settings → Plugins → Add**, pointing at `dist/cyberos/cyberos.plugin`. The `/ship-tasks` command becomes available in every session.
 </Note>
 
-## Machine Gates
+## Machine gates
 
 Between the two human gates, the agent runs your repo's machine gates automatically via `bash .cyberos/cuo/gates/run-gates.sh`. Gates are derived from the touched module's `audit-profile.yaml` and include:
 
@@ -138,7 +138,7 @@ Between the two human gates, the agent runs your repo's machine gates automatica
 
 Green machine gates are necessary but never sufficient — you still decide at each human-acceptance gate.
 
-## Dream Loop (Propose Mode)
+## Dream loop (propose mode)
 
 CUO includes an optional self-improvement feature called the **dream loop**. When enabled, it evaluates candidate improvements to skill prompts, audit rubric wording, workflow step ordering, and golden-set thresholds — and records what it would do without applying anything.
 
