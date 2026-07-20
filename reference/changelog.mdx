@@ -32,12 +32,12 @@ The first week after the 1.0.0 release focused on tightening install/uninstall b
 
 ### Fixes
 
-- **Orphaned status hook no longer blocks commits.** If you deleted a repo's `.cyberos/` directory (or cloned a repo where it was gitignored) without running `cyberos uninstall`, the leftover `pre-commit` hook could fail every commit that touched `VERSION`, `CHANGELOG.md`, or `docs/tasks/` with `ERROR .cyberos/lib/status-page.sh required`. The hook now warns twice, names both remedies, and exits cleanly. Machines with an intact install are unaffected.
-- **Release pipeline verified end-to-end.** The 1.0.0 release checklist ran through to completion (20/20) — the tag → build → publish flow, the GitHub release notes, and the docs-site status page all render from the same corpus. If you follow the [changelog](/reference/changelog) page for release evidence, it is now the source of truth for shipped state.
+- **Orphaned status hook no longer blocks commits.** The leftover `pre-commit` hook used to fail every commit that touched `VERSION`, `CHANGELOG.md`, or `docs/tasks/` if you deleted a repo's `.cyberos/` directory without running `cyberos uninstall`. The hook now warns twice, names both remedies, and exits cleanly. Machines with an intact install are unaffected.
+- **Release pipeline verified end-to-end.** The 1.0.0 release checklist ran to completion (20/20). The tag → build → publish flow, the GitHub release notes, and the docs-site status page all render from the same corpus. The [changelog](/reference/changelog) page is now the source of truth for shipped state.
 
 ### Updates
 
-- **Uninstall is now the inverse of install.** Continuing the pre-1.0.0 hardening, `cyberos uninstall` on any repo it manages now removes its own MCP registrations, cleans every managed skill link across the Claude / Grok / Codex / OpenCode / Cursor families, and byte-exactly strips the entries it added to `.gitignore` and the pre-commit hook. Operator files it never wrote are preserved. See [Installation](/guides/install).
+- **Uninstall is now the inverse of install.** `cyberos uninstall` removes its own MCP registrations, cleans every managed skill link across the Claude, Grok, Codex, OpenCode, and Cursor families, and byte-exactly strips the entries it added to `.gitignore` and the pre-commit hook. Operator files it never wrote are preserved. See [Installation](/guides/install).
 - **macOS parity for the developer test suite.** The repo's own test suite now runs on macOS (bash 3.2 + BSD userland) as well as Linux. Contributors on Apple Silicon and Intel Macs can run the full suite locally without a Linux VM. Shipped payload code is unchanged.
 
 <Tip>
