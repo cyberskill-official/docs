@@ -10,7 +10,7 @@ CyberOS was designed for the Vietnamese market first. Every regulation below is 
   All Vietnamese compliance features are on by default for `vn-1` residency tenants. No additional configuration required.
 </Tip>
 
-## Vietnamese Data Privacy (PDPL)
+## Vietnamese data privacy (PDPL)
 
 Vietnam's Personal Data Protection Law (Decree 13/2023/NĐ-CP) — commonly called the PDPL — is the primary framework governing how CyberOS handles personal data for Vietnamese-market tenants. CyberOS targets the `vn-1` residency tier, which activates the PDPL's data-localisation rules (Decree 53/2022) as part of the `vn-1` compliance package.
 
@@ -29,11 +29,11 @@ Vietnam's Personal Data Protection Law (Decree 13/2023/NĐ-CP) — commonly call
   </Card>
 </CardGroup>
 
-## Labour Law Compliance
+## Labour law compliance
 
 CyberOS enforces Vietnamese labour law at the data layer — constraints are written into the TIME module's write path, not bolted on as reporting checks after the fact.
 
-### Decree 145/2020 Working-Hour Caps
+### Decree 145/2020 working-hour caps
 
 Decree 145/2020 implements Labour Code 2019 Article 107. TIME enforces the following as hard rules:
 
@@ -53,7 +53,7 @@ Decree 145/2020 implements Labour Code 2019 Article 107. TIME enforces the follo
   Overtime cap enforcement is a non-negotiable hard rule. Entries that violate Labour Code Art. 107 are rejected at the API and trigger an automatic CHRO notification. There is no override path short of filing the correct HR consent and MoLISA notification records first.
 </Warning>
 
-### Leave Types — Decree 145 and Labour Code 2019
+### Leave types — Decree 145 and Labour Code 2019
 
 HR tracks eight statutory leave types, each tagged with its legal basis so your records are audit-ready for MoLISA inspection.
 
@@ -72,9 +72,9 @@ HR tracks eight statutory leave types, each tagged with its legal basis so your 
   Maternity and paternity leave entitlements are governed by Labour Code 2019 and implemented under Decree 145/2020. CyberOS tags leave records with both the Labour Code article and the relevant Decree so downstream payroll reporting in REW can distinguish BHXH-funded leave from employer-funded leave.
 </Note>
 
-## Tax and Invoicing
+## Tax and invoicing
 
-### MST Validation
+### MST validation
 
 Every time you write or update an account in CRM with an MST (Mã số thuế — Vietnamese business tax code) field, CyberOS invokes the `vietnam-mst-validate` skill. The skill queries the General Department of Taxation (GDT) registry in real time and:
 
@@ -84,13 +84,13 @@ Every time you write or update an account in CRM with an MST (Mã số thuế �
 
 Validation results are cached for 7 days to handle GDT registry outages gracefully. If the registry is unreachable, the write is permitted but the account is marked `vn_mst_validated: false` and a warning is surfaced to the AM.
 
-### Hóa Đơn (VAT Invoice) — Decree 123/2020
+### Hóa Đơn (VAT invoice) — Decree 123/2020
 
 When a CRM deal moves to `closed_won`, CyberOS automatically triggers the `vietnam-vat-invoice` skill via the INV module. The resulting hóa đơn (electronic VAT invoice) conforms to Decree 123/2020/NĐ-CP and Circular 78/2021/TT-BTC. The account manager must confirm the amount and recipient before the invoice is issued — this is a mandatory human-confirm gate.
 
 Invoice data includes seller information, buyer MST, line items, and a VAT split computed per item type (standard 10%, reduced 5%, or 0% for exports). Issued invoices are stored in INV with a link to the CRM deal and retained for 10 years per Decree 123 requirements.
 
-### PIT and Payroll Deductions in REW
+### PIT and payroll deductions in REW
 
 REW computes the following statutory deductions on every payroll run for Vietnamese employees:
 
@@ -105,11 +105,11 @@ REW computes the following statutory deductions on every payroll run for Vietnam
   The employer-side contributions (BHXH 17.5%, BHYT 3%, BHTN 1%) are computed in REW and surfaced on the payroll summary but are not deducted from the employee's net pay.
 </Note>
 
-### Expense OCR — Vietnamese Hóa Đơn Receipts
+### Expense OCR — Vietnamese Hóa Đơn receipts
 
 Upload a Vietnamese hóa đơn receipt image in TIME and the OCR pipeline extracts the MST, seller name, line items, and VAT split automatically. Extracted fields are editable before you save the expense, and the `vietnam-mst-validate` skill cross-checks the vendor MST against the GDT registry as part of the OCR flow.
 
-## Vietnamese Legal Entity Types in CRM
+## Vietnamese legal entity types in CRM
 
 CRM maps Vietnamese legal entity types to the `account_type` field. Each type controls the hóa đơn template used on deal close:
 
@@ -121,7 +121,7 @@ CRM maps Vietnamese legal entity types to the `account_type` field. Each type co
 | `fdi` | FDI | Foreign-invested enterprise | 01GTKT |
 | `individual` | Cá nhân | Individual | 06GTKT |
 
-## Language and Localisation
+## Language and localisation
 
 CyberOS ships with full Vietnamese and English UI for `vn-1` tenants. The following Vietnamese-specific features are active by default:
 
@@ -129,7 +129,7 @@ CyberOS ships with full Vietnamese and English UI for `vn-1` tenants. The follow
 - **Salutation logic (Anh/Chị/Em)** in CRM contact fields — the platform derives the correct Vietnamese salutation from gender and seniority signals and renders it on every contact card and outbound email template
 - **Vietnamese address parsing** on CRM accounts — ward (phường/xã), district (quận/huyện), and province (tỉnh/thành phố) are parsed into structured fields
 
-## Compliance Feature Summary
+## Compliance feature summary
 
 | Module | VN Compliance Feature |
 |---|---|

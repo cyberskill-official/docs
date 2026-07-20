@@ -10,11 +10,11 @@ CyberOS ESOP is the synthetic equity plane — a tracked-on-books economic inter
   ESOP is a **P2 module** — it is currently in design phase and is not yet generally available. Refer to the [platform changelog](/reference/changelog) for the GA timeline. Features described here reflect the planned P2 design.
 </Note>
 
-## Grant Management
+## Grant management
 
 A grant represents a member's allocation of Synthetic Phantom (SP) units. Grants are issued by the CEO, CFO, and a Board designate together — no single party can create a grant unilaterally.
 
-### Grant Types
+### Grant types
 
 | Kind | When Issued | Default Schedule | Notes |
 |---|---|---|---|
@@ -23,7 +23,7 @@ A grant represents a member's allocation of Synthetic Phantom (SP) units. Grants
 | `retention` | Annual top-up | 4 years, no cliff, monthly | Keeps forward-vesting trajectory smooth; prevents fully-vested members from losing equity incentive. |
 | `special` | Board-designated | Custom schedule | Requires extra approval step; used sparingly for ad-hoc situations. |
 
-### Issuing a Grant
+### Issuing a grant
 
 <Steps>
   <Step title="HR Onboarding Trigger (Founding Grants)">
@@ -41,17 +41,17 @@ A grant represents a member's allocation of Synthetic Phantom (SP) units. Grants
   Grant rows are append-only. The database application role has no `UPDATE` or `DELETE` grant on the `grant` table. Corrections require a supersession row with `superseded_by` pointing to the original. Attempting to mutate a published grant is a sev-0 integrity violation.
 </Warning>
 
-## Vesting Tracking
+## Vesting tracking
 
 Vesting is computed by a deterministic pure function. The same inputs — `(grant, as_of_date)` — always produce the same vested SP count, making the vesting curve auditable and replayable at any point in history.
 
-### Default Vesting Schedule
+### Default vesting schedule
 
 - **Cliff:** 12 months from `grant_date`. Zero SP vest before the cliff.
 - **Monthly vesting:** After the cliff, SP vests monthly over the remaining 36 months.
 - **Full vest:** 48 months from `grant_date`.
 
-### Vesting State Machine
+### Vesting state machine
 
 ```
 Issued → Cliffed → Vesting → FullyVested
@@ -67,7 +67,7 @@ ESOP runs a monthly cron job that materialises `vesting_event` rows for all acti
   Members can view their own vesting curve, upcoming vest dates, and next put-option window directly from the member portal or by asking the CUO agent (`cyberos.esop.explain_my_vesting`). The narrator never reveals aggregate cap-table data — it shows only the member's own grants.
 </Tip>
 
-## HR Lifecycle Integration
+## HR lifecycle integration
 
 ESOP is tightly integrated with HR's member lifecycle. Several HR state transitions automatically propagate to ESOP.
 
@@ -86,7 +86,7 @@ ESOP is tightly integrated with HR's member lifecycle. Several HR state transiti
   </Tab>
 </Tabs>
 
-### Good Leaver vs Bad Leaver
+### Good leaver vs bad leaver
 
 | Outcome | Good Leaver | Bad Leaver |
 |---|---|---|
@@ -101,7 +101,7 @@ ESOP is tightly integrated with HR's member lifecycle. Several HR state transiti
   The Good/Bad Leaver branch is a human-only decision. No system path selects the branch automatically. The branch is not recorded until both the CEO and CFO have submitted their WebAuthn signatures. Any attempt to automate this decision is a sev-0 compliance violation.
 </Warning>
 
-## Cap Table Visibility
+## Cap table visibility
 
 ESOP enforces strict access controls on cap-table data. Members can see their own grants and put schedule; only the CEO, CFO, and Board roles can view the aggregate cap table.
 
@@ -117,7 +117,7 @@ ESOP enforces strict access controls on cap-table data. Members can see their ow
   </Tab>
 </Tabs>
 
-## Annual Valuation Cycle
+## Annual valuation cycle
 
 The SP unit value is set once per year by a tri-party process: CFO provides the base valuation, the Board chair applies the industry multiplier, and an external auditor (e.g. KPMG, EY, or PwC) attests. The resulting `sp_unit_value_vnd` is published as an immutable versioned row — put exercises during the year are priced at the most recent published valuation.
 
@@ -127,7 +127,7 @@ The SP unit value is set once per year by a tri-party process: CFO provides the 
   For example: a base value of ₫50 billion, a multiplier of 8×, and 100,000 outstanding SP produces an SP unit value of ₫4,000,000 per SP. This formula is versioned — the parameters used for each year's valuation are frozen at publish time and never retroactively altered.
 </Accordion>
 
-## Vietnamese Corporate Law Context
+## Vietnamese corporate law context
 
 ESOP operates under the **Vietnamese Joint-Stock Company (JSC) structure** established by Law on Enterprises 59/2020/QH14. The Phantom Stock design deliberately avoids share issuance (Art. 114) and public-offering regulation (Securities Law Art. 30) by classifying grants as deferred compensation under employment contracts, governed by Decree 38/2020 corporate-governance rules.
 
@@ -137,7 +137,7 @@ Tax obligations at put exercise: cash received from a put option is treated as d
   A **Singapore HoldCo structure** is planned for platform phase P3. When the company's ARR reaches USD 1.5 million, the CEO can designate a HoldCo flip — phantom SP units convert to real Singapore HoldCo shares under the Singapore Companies Act, processed through ACRA with DOC-managed paperwork. Until the flip is executed, all grants remain Vietnamese-law phantom deferred compensation.
 </Note>
 
-## Related Modules
+## Related modules
 
 <CardGroup cols={2}>
   <Card title="HR" icon="users" href="/modules/hr">

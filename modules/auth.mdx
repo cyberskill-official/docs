@@ -6,7 +6,7 @@ description: 'Manage sign-in methods, passkey MFA enrollment, role-based access,
 
 CyberOS AUTH is the identity and access layer that secures every module on the platform. It gives you flexible sign-in options — email/password, passkeys, Google SSO, or a company-wide enterprise IdP — and enforces role-based access so each person on your team sees exactly what they need and nothing more. Every sign-in attempt, MFA challenge, role assignment, and session revocation is written to an immutable, hash-chained audit log that you can browse at any time. When AUTH detects a login from an unusual location, it challenges you for a second factor before granting access, keeping your account safe even if your password is compromised.
 
-## Sign-In Methods
+## Sign-in methods
 
 CyberOS supports four sign-in paths. Your tenant admin determines which are enabled in **Tenant Settings → Authentication**.
 
@@ -31,7 +31,7 @@ CyberOS supports four sign-in paths. Your tenant admin determines which are enab
 
 ---
 
-## Role-Based Access
+## Role-based access
 
 Every account in CyberOS holds one or more roles. Your roles determine which modules you can open, which records you can create or edit, and which admin screens you can see. Roles are assigned by your tenant admin and are displayed on your profile page under **Settings → My Roles**.
 
@@ -73,7 +73,7 @@ Every account in CyberOS holds one or more roles. Your roles determine which mod
 
 ---
 
-## Passkeys and MFA Enrollment
+## Passkeys and MFA enrollment
 
 CyberOS uses WebAuthn Level 3 (FIDO2) for multi-factor authentication. A passkey can be a device biometric (Face ID, Touch ID, Windows Hello) or a hardware security key (YubiKey, Titan Key). Once enrolled, your passkey serves as your second factor after a password login — or as a standalone passwordless credential.
 
@@ -100,7 +100,7 @@ CyberOS uses WebAuthn Level 3 (FIDO2) for multi-factor authentication. A passkey
 
 ---
 
-## GeoIP Travel Policy
+## GeoIP travel policy
 
 CyberOS monitors sign-in locations to protect your account from credential theft. When a login appears to come from a continent different from your previous sign-in, or moves faster than physically plausible, AUTH triggers a travel challenge.
 
@@ -114,7 +114,7 @@ You are not blocked — you are asked to confirm with your second factor. Once y
 
 > *"Sign-in blocked: unusual location detected. Contact your admin or try again from your usual network."*
 
-### Creating a Travel Policy Exception
+### Creating a travel policy exception
 
 If you frequently travel and want to avoid repeated location challenges, ask your **Tenant Admin** or **Security Admin** to create an allowlist entry for the IP ranges you use while travelling (e.g. a hotel network or VPN exit node). Once added, logins from those addresses are treated as trusted and skip the travel check.
 
@@ -122,7 +122,7 @@ Admins can manage allowlists at **Admin → Security → Travel Policy → CIDR 
 
 ---
 
-## Session Lifecycle and Token Expiry
+## Session lifecycle and token expiry
 
 When you sign in, CyberOS issues an **access token** (valid for 1 hour) and a **refresh token** (valid for 7 days). Your browser or desktop app manages this automatically — you stay signed in as long as you use CyberOS at least once every 7 days.
 
@@ -143,7 +143,7 @@ When you sign in, CyberOS issues an **access token** (valid for 1 hour) and a **
 
 ---
 
-## Audit Log
+## Audit log
 
 Every authentication event is written to a hash-chained audit log — sign-ins, sign-out events, failed attempts, MFA challenges, travel flags, and role changes all appear here.
 
@@ -158,7 +158,7 @@ Each entry shows the timestamp, event type, source IP (hashed for privacy), and 
 
 ---
 
-## Common Auth Errors
+## Common AUTH errors
 
 | Error | What it means | What to do |
 |---|---|---|

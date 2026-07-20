@@ -6,13 +6,13 @@ description: 'CyberOS Skills are versioned, auditable agent capabilities. Each s
 
 A CyberOS skill is a self-contained folder that defines exactly what an agent can do, how it does it, and how to verify it did the job correctly. Every skill ships as an **author/audit pair**: the author skill produces an artifact and the audit skill independently scores it against a rubric. This pairing is the unit of release — you never ship an author without a matching audit. Every consequential run leaves evidence in the audit chain.
 
-## What Is a Skill?
+## What is a Skill?
 
 A skill is a directory containing a `SKILL.md` contract file plus optional supporting documents, envelope schemas, acceptance fixtures, and references. Agents load skills by name. The `SKILL.md` declares the trigger conditions, input/output contract, memory scopes, allowed MCP tools, escalation paths, and self-audit invariants. Because skills are plain markdown, they are readable by humans, portable across agent hosts, and version-controlled alongside your code.
 
 Skills live at `.cyberos/cuo/skills/<skill-name>/` in any CyberOS-initialized repo, and at `modules/skill/<skill-name>/` in the CyberOS source.
 
-## SKILL.md Anatomy
+## SKILL.md anatomy
 
 The `SKILL.md` frontmatter is the machine-readable contract. Every field serves a purpose in the CUO routing and execution pipeline.
 
@@ -54,7 +54,7 @@ The `SKILL.md` frontmatter is the machine-readable contract. Every field serves 
   </Accordion>
 </AccordionGroup>
 
-## The Author/Audit Pair Convention
+## The author/audit pair convention
 
 Every artifact type in CyberOS has two skills: an **author** that produces the artifact and an **audit** that scores it. The author chains naturally into the audit by default (via `chain_to` in the output envelope). You never ship one without the other.
 
@@ -71,7 +71,7 @@ Every artifact type in CyberOS has two skills: an **author** that produces the a
 | `board-deck-author` | `board-deck-audit` | Board presentation decks |
 | `implementation-plan-author` | `implementation-plan-audit` | Implementation plans |
 
-## Built-In Skill Catalog
+## Built-in Skill catalog
 
 CyberOS ships **100+ author/audit skill pairs** covering the full range of operational work across every C-suite persona. A representative sample:
 
@@ -83,7 +83,7 @@ CyberOS ships **100+ author/audit skill pairs** covering the full range of opera
 
 The full catalog of shipped pairs is in `modules/skill/MODULE.md`. Every pair follows the same folder layout, envelope schema pattern, and 10-point rubric scoring system.
 
-## How Skills Reach Your Repo
+## How Skills reach your repo
 
 Skills are vendored into your project during installation and updated whenever you re-run install. You never manage skill versions manually.
 
@@ -97,7 +97,7 @@ npx cyberos install
 
 After installation, all built-in skills live at `.cyberos/cuo/skills/<skill-name>/`. The Claude plugin also exposes the `ship-tasks` skill directly as the `/ship-tasks` command — it bundles its own copy of the workflow doctrine and runs the same gates as the full workflow.
 
-## Creating a Custom Skill
+## Creating a custom Skill
 
 <Steps>
   <Step title="Copy the template scaffold">
@@ -163,7 +163,7 @@ After installation, all built-in skills live at `.cyberos/cuo/skills/<skill-name
   Each skill bundle is self-contained. Do not reference sibling bundles for prompt content, rubric content, or fixtures. Do not add top-level frontmatter fields — CyberOS extensions go under `metadata.cyberos-*` or in sibling `.md` files such as `INVARIANTS.md` and `RUBRIC.md`.
 </Tip>
 
-## Anthropic Agent Skills Open Standard
+## Anthropic Agent Skills open standard
 
 CyberOS skills are valid [Anthropic Agent Skills](https://agentskills.io/specification) verbatim. A skill authored for CyberOS works without modification in any Agent Skills-compatible client:
 

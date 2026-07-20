@@ -6,7 +6,7 @@ description: 'CyberOS BRAIN is an append-only, audit-chained memory store. Every
 
 CyberOS BRAIN is the platform's remembering faculty — **BRAIN** is the name you speak, `memory` is the name you write in code. Under the hood it is two cooperating layers sharing one source of truth: a tamper-evident Layer 1 store on local disk, and a Layer 2 service that derives searchable, tiered structure from it. Everything any agent or human records — decisions, facts, people, projects — flows through this store and is chained together so that no byte can change without breaking the chain.
 
-## Layer 1 — The Protocol Store
+## Layer 1 — the protocol store
 
 The protocol store is the authoritative record. It lives on disk at `.cyberos/memory/store/` relative to your project root, inside the gitignored `.cyberos/` tree alongside the CUO workflow engine.
 
@@ -14,7 +14,7 @@ The protocol store is the authoritative record. It lives on disk at `.cyberos/me
   The store is tenant data. It is always gitignored and must never be committed to version control. Keep it local; use `cyberos export` when you need a portable snapshot.
 </Note>
 
-### Store Layout
+### Store layout
 
 Every store is a self-contained, zippable artefact with a predictable structure:
 
@@ -37,7 +37,7 @@ Every store is a self-contained, zippable artefact with a predictable structure:
     └── manifest.json        # rebuild marker for the derived index
 ```
 
-### The Four Canonical Operations
+### The four canonical operations
 
 Every mutation to the store is expressed as exactly one of four canonical operations. There is no fifth.
 
@@ -48,7 +48,7 @@ Every mutation to the store is expressed as exactly one of four canonical operat
 | `delete(path, mode)` | `mode` is `"tombstone"` (default) or `"purge"` (GDPR erasure, requires explicit approval). |
 | `put_if(path, body, meta, precondition)` | Create or replace, gated on the SHA-256 of the current body matching `precondition`. A `null` precondition means "must not exist". Mismatch emits a `memory.precondition_failed` audit row; the chain advances for the aux row only. |
 
-### Merkle Audit Chain
+### Merkle audit chain
 
 Each audit record carries two chain fields: `prev_chain` (the chain hash of the preceding record) and `chain`, computed as:
 
@@ -58,7 +58,7 @@ chain = SHA-256(canonical_json(record_minus_chain) || prev_chain)
 
 Monthly binlog segments are binary-framed (`[u32 length][u32 crc32c][u64 seq][u64 ts_ns][payload]`). At consolidation, sealed segments are compressed with deterministic zstd and a signed tree-head anchor is written to `audit/checkpoints/`. This means you can replay any record, prove any write happened, or detect any byte-level tampering — even across machines and over time.
 
-## Layer 2 — The Brain Service
+## Layer 2 — the brain service
 
 Layer 2 reads the Layer 1 store and builds derived structure on top of it:
 
@@ -76,9 +76,9 @@ Layer 2 reads the Layer 1 store and builds derived structure on top of it:
 
 Access to the Layer 2 service is consent-gated and tenant-scoped with fail-closed row-level security.
 
-## Day-to-Day Usage
+## Day-to-day usage
 
-### Installation and Setup
+### Installation and setup
 
 A fresh store is scaffolded automatically when you run `npx cyberos install` in any project. The installer creates `.cyberos/memory/store/` and wires it to the workflow engine. To skip store creation (e.g. in a CI-only environment), set `CYBEROS_NO_MEMORY=1`.
 
@@ -88,7 +88,7 @@ If you need to point agents at a different store location, pass `--store <path>`
   Sandbox and ephemeral paths (e.g. `/tmp/`, runner scratch directories) are explicitly rejected by the store invariants. If you are running inside a CI runner, set `CYBEROS_HOST_MOUNT_PREFIX` to exempt a stable mount point, or disable memory with `CYBEROS_NO_MEMORY=1`.
 </Warning>
 
-### CLI Commands
+### CLI commands
 
 ```bash
 # Check store health — walks all invariants and reports pass/fail
@@ -123,7 +123,7 @@ from cyberos.core.walker import MmapWalker
 
 Everything heavier (SQLite, mmap, msgspec, hashlib) is loaded lazily from subcommand handlers, so a cold `python -m cyberos --help` starts in under 30 ms.
 
-## BRAIN in Practice
+## BRAIN in practice
 
 <Tip>
   Add `.cyberos/memory/store/` to your `.gitignore` before your first commit. The installer does this for you, but double-check any repo that was initialised manually. Committing the store exposes tenant data and breaks the single-writer guarantee.
