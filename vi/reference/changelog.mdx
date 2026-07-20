@@ -34,7 +34,7 @@ Bản phát hành ổn định đầu tiên của CyberOS. Việc đặt tên 1.
   <Tab title="Điểm nổi bật">
     - **Các hợp đồng ổn định.** `engineering-spec@1` và vòng đời nhiệm vụ 10-state là các giao diện ổn định đã được cam kết. Các quy trình `/create-tasks` và `/ship-tasks` được củng cố cho sử dụng production đa-repo — các ship manifest có thể resume, chọn hàng đợi tất định, gate autodetect trên 9 stack ngôn ngữ, cấu hình theo repo và các lần ghi backlog đã được kiểm toán.
     - **Các sản phẩm bàn giao trực quan.** Mỗi nhiệm vụ render thành trang riêng theo phong cách CDS. Trung tâm trạng thái (`status-hub@2`) cung cấp ba lăng kính — board, table và releases — được tái tạo từ frontmatter nhiệm vụ, CHANGELOG này và file VERSION ở mỗi lần deploy.
-    - **CLI người dùng đã hoàn thiện.** Các lệnh: `install`, `uninstall`, `version`, `status`, `help`. Các lệnh slash plugin Claude tương ứng: `/install`, `/uninstall`, `/version`, `/status`, `/help`.
+    - **CLI người dùng đã hoàn thiện.** Tám điểm vào `npx cyberos <command>`: `install`, `uninstall`, `version`, `status`, `help`, cộng thêm ba lệnh chỉ có ở CLI là `create` (tạo khung repo mới), `gates` (chạy các gate máy) và `mcp` (khởi chạy MCP server stdio). Các lệnh slash plugin Claude tương ứng: `/install`, `/uninstall`, `/version`, `/status`, `/help`, cùng các lệnh workflow nhiệm vụ chỉ có trong plugin `/ship-tasks`, `/plan`, `/create-tasks` và `/improve`.
     - **Kiểm tra cập nhật mềm.** Ở bất kỳ lần sử dụng `.cyberos` nào, CyberOS kiểm tra xem có phiên bản mới hơn khả dụng không. Nếu cũ, nó nhắc bạn chạy `cyberos install` để re-vendor.
   </Tab>
   <Tab title="Thay đổi so với 0.x">
@@ -87,7 +87,8 @@ Bản phát hành ổn định đầu tiên của CyberOS. Việc đặt tên 1.
   </Accordion>
 
   <Accordion title="Plugin Claude — Các lệnh và marketplace">
-    - **Các lệnh slash:** `/install`, `/uninstall`, `/version`, `/status`, `/help` — tương đương đầy đủ với bề mặt CLI.
+    - **Các lệnh slash tương đương CLI:** `/install`, `/uninstall`, `/version`, `/status`, `/help` — tương đương đầy đủ với bề mặt CLI `npx cyberos`.
+    - **Các lệnh slash workflow nhiệm vụ:** `/ship-tasks`, `/plan`, `/create-tasks`, `/improve` — điều khiển workflow nhiệm vụ CUO từ đầu đến cuối. Chỉ có trong plugin; không có bản CLI tương ứng.
     - **Listing trên marketplace Claude Code.** Plugin CyberOS được listing trên marketplace Claude Code. Một file `.plugin` cho phép cài đặt một-nhấp từ Claude Desktop.
     - **`/status` mở trung tâm trạng thái** trong trình duyệt mặc định, hiển thị chế độ xem board/table/releases của corpus nhiệm vụ hiện tại.
     - **Kiểm tra cập nhật mềm ở bất kỳ lần sử dụng `.cyberos` nào.** Nếu có phiên bản mới hơn khả dụng và người dùng xác nhận, `install` re-vendor payload. Không có đường `apply` riêng.

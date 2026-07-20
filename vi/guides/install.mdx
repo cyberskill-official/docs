@@ -24,6 +24,29 @@ Chọn kênh phù hợp với thiết lập của bạn. Tất cả các kênh �
 
 ---
 
+## Bề mặt CLI `npx cyberos`
+
+Điểm vào `npx cyberos <command>` cung cấp **tám** lệnh. Năm lệnh có lệnh slash Claude plugin tương ứng; ba lệnh (`create`, `gates`, `mcp`) chỉ có ở CLI.
+
+| Lệnh CLI | Lệnh slash | Chức năng |
+|---|---|---|
+| `npx cyberos install [repo]` | `/install` | Đưa `.cyberos/` vào repo, tự phát hiện lệnh gate, tạo khung `docs/tasks/BACKLOG.md`, ghi các file entry cho agent. Idempotent. |
+| `npx cyberos uninstall [repo]` | `/uninstall` | Gỡ thư mục `.cyberos/` đã cài. Không đụng đến mã nguồn hay nhiệm vụ của bạn. |
+| `npx cyberos version [repo]` | `/version` | Kiểm tra xem đã có phiên bản CyberOS mới hơn chưa. Nếu `.cyberos/VERSION` cũ, nó nhắc bạn chạy lại `install` để re-vendor. |
+| `npx cyberos status [repo]` | `/status` | Mở `docs/status/index.html` — chế độ xem board / table / releases của corpus nhiệm vụ — trong trình duyệt mặc định. |
+| `npx cyberos help` | `/help` | In bề mặt CLI, vòng đời nhiệm vụ, và vị trí mọi thứ trong repo đã cài. |
+| `npx cyberos create [dir]` | — | Tạo khung một repo **mới** đã sẵn CyberOS. Chỉ có ở CLI. |
+| `npx cyberos gates [repo]` | — | Chạy các gate máy (build, lint, test, coverage) cho repo đã cài. Cùng runner mà workflow dùng. Chỉ có ở CLI. |
+| `npx cyberos mcp` | — | Khởi chạy **MCP server** stdio để bất kỳ agent hỗ trợ MCP nào cũng có thể điều khiển workflow. Chỉ có ở CLI — xem [module MCP Gateway](/vi/modules/mcp-gateway) để biết chi tiết công cụ. |
+
+<Note>
+  Không có lệnh `apply` hay `update`. Re-vendor luôn là `npx cyberos install` — an toàn khi chạy bất cứ lúc nào và không bao giờ ghi đè `BACKLOG.md`, nhiệm vụ, `AGENTS.md`, hay `gates.env` của bạn. Kiểm tra cập nhật mềm chạy tự động mỗi khi có bất kỳ thứ gì dưới `.cyberos/` được sử dụng.
+</Note>
+
+Với workflow nhiệm vụ, Claude plugin còn cung cấp thêm `/ship-tasks`, `/plan`, `/create-tasks` và `/improve`. Chúng chỉ có trong plugin — xem [Thiết lập Plugin](/vi/guides/plugin-setup).
+
+---
+
 ## Cài đặt qua npx (khuyến nghị)
 
 <Steps>
@@ -137,15 +160,24 @@ Việc cài đặt hoàn toàn mang tính bổ sung. Nó không bao giờ sửa 
 
 ## Cập nhật CyberOS
 
-Để cập nhật một kho mã đã cài đặt, sử dụng một trong các cách sau:
+Không có lệnh `update` hay `apply` riêng. Để nhận phiên bản CyberOS mới, chỉ cần chạy lại trình cài đặt — nó idempotent và bảo toàn nhiệm vụ, `BACKLOG.md`, `AGENTS.md` và `gates.env` của bạn.
 
 <CodeGroup>
 ```bash npx
-npx cyberos update
+# Kiểm tra xem đã có bản CyberOS mới hơn chưa
+npx cyberos version
+
+# Re-vendor .cyberos/ với payload mới nhất
+npx cyberos install
+```
+
+```bash Claude plugin
+/version
+/install
 ```
 </CodeGroup>
 
-Từ Claude plugin, gõ `/update` trong phiên làm việc với kho mã. Lệnh sẽ so sánh `.cyberos/VERSION` của bạn với payload có sẵn và chỉ áp dụng bản cập nhật sau khi bạn xác nhận.
+`/version` (hoặc `npx cyberos version`) in phiên bản đã cài và nhắc bạn chạy `install` nếu đã có bản mới hơn. Kiểm tra cập nhật mềm cũng chạy tự động khi có bất kỳ thứ gì dưới `.cyberos/` được sử dụng.
 
 ---
 

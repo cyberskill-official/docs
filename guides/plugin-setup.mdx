@@ -1,20 +1,41 @@
 ---
 title: 'Configure the CyberOS Claude Plugin and Slash Commands'
 sidebarTitle: 'Plugin Setup'
-description: 'Add the CyberOS plugin to Claude Code or Claude Desktop for one-command /install, /ship-tasks, /update, /changelog, and /help access.'
+description: 'Add the CyberOS plugin to Claude Code or Claude Desktop for one-command /install, /ship-tasks, /plan, /create-tasks, /improve, and /help access.'
 ---
 
-The CyberOS Claude plugin is a convenience layer that packages the full task workflow as host commands. Once installed, it gives you five slash commands — `/install`, `/update`, `/changelog`, `/help`, and `/ship-tasks` — directly inside Claude Code, Claude Desktop, or Cowork, without needing to copy prompts or reference file paths manually. The plugin is not required to use CyberOS; it is a shortcut on top of a doc-driven system that works with any agent.
+The CyberOS Claude plugin is a convenience layer that packages the full task workflow as host commands. Once installed, it gives you slash commands — the five CLI-parity commands (`/install`, `/uninstall`, `/version`, `/status`, `/help`) plus the four task-workflow commands (`/ship-tasks`, `/plan`, `/create-tasks`, `/improve`) — directly inside Claude Code, Claude Desktop, or Cowork, without needing to copy prompts or reference file paths manually. The plugin is not required to use CyberOS; it is a shortcut on top of a doc-driven system that works with any agent.
 
 ## Plugin commands
 
+### CLI-parity commands
+
+These slash commands mirror `npx cyberos <command>` one-to-one.
+
 | Command | What it does |
 |---|---|
-| `/install [repo]` | Install or update CyberOS in your repo — auto-detects gate commands, vendors `.cyberos/`, scaffolds `docs/tasks/BACKLOG.md`, and writes agent entry files. Idempotent. |
-| `/update [repo]` | Check your installed `.cyberos/VERSION` against the available payload and apply the update on your confirmation. Read-only until you say yes. |
-| `/changelog [repo]` | Report the installed version and what changed recently. |
-| `/help` | Print the commands, the task lifecycle, the two human gates, and where things live in an initialised repo. |
+| `/install [repo]` | Install or re-vendor CyberOS in your repo — auto-detects gate commands, vendors `.cyberos/`, scaffolds `docs/tasks/BACKLOG.md`, and writes agent entry files. Idempotent. Re-vendor is the only update path. |
+| `/uninstall [repo]` | Remove the vendored `.cyberos/` folder from a repo. Never touches your source or tasks. |
+| `/version [repo]` | Check whether a newer CyberOS is available. If stale, it prompts you to run `/install` to re-vendor. |
+| `/status [repo]` | Open `docs/status/index.html` — the board / table / releases view of your task corpus — in the default browser. |
+| `/help` | Print the plugin commands, the task lifecycle, the two human gates, and where things live in an initialised repo. |
+
+### Task-workflow commands
+
+These slash commands drive the CUO task workflow. They are plugin-only — no `npx cyberos` equivalent.
+
+| Command | What it does |
+|---|---|
 | `/ship-tasks` | Drive the next eligible task in `docs/tasks/BACKLOG.md` end-to-end: implement → review → test → done. Halts at both human gates. |
+| `/plan` | Draft a plan for the next work bucket before any tasks are opened — clarifies scope and decision points ahead of `/create-tasks`. |
+| `/create-tasks` | Turn a plan or a raw requirement into one or more well-formed task files under `docs/tasks/`, ready for `/ship-tasks`. |
+| `/improve` | Open an improvement task against CyberOS itself — for governance, tooling, or workflow fixes that surface during a ship run. |
+
+<Note>
+  There is no `/update` or `/changelog` command. Update is `/install` (re-vendor) after `/version` confirms a newer payload is available. The changelog lives on the [Changelog page](/reference/changelog).
+</Note>
+
+The CLI-only `npx cyberos create`, `npx cyberos gates`, and `npx cyberos mcp` commands have no plugin equivalent — see the [Installation guide](/guides/install#the-npx-cyberos-cli-surface).
 
 ---
 
@@ -36,7 +57,7 @@ The CyberOS Claude plugin is a convenience layer that packages the full task wor
         /plugin install cyberos@cyberos
         ```
 
-        Claude Code will confirm the plugin is active. The five commands are now available in any repo session.
+        Claude Code will confirm the plugin is active. All nine slash commands are now available in any repo session.
       </Step>
     </Steps>
   </Tab>
@@ -56,7 +77,7 @@ The CyberOS Claude plugin is a convenience layer that packages the full task wor
       </Step>
 
       <Step title="Confirm activation">
-        The plugin appears in your Plugins list as **cyberos**. All five commands are now available in every session.
+        The plugin appears in your Plugins list as **cyberos**. All nine slash commands are now available in every session.
       </Step>
     </Steps>
   </Tab>

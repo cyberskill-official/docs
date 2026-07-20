@@ -34,7 +34,7 @@ The first stable release of CyberOS. The 1.0.0 designation is deliberate: the 0.
   <Tab title="Highlights">
     - **Stable contracts.** `engineering-spec@1` and the 10-state task lifecycle are committed stable interfaces. The `/create-tasks` and `/ship-tasks` workflows are hardened for multi-repo production use — resumable ship manifests, deterministic queue selection, gate autodetect across 9 language stacks, per-repo config, and audited backlog writes.
     - **Visual deliverables.** Every task renders to its own CDS-styled page. The status hub (`status-hub@2`) provides three lenses — board, table, and releases — regenerated from task frontmatter, this CHANGELOG, and the VERSION file on every deploy.
-    - **Consumer CLI finalised.** Commands: `install`, `uninstall`, `version`, `status`, `help`. Matching Claude plugin slash commands: `/install`, `/uninstall`, `/version`, `/status`, `/help`.
+    - **Consumer CLI finalised.** Eight `npx cyberos <command>` entry points: `install`, `uninstall`, `version`, `status`, `help`, plus the CLI-only `create` (scaffold a new repo), `gates` (run machine gates), and `mcp` (launch the stdio MCP server). Matching Claude plugin slash commands: `/install`, `/uninstall`, `/version`, `/status`, `/help`, alongside the plugin-only task-workflow commands `/ship-tasks`, `/plan`, `/create-tasks`, and `/improve`.
     - **Soft update-check.** On any `.cyberos` use, CyberOS checks whether a newer version is available. If stale, it prompts you to run `cyberos install` to re-vendor.
   </Tab>
   <Tab title="What Changed from 0.x">
@@ -87,7 +87,8 @@ The first stable release of CyberOS. The 1.0.0 designation is deliberate: the 0.
   </Accordion>
 
   <Accordion title="Claude Plugin — Commands and Marketplace">
-    - **Slash commands:** `/install`, `/uninstall`, `/version`, `/status`, `/help` — full parity with the CLI surface.
+    - **CLI-parity slash commands:** `/install`, `/uninstall`, `/version`, `/status`, `/help` — full parity with the `npx cyberos` CLI surface.
+    - **Task-workflow slash commands:** `/ship-tasks`, `/plan`, `/create-tasks`, `/improve` — drive the CUO task workflow end to end. Plugin-only; no CLI equivalent.
     - **Claude Code marketplace listing.** The CyberOS plugin is listed on the Claude Code marketplace. A `.plugin` file enables one-click install from Claude Desktop.
     - **`/status` opens the status hub** in the default browser, showing the board/table/releases view of the current task corpus.
     - **Soft update-check on any `.cyberos` use.** If a newer version is available and the user confirms, `install` re-vendors the payload. No separate `apply` path.
