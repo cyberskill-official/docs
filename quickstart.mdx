@@ -120,9 +120,13 @@ This guide takes you from zero to a shipped, human-accepted change in under 15 m
     | Command | What it does |
     |---------|-------------|
     | `/ship-tasks` | Drive the next eligible task end to end |
-    | `/install` | Install or re-install CyberOS into the current repo |
-    | `/update` | Update the vendored CyberOS payload to the latest version |
-    | `/changelog` | Show the CyberOS changelog |
+    | `/plan` | Draft a plan for the next work bucket before opening tasks |
+    | `/create-tasks` | Turn a plan or requirement into task files under `docs/tasks/` |
+    | `/improve` | Open an improvement task against CyberOS itself |
+    | `/install` | Install or re-vendor CyberOS into the current repo |
+    | `/uninstall` | Remove the vendored `.cyberos/` folder from the current repo |
+    | `/version` | Check whether a newer CyberOS is available |
+    | `/status` | Open the board / table / releases status page in the browser |
     | `/help` | List all available plugin commands |
 
     Without the plugin, paste this prompt into any file-and-shell agent (Claude, Codex, Cursor, Gemini, Grok, or any other):
@@ -161,12 +165,15 @@ npx cyberos install
 npx cyberos install /path/to/your-repo
 ```
 
-```bash npx update
-# Update the vendored CyberOS payload in the current directory
-npx cyberos update
+```bash npx version
+# Check whether a newer CyberOS is available for the current directory
+npx cyberos version
 
-# Update a specific repo
-npx cyberos update /path/to/your-repo
+# Check a specific repo
+npx cyberos version /path/to/your-repo
+
+# If stale, re-vendor with the latest payload
+npx cyberos install
 ```
 
 ```bash terminal install

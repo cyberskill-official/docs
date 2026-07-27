@@ -24,6 +24,29 @@ Choose the channel that fits your setup. All channels produce the same `.cyberos
 
 ---
 
+## The `npx cyberos` CLI surface
+
+The `npx cyberos <command>` entry point ships **eight** commands. Five have matching Claude plugin slash commands; three (`create`, `gates`, `mcp`) are CLI-only.
+
+| CLI command | Slash command | What it does |
+|---|---|---|
+| `npx cyberos install [repo]` | `/install` | Vendor `.cyberos/`, auto-detect gate commands, scaffold `docs/tasks/BACKLOG.md`, write agent entry files. Idempotent. |
+| `npx cyberos uninstall [repo]` | `/uninstall` | Remove the vendored `.cyberos/` folder from a repo. Never touches your source or tasks. |
+| `npx cyberos version [repo]` | `/version` | Check whether a newer CyberOS is available. If your `.cyberos/VERSION` is stale, it prompts you to re-vendor via `install`. |
+| `npx cyberos status [repo]` | `/status` | Open `docs/status/index.html` — the board / table / releases view of your task corpus — in the default browser. |
+| `npx cyberos help` | `/help` | Print the CLI surface, the task lifecycle, and where things live in an initialised repo. |
+| `npx cyberos create [dir]` | — | Scaffold a **new** repo with CyberOS already installed. CLI-only. |
+| `npx cyberos gates [repo]` | — | Run the machine gates (build, lint, test, coverage) for an installed repo. Same runner the workflow uses. CLI-only. |
+| `npx cyberos mcp` | — | Launch the stdio **MCP server** so any MCP-capable agent can drive the workflow. CLI-only — see the [MCP Gateway module](/modules/mcp-gateway) for tool details. |
+
+<Note>
+  There is no `apply` or `update` command. Re-vendoring is always `npx cyberos install` — it is safe to run any time and never overwrites your `BACKLOG.md`, tasks, `AGENTS.md`, or `gates.env`. A soft update-check runs automatically whenever anything under `.cyberos/` is used.
+</Note>
+
+For the task workflow, the Claude plugin additionally ships `/ship-tasks`, `/plan`, `/create-tasks`, and `/improve`. These live in the plugin only — see [Plugin Setup](/guides/plugin-setup).
+
+---
+
 ## Install via npx (recommended)
 
 <Steps>
@@ -137,15 +160,24 @@ Installation is strictly additive. It never modifies:
 
 ## Updating CyberOS
 
-To update an already-installed repo, use any of the following:
+There is no separate `update` or `apply` command. To pick up a newer CyberOS, re-run the installer — it is idempotent and preserves your tasks, `BACKLOG.md`, `AGENTS.md`, and `gates.env`.
 
 <CodeGroup>
 ```bash npx
-npx cyberos update
+# Check whether a newer CyberOS is available
+npx cyberos version
+
+# Re-vendor .cyberos/ with the latest payload
+npx cyberos install
+```
+
+```bash Claude plugin
+/version
+/install
 ```
 </CodeGroup>
 
-From the Claude plugin, type `/update` in your repo session. The command compares your `.cyberos/VERSION` against the available payload and applies the update only after you confirm.
+`/version` (or `npx cyberos version`) prints your installed version and prompts you to run `install` if a newer one is available. A soft update-check also runs automatically on any `.cyberos/` use.
 
 ---
 

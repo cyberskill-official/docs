@@ -1,20 +1,41 @@
 ---
 title: 'Cấu hình CyberOS Claude Plugin và các Slash Command'
 sidebarTitle: 'Cài đặt Plugin'
-description: 'Thêm plugin CyberOS vào Claude Code hoặc Claude Desktop để truy cập một lệnh cho /install, /ship-tasks, /update, /changelog và /help.'
+description: 'Thêm plugin CyberOS vào Claude Code hoặc Claude Desktop để truy cập một lệnh cho /install, /ship-tasks, /plan, /create-tasks, /improve và /help.'
 ---
 
-CyberOS Claude plugin là lớp tiện ích đóng gói toàn bộ quy trình nhiệm vụ dưới dạng các lệnh của host. Sau khi cài đặt, nó cung cấp cho bạn năm slash command — `/install`, `/update`, `/changelog`, `/help`, và `/ship-tasks` — trực tiếp trong Claude Code, Claude Desktop, hoặc Cowork, mà không cần sao chép prompt hay tham chiếu đường dẫn file thủ công. Plugin không bắt buộc để sử dụng CyberOS; nó là một lối tắt trên hệ thống dựa trên tài liệu vốn hoạt động với bất kỳ agent nào.
+CyberOS Claude plugin là lớp tiện ích đóng gói toàn bộ quy trình nhiệm vụ dưới dạng các lệnh của host. Sau khi cài đặt, nó cung cấp cho bạn các slash command — năm lệnh tương đương CLI (`/install`, `/uninstall`, `/version`, `/status`, `/help`) cùng bốn lệnh workflow nhiệm vụ (`/ship-tasks`, `/plan`, `/create-tasks`, `/improve`) — trực tiếp trong Claude Code, Claude Desktop, hoặc Cowork, mà không cần sao chép prompt hay tham chiếu đường dẫn file thủ công. Plugin không bắt buộc để sử dụng CyberOS; nó là một lối tắt trên hệ thống dựa trên tài liệu vốn hoạt động với bất kỳ agent nào.
 
 ## Các lệnh của plugin
 
+### Các lệnh tương đương CLI
+
+Các lệnh slash này phản chiếu `npx cyberos <command>` một-đối-một.
+
 | Lệnh | Chức năng |
 |---|---|
-| `/install [repo]` | Cài đặt hoặc cập nhật CyberOS trong kho mã — tự động phát hiện các lệnh gate, đưa `.cyberos/` vào, tạo khung `docs/tasks/BACKLOG.md`, và ghi các file entry cho agent. Idempotent. |
-| `/update [repo]` | Kiểm tra `.cyberos/VERSION` đã cài đặt so với payload có sẵn và áp dụng bản cập nhật khi bạn xác nhận. Chỉ đọc cho đến khi bạn đồng ý. |
-| `/changelog [repo]` | Báo cáo phiên bản đã cài đặt và những gì đã thay đổi gần đây. |
-| `/help` | In ra các lệnh, vòng đời nhiệm vụ, hai human gate, và vị trí các thứ trong một kho mã đã được khởi tạo. |
+| `/install [repo]` | Cài đặt hoặc re-vendor CyberOS trong kho mã — tự động phát hiện các lệnh gate, đưa `.cyberos/` vào, tạo khung `docs/tasks/BACKLOG.md`, và ghi các file entry cho agent. Idempotent. Re-vendor là con đường cập nhật duy nhất. |
+| `/uninstall [repo]` | Gỡ thư mục `.cyberos/` đã cài khỏi một repo. Không đụng đến mã nguồn hay nhiệm vụ của bạn. |
+| `/version [repo]` | Kiểm tra xem đã có bản CyberOS mới hơn chưa. Nếu cũ, nó nhắc bạn chạy `/install` để re-vendor. |
+| `/status [repo]` | Mở `docs/status/index.html` — chế độ xem board / table / releases của corpus nhiệm vụ — trong trình duyệt mặc định. |
+| `/help` | In ra các lệnh của plugin, vòng đời nhiệm vụ, hai human gate, và vị trí các thứ trong một kho mã đã được khởi tạo. |
+
+### Các lệnh workflow nhiệm vụ
+
+Các lệnh slash này điều khiển workflow nhiệm vụ CUO. Chúng chỉ có trong plugin — không có bản `npx cyberos` tương ứng.
+
+| Lệnh | Chức năng |
+|---|---|
 | `/ship-tasks` | Điều khiển nhiệm vụ đủ điều kiện tiếp theo trong `docs/tasks/BACKLOG.md` từ đầu đến cuối: triển khai → xem xét → kiểm thử → hoàn thành. Dừng lại tại cả hai human gate. |
+| `/plan` | Phác thảo kế hoạch cho gói công việc tiếp theo trước khi mở bất kỳ nhiệm vụ nào — làm rõ phạm vi và các điểm quyết định trước `/create-tasks`. |
+| `/create-tasks` | Biến một kế hoạch hoặc yêu cầu thô thành một hoặc nhiều file nhiệm vụ có cấu trúc chuẩn trong `docs/tasks/`, sẵn sàng cho `/ship-tasks`. |
+| `/improve` | Mở một nhiệm vụ cải tiến cho chính CyberOS — cho các sửa đổi về quản trị, công cụ, hoặc workflow xuất hiện trong một lần ship. |
+
+<Note>
+  Không có lệnh `/update` hay `/changelog`. Cập nhật là `/install` (re-vendor) sau khi `/version` xác nhận có payload mới hơn. Changelog nằm trên [trang Changelog](/vi/reference/changelog).
+</Note>
+
+Các lệnh chỉ có ở CLI `npx cyberos create`, `npx cyberos gates` và `npx cyberos mcp` không có bản plugin tương ứng — xem [Hướng dẫn cài đặt](/vi/guides/install).
 
 ---
 
@@ -36,7 +57,7 @@ CyberOS Claude plugin là lớp tiện ích đóng gói toàn bộ quy trình nh
         /plugin install cyberos@cyberos
         ```
 
-        Claude Code sẽ xác nhận plugin đang hoạt động. Năm lệnh giờ đây có sẵn trong bất kỳ phiên làm việc với kho mã nào.
+        Claude Code sẽ xác nhận plugin đang hoạt động. Cả chín lệnh slash giờ đây có sẵn trong bất kỳ phiên làm việc với kho mã nào.
       </Step>
     </Steps>
   </Tab>
@@ -56,7 +77,7 @@ CyberOS Claude plugin là lớp tiện ích đóng gói toàn bộ quy trình nh
       </Step>
 
       <Step title="Xác nhận kích hoạt">
-        Plugin xuất hiện trong danh sách Plugins của bạn với tên **cyberos**. Cả năm lệnh giờ đây có sẵn trong mọi phiên.
+        Plugin xuất hiện trong danh sách Plugins của bạn với tên **cyberos**. Cả chín lệnh slash giờ đây có sẵn trong mọi phiên.
       </Step>
     </Steps>
   </Tab>

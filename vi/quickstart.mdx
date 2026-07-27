@@ -120,9 +120,13 @@ Hướng dẫn này đưa bạn từ số không đến một thay đổi đã �
     | Lệnh | Chức năng |
     |---------|-------------|
     | `/ship-tasks` | Điều phối nhiệm vụ đủ điều kiện tiếp theo từ đầu đến cuối |
-    | `/install` | Cài đặt hoặc cài đặt lại CyberOS vào repo hiện tại |
-    | `/update` | Cập nhật payload CyberOS đã vendor lên phiên bản mới nhất |
-    | `/changelog` | Hiển thị changelog CyberOS |
+    | `/plan` | Phác thảo kế hoạch cho gói công việc tiếp theo trước khi mở nhiệm vụ |
+    | `/create-tasks` | Biến kế hoạch hoặc yêu cầu thành các file nhiệm vụ trong `docs/tasks/` |
+    | `/improve` | Mở một nhiệm vụ cải tiến cho chính CyberOS |
+    | `/install` | Cài đặt hoặc re-vendor CyberOS vào repo hiện tại |
+    | `/uninstall` | Gỡ thư mục `.cyberos/` đã cài khỏi repo hiện tại |
+    | `/version` | Kiểm tra xem đã có bản CyberOS mới hơn chưa |
+    | `/status` | Mở trang trạng thái board / table / releases trong trình duyệt |
     | `/help` | Liệt kê tất cả các lệnh plugin khả dụng |
 
     Không có plugin, hãy dán prompt này vào bất kỳ agent file-and-shell nào (Claude, Codex, Cursor, Gemini, Grok, hoặc bất kỳ agent nào khác):
@@ -161,12 +165,15 @@ npx cyberos install
 npx cyberos install /path/to/your-repo
 ```
 
-```bash npx update
-# Update the vendored CyberOS payload in the current directory
-npx cyberos update
+```bash npx version
+# Kiểm tra xem đã có bản CyberOS mới hơn cho thư mục hiện tại chưa
+npx cyberos version
 
-# Update a specific repo
-npx cyberos update /path/to/your-repo
+# Kiểm tra một repo cụ thể
+npx cyberos version /path/to/your-repo
+
+# Nếu cũ, re-vendor với payload mới nhất
+npx cyberos install
 ```
 
 ```bash terminal install
